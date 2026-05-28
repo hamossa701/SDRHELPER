@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createServerSupabaseClient } from '@/lib/supabase'
 import { redirect, notFound } from 'next/navigation'
 import { Card, CardContent, CardHeader, Badge, ScoreBadge } from '@/components/ui'
 import {
@@ -36,7 +35,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
     <div className="p-8 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <button onClick={() => history.back()} className="text-xs text-gray-400 hover:text-gray-600 mb-3 block">← Retour</button>
+        <Link href="/campaigns" className="text-xs text-gray-400 hover:text-gray-600 mb-3 inline-block">← Retour</Link>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
