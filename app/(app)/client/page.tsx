@@ -1,3 +1,5 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { createServerSupabaseClient } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
@@ -5,7 +7,8 @@ import { getInterestBg, getInterestLabel, formatDate, formatDateShort } from '@/
 import type { Call, CallAnalysis, Campaign } from '@/types'
 
 export default async function ClientPage() {
-  const supabase = await createServerSupabaseClient()
+  const cookieStore = await cookies()
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')

@@ -1,3 +1,5 @@
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { createServerSupabaseClient } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { Card, CardHeader, Badge, ScoreBadge } from '@/components/ui'
@@ -6,7 +8,8 @@ import Link from 'next/link'
 import type { Campaign, Call, CallAnalysis } from '@/types'
 
 export default async function CampaignsPage() {
-  const supabase = await createServerSupabaseClient()
+  const cookieStore = await cookies()
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
