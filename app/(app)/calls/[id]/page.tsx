@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, Badge, ScoreBadge } from '@/components/ui'
 import {
   getInterestBg, getInterestLabel, getRiskBg, getRiskLabel,
