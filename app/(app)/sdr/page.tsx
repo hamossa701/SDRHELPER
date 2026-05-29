@@ -21,6 +21,7 @@ export default async function SDRPage() {
     .select('*, call_analyses(*), campaigns(campaign_name, client_name)')
     .eq('sdr_id', user.id)
     .order('call_datetime', { ascending: false })
+    .limit(200)
 
   const analyses = calls?.map((c: Call & { call_analyses: CallAnalysis }) => c.call_analyses).filter(Boolean) || []
   const totalCalls = calls?.length || 0

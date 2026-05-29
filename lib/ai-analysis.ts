@@ -75,6 +75,12 @@ RETOURNER UNIQUEMENT CE JSON VALIDE, SANS COMMENTAIRE, SANS MARKDOWN :
   }
 }`
 
+export interface AIAnalysisResult {
+  analysis: AIAnalysisResponse
+  inputTokens: number
+  outputTokens: number
+}
+
 export async function analyzeCallTranscript(
   transcript: string,
   campaignContext?: {
@@ -83,7 +89,7 @@ export async function analyzeCallTranscript(
     offer_description?: string
     target_persona?: string
   }
-): Promise<AIAnalysisResponse> {
+): Promise<AIAnalysisResult> {
   const contextBlock = campaignContext
     ? `\n\nCONTEXTE CAMPAGNE :
 Client : ${campaignContext.client_name || 'Non précisé'}
@@ -98,18 +104,18 @@ Persona cible : ${campaignContext.target_persona || 'Non précisé'}`
     model: 'claude-sonnet-4-5',
     max_tokens: 2000,
     system: SYSTEM_PROMPT,
-    messages: [
-      { role: 'user', content: userMessage }
-    ],
+    messages: [{ role: 'user', content: userMessage }],
   })
 
   const content = message.content[0]
-  if (content.type !== 'text') {
-    throw new Error('Pas de réponse de l\'IA')
-  }
+  if (content.type !== 'text') throw new Error('Pas de réponse de l\'IA')
 
-  // Clean response - remove any markdown if present
   const clean = content.text.replace(/```json|```/g, '').trim()
   const parsed = JSON.parse(clean) as AIAnalysisResponse
-  return parsed
+
+  return {
+    analysis: parsed,
+    inputTokens: message.usage.input_tokens,
+    outputTokens: message.usage.output_tokens,
+  }
 }

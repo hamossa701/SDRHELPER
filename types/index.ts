@@ -8,6 +8,8 @@ export type CampaignStatus = 'active' | 'paused' | 'completed'
 export type InterestLevel = 'cold' | 'warm' | 'hot' | 'unclear'
 export type HallucinationRisk = 'low' | 'medium' | 'high'
 export type Plan = 'starter' | 'pro' | 'enterprise'
+export type ReviewStatus = 'open' | 'in_review' | 'resolved'
+export type AnalysisJobStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export interface Organization {
   id: string
@@ -47,10 +49,38 @@ export interface Call {
   audio_url: string | null
   call_datetime: string
   created_at: string
+  review_status: ReviewStatus
+  assigned_to: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
   // Joined fields
   campaign?: Campaign
   sdr?: User
   analysis?: CallAnalysis
+}
+
+export interface AnalysisJob {
+  id: string
+  organization_id: string
+  call_id: string | null
+  status: AnalysisJobStatus
+  error_message: string | null
+  retry_count: number
+  created_at: string
+  started_at: string | null
+  completed_at: string | null
+}
+
+export interface AIUsageLog {
+  id: string
+  organization_id: string
+  call_id: string | null
+  job_id: string | null
+  model: string
+  input_tokens: number
+  output_tokens: number
+  estimated_cost_usd: number
+  created_at: string
 }
 
 export interface CallAnalysis {

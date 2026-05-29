@@ -26,7 +26,7 @@ export default async function DashboardPage() {
 
   const { data: calls } = await supabase
     .from('calls').select('*, call_analyses(*), users!calls_sdr_id_fkey(name)')
-    .eq('organization_id', profile.organization_id).order('call_datetime', { ascending: false })
+    .eq('organization_id', profile.organization_id).order('call_datetime', { ascending: false }).limit(500)
 
   const { data: sdrs } = await supabase
     .from('users').select('*').eq('organization_id', profile.organization_id).eq('role', 'sdr')

@@ -6,6 +6,7 @@ import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from 
 import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
 import { computeTrustScore } from '@/lib/trust-score'
 import { buildSDRProfile } from '@/lib/coaching'
+import { ReviewQueueControls } from '@/components/manager/ReviewQueueControls'
 import Link from 'next/link'
 import type { Call, CallAnalysis, User, Campaign } from '@/types'
 
@@ -29,6 +30,7 @@ export default async function ManagerPage() {
     .select('*, call_analyses(*), users!calls_sdr_id_fkey(name, id), campaigns(campaign_name, client_name)')
     .eq('organization_id', profile.organization_id)
     .order('call_datetime', { ascending: false })
+    .limit(500)
 
   const todayCalls = allCalls?.filter((c: CallRow) => new Date(c.call_datetime) >= today) || []
   const analyses = allCalls?.map((c: CallRow) => c.call_analyses).filter(Boolean) || []
@@ -69,6 +71,15 @@ export default async function ManagerPage() {
   const topObjections = Object.entries(objectionTypes).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
   // SDR leaderboard + coaching profiles
+  // Build a name map for review assignees (managers + owners)
+  const { data: orgManagers } = await supabase
+    .from('users').select('id, name')
+    .eq('organization_id', profile.organization_id)
+    .in('role', ['owner', 'manager'])
+  const managerMap: Record<string, string> = Object.fromEntries(
+    (orgManagers || []).map((u: any) => [u.id, u.name])
+  )
+
   const { data: sdrs } = await supabase
     .from('users').select('*').eq('organization_id', profile.organization_id).eq('role', 'sdr')
 
@@ -132,26 +143,33 @@ export default async function ManagerPage() {
               {callsWithFlags.slice(0, 10).map((call: CallRow) => {
                 const { flags } = computeReviewFlags(call.call_analyses)
                 return (
-                  <Link key={call.id} href={`/calls/${call.id}`}>
-                    <div className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-800">
-                            {call.call_analyses?.prospect_company || 'Prospect inconnu'}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {call.users?.name} · {call.campaigns?.campaign_name} · {formatDateShort(call.call_datetime)}
-                          </p>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {flags.map((flag, i) => (
-                              <Badge key={i} className="bg-red-50 text-red-600 border-red-200 text-xs">{flag}</Badge>
-                            ))}
-                          </div>
+                  <div key={call.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <Link href={`/calls/${call.id}`} className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-800">
+                          {call.call_analyses?.prospect_company || 'Prospect inconnu'}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {call.users?.name} · {call.campaigns?.campaign_name} · {formatDateShort(call.call_datetime)}
+                        </p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {flags.map((flag, i) => (
+                            <Badge key={i} className="bg-red-50 text-red-600 border-red-200 text-xs">{flag}</Badge>
+                          ))}
                         </div>
+                      </Link>
+                      <div className="flex items-center gap-2 shrink-0">
                         <ScoreBadge score={call.call_analyses?.appointment_quality_score ?? null} />
+                        <ReviewQueueControls
+                          callId={call.id}
+                          status={call.review_status || 'open'}
+                          assignedToId={call.assigned_to}
+                          assigneeName={call.assigned_to ? (managerMap[call.assigned_to] ?? null) : null}
+                          currentUserId={user.id}
+                        />
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 )
               })}
             </div>

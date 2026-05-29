@@ -71,15 +71,26 @@ export default async function ClientPage({
 
   const { data: assignments } = await supabase
     .from('campaign_clients').select('campaign_id').eq('user_id', user.id)
-  const campaignIds = assignments?.map((a: any) => a.campaign_id) || []
+  const rawCampaignIds = assignments?.map((a: any) => a.campaign_id) || []
+
+  // RBAC: verify assigned campaigns belong to this org — prevents cross-org data access (Part 5/7)
+  const { data: validCampaignRows } = rawCampaignIds.length > 0
+    ? await supabase.from('campaigns').select('id').in('id', rawCampaignIds).eq('organization_id', profile.organization_id)
+    : { data: [] }
+  const campaignIds = (validCampaignRows || []).map((c: any) => c.id)
 
   const [{ data: campaigns }, { data: allCalls }] = await Promise.all([
-    supabase.from('campaigns').select('*').in('id', campaignIds),
-    supabase
-      .from('calls')
-      .select('*, call_analyses(*), campaigns(campaign_name, client_name)')
-      .in('campaign_id', campaignIds)
-      .order('call_datetime', { ascending: false }),
+    campaignIds.length > 0
+      ? supabase.from('campaigns').select('*').in('id', campaignIds)
+      : Promise.resolve({ data: [] }),
+    campaignIds.length > 0
+      ? supabase
+          .from('calls')
+          .select('*, call_analyses(*), campaigns(campaign_name, client_name)')
+          .in('campaign_id', campaignIds)
+          .order('call_datetime', { ascending: false })
+          .limit(500)
+      : Promise.resolve({ data: [] }),
   ])
 
   const allCallsTyped = (allCalls || []) as CallRow[]

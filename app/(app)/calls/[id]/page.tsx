@@ -9,6 +9,7 @@ import {
 } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment } from '@/lib/review-flags'
 import { ValidationPanel } from '@/components/calls/ValidationPanel'
+import { JobStatusBanner } from '@/components/calls/JobStatusBanner'
 import type { AuditEntry, FieldCorrection } from '@/types'
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -66,6 +67,19 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
     validatedByName = validator?.name || null
   }
 
+  // Fetch job status so failed analyses are visible, not silent (Part 1 fix)
+  let analysisJob = null
+  if (!a) {
+    const { data: jobData } = await supabase
+      .from('analysis_jobs')
+      .select('id, status, error_message, retry_count')
+      .eq('call_id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    analysisJob = jobData
+  }
+
   const reviewResult = a ? computeReviewFlags(a) : null
   const qualifiedAppt = a ? isQualifiedAppointment(a) : false
 
@@ -103,11 +117,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       {!a ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-gray-400">
-            Cet appel n&apos;a pas encore été analysé.
-          </CardContent>
-        </Card>
+        <Card><CardContent><JobStatusBanner job={analysisJob} /></CardContent></Card>
       ) : (
         <div className="space-y-4">
           {/* Review flags */}

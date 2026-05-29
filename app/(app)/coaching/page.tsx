@@ -57,7 +57,9 @@ export default async function CoachingPage() {
     supabase.from('calls')
       .select('*, call_analyses(*), campaigns(campaign_name, client_name)')
       .eq('organization_id', profile.organization_id)
-      .order('call_datetime', { ascending: false }),
+      .gte('call_datetime', new Date(Date.now() - 30 * 86_400_000).toISOString())
+      .order('call_datetime', { ascending: false })
+      .limit(500),
   ])
 
   const profiles: SDRProfile[] = ((sdrs || []) as User[]).map(sdr => {
