@@ -1,11 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createServerSupabaseClient } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
+import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
 import Link from 'next/link'
 import type { Call, CallAnalysis, User, Campaign } from '@/types'
+
+type CallRow = Call & { call_analyses: CallAnalysis; users: User; campaigns: Campaign }
 
 export default async function ManagerPage() {
   const cookieStore = await cookies()
@@ -17,7 +19,6 @@ export default async function ManagerPage() {
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile || profile.role !== 'manager') redirect('/login')
 
-  // Fetch calls from today
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -27,19 +28,26 @@ export default async function ManagerPage() {
     .eq('organization_id', profile.organization_id)
     .order('call_datetime', { ascending: false })
 
-  const todayCalls = allCalls?.filter((c: Call) =>
-    new Date(c.call_datetime) >= today
-  ) || []
+  const todayCalls = allCalls?.filter((c: CallRow) => new Date(c.call_datetime) >= today) || []
+  const analyses = allCalls?.map((c: CallRow) => c.call_analyses).filter(Boolean) || []
 
-  const analyses = allCalls?.map((c: Call & { call_analyses: CallAnalysis }) => c.call_analyses).filter(Boolean) || []
-
-  const needsReview = allCalls?.filter((c: Call & { call_analyses: CallAnalysis }) =>
-    c.call_analyses && !c.call_analyses.human_validated &&
-    (c.call_analyses.hallucination_risk === 'high' ||
-     (c.call_analyses.appointment_quality_score || 0) < 40)
-  ) || []
-
+  // Part 2 — Qualified appointment KPIs
   const appointmentsBooked = analyses.filter((a: CallAnalysis) => a?.appointment_booked).length
+  const qualifiedAppointments = analyses.filter((a: CallAnalysis) => a && isQualifiedAppointment(a)).length
+  const qualificationRate = appointmentsBooked > 0
+    ? Math.round((qualifiedAppointments / appointmentsBooked) * 100)
+    : 0
+
+  // Part 4 — Review queue: calls with any review flag, sorted by criticality
+  const callsWithFlags = (allCalls || [])
+    .filter((c: CallRow) => {
+      if (!c.call_analyses) return false
+      const { review_required } = computeReviewFlags(c.call_analyses)
+      return review_required
+    })
+    .sort((a: CallRow, b: CallRow) =>
+      reviewCriticalityRank(a.call_analyses) - reviewCriticalityRank(b.call_analyses)
+    )
 
   // Common objections
   const objectionTypes: Record<string, number> = {}
@@ -48,26 +56,21 @@ export default async function ManagerPage() {
       objectionTypes[a.objection_type] = (objectionTypes[a.objection_type] || 0) + 1
     }
   })
-  const topObjections = Object.entries(objectionTypes)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
+  const topObjections = Object.entries(objectionTypes).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
   // SDR leaderboard
   const { data: sdrs } = await supabase
-    .from('users')
-    .select('*')
-    .eq('organization_id', profile.organization_id)
-    .eq('role', 'sdr')
+    .from('users').select('*').eq('organization_id', profile.organization_id).eq('role', 'sdr')
 
   const sdrStats = (sdrs || []).map((sdr: User) => {
-    const sdrCalls = allCalls?.filter((c: Call) => c.sdr_id === sdr.id) || []
-    const sdrAnalyses = sdrCalls.map((c: Call & { call_analyses: CallAnalysis }) => c.call_analyses).filter(Boolean)
+    const sdrCalls = allCalls?.filter((c: CallRow) => c.sdr_id === sdr.id) || []
+    const sdrAnalyses = sdrCalls.map((c: CallRow) => c.call_analyses).filter(Boolean)
     const avgQ = sdrAnalyses.length > 0
       ? Math.round(sdrAnalyses.reduce((s: number, a: CallAnalysis) => s + (a?.sdr_quality_score || 0), 0) / sdrAnalyses.length)
       : 0
     const rdv = sdrAnalyses.filter((a: CallAnalysis) => a?.appointment_booked).length
     return { ...sdr, totalCalls: sdrCalls.length, avgQuality: avgQ, rdvBooked: rdv }
-  }).sort((a, b) => b.avgQuality - a.avgQuality)
+  }).sort((a: any, b: any) => b.avgQuality - a.avgQuality)
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -76,48 +79,54 @@ export default async function ManagerPage() {
         <p className="text-gray-500 text-sm mt-1">Vue opérationnelle du jour</p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* KPIs — Part 2: qualified appointment metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <StatCard label="Appels aujourd'hui" value={todayCalls.length} />
-        <StatCard label="À réviser" value={needsReview.length} sub="score faible ou risque IA" />
-        <StatCard label="RDV total" value={appointmentsBooked} />
-        <StatCard label="Appels total" value={allCalls?.length || 0} />
+        <StatCard label="À réviser" value={callsWithFlags.length} sub="flags détectés" />
+        <StatCard label="RDV posés" value={appointmentsBooked} />
+        <StatCard label="RDV qualifiés" value={qualifiedAppointments} sub="décideur + besoin + date + score ≥60" />
+        <StatCard label="Taux qualification" value={`${qualificationRate}%`} sub="RDV qualifiés / RDV posés" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calls needing review */}
+        {/* Part 4 — Review queue */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-900">⚠️ Appels à réviser</h2>
-                <span className="text-xs text-gray-400">{needsReview.length} appel(s)</span>
+                <h2 className="text-sm font-semibold text-gray-900">Appels nécessitant une révision</h2>
+                <span className="text-xs text-gray-400">{callsWithFlags.length} appel(s)</span>
               </div>
             </CardHeader>
             <div className="divide-y divide-gray-50">
-              {needsReview.length === 0 && (
+              {callsWithFlags.length === 0 && (
                 <div className="px-6 py-8 text-center text-sm text-gray-400">Aucun appel en attente de révision ✓</div>
               )}
-              {needsReview.slice(0, 8).map((call: Call & { call_analyses: CallAnalysis, users: User, campaigns: Campaign }) => (
-                <Link key={call.id} href={`/calls/${call.id}`}>
-                  <div className="px-6 py-3 hover:bg-gray-50 flex items-center justify-between transition-colors">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800">
-                        {call.call_analyses?.prospect_company || 'Prospect inconnu'}
-                      </p>
-                      <p className="text-xs text-gray-400">
-                        {call.users?.name} · {call.campaigns?.campaign_name} · {formatDateShort(call.call_datetime)}
-                      </p>
+              {callsWithFlags.slice(0, 10).map((call: CallRow) => {
+                const { flags } = computeReviewFlags(call.call_analyses)
+                return (
+                  <Link key={call.id} href={`/calls/${call.id}`}>
+                    <div className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-800">
+                            {call.call_analyses?.prospect_company || 'Prospect inconnu'}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {call.users?.name} · {call.campaigns?.campaign_name} · {formatDateShort(call.call_datetime)}
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {flags.map((flag, i) => (
+                              <Badge key={i} className="bg-red-50 text-red-600 border-red-200 text-xs">{flag}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <ScoreBadge score={call.call_analyses?.appointment_quality_score ?? null} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4 shrink-0">
-                      {call.call_analyses?.hallucination_risk === 'high' && (
-                        <Badge className="bg-red-50 text-red-600 border-red-200">Risque IA</Badge>
-                      )}
-                      <ScoreBadge score={call.call_analyses?.appointment_quality_score ?? null} />
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                )
+              })}
             </div>
           </Card>
 
@@ -138,7 +147,7 @@ export default async function ManagerPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {(allCalls || []).slice(0, 10).map((call: Call & { call_analyses: CallAnalysis, users: User }) => (
+                  {(allCalls || []).slice(0, 10).map((call: CallRow) => (
                     <tr key={call.id} className="hover:bg-gray-50">
                       <td className="px-6 py-3 font-medium text-gray-800">{call.users?.name || '—'}</td>
                       <td className="px-6 py-3 text-gray-600">{call.call_analyses?.prospect_company || '—'}</td>
@@ -148,10 +157,13 @@ export default async function ManagerPage() {
                         </Badge>
                       </td>
                       <td className="px-6 py-3">
-                        {call.call_analyses?.appointment_booked
-                          ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Posé</Badge>
-                          : <span className="text-gray-400">—</span>
-                        }
+                        {call.call_analyses?.appointment_booked ? (
+                          isQualifiedAppointment(call.call_analyses)
+                            ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Qualifié</Badge>
+                            : <Badge className="bg-amber-50 text-amber-700 border-amber-200">~ Posé</Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-3">
                         <Link href={`/calls/${call.id}`}>
@@ -171,11 +183,10 @@ export default async function ManagerPage() {
 
         {/* Right column */}
         <div className="space-y-6">
-          {/* SDR Leaderboard */}
           <Card>
             <CardHeader><h2 className="text-sm font-semibold text-gray-900">Classement SDR</h2></CardHeader>
             <CardContent className="px-0 pb-0">
-              {sdrStats.map((sdr, i) => (
+              {sdrStats.map((sdr: any, i: number) => (
                 <div key={sdr.id} className="flex items-center gap-3 px-6 py-3 border-b border-gray-50 last:border-0">
                   <span className={`font-bold text-sm w-4 ${i === 0 ? 'text-amber-500' : 'text-gray-300'}`}>{i + 1}</span>
                   <div className="flex-1 min-w-0">
@@ -189,7 +200,6 @@ export default async function ManagerPage() {
             </CardContent>
           </Card>
 
-          {/* Top objections */}
           <Card>
             <CardHeader><h2 className="text-sm font-semibold text-gray-900">Objections fréquentes</h2></CardHeader>
             <CardContent>

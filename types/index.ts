@@ -137,6 +137,19 @@ export interface AIAnalysisResponse {
   }
 }
 
+// Review flags + campaign health (computed at runtime from CallAnalysis fields)
+export interface ReviewFlagsResult {
+  flags: string[]
+  review_required: boolean
+}
+
+export interface CampaignHealthResult {
+  score: number
+  label: string
+  labelClass: string
+  labelBg: string
+}
+
 // Dashboard stats types
 export interface OwnerStats {
   total_calls: number

@@ -1,6 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
+﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createServerSupabaseClient } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { Card, CardHeader, Badge } from '@/components/ui'
 import { getRoleLabel, formatDate } from '@/lib/utils'

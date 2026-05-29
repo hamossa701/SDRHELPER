@@ -7,6 +7,7 @@ import {
   getInterestBg, getInterestLabel, getRiskBg, getRiskLabel,
   getScoreBg, formatDate
 } from '@/lib/utils'
+import { computeReviewFlags, isQualifiedAppointment } from '@/lib/review-flags'
 import { CorrectionForm } from '@/components/calls/CorrectionForm'
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -30,7 +31,8 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   const a = call.call_analyses
   const canValidate = ['owner', 'manager'].includes(profile.role)
-  // SDR only sees own calls (RLS enforces this at DB level too)
+  const reviewResult = a ? computeReviewFlags(a) : null
+  const qualifiedAppt = a ? isQualifiedAppointment(a) : false
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -50,6 +52,12 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
             {a?.human_validated && (
               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Validé</Badge>
             )}
+            {qualifiedAppt && (
+              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ RDV qualifié</Badge>
+            )}
+            {reviewResult?.review_required && (
+              <Badge className="bg-red-50 text-red-600 border-red-200">À réviser</Badge>
+            )}
             {a?.hallucination_risk && (
               <Badge className={getRiskBg(a.hallucination_risk)}>
                 IA : {getRiskLabel(a.hallucination_risk)}
@@ -67,6 +75,22 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
         </Card>
       ) : (
         <div className="space-y-4">
+          {/* Part 1 — Review flags */}
+          {reviewResult && reviewResult.flags.length > 0 && (
+            <Card>
+              <CardHeader>
+                <h3 className="text-sm font-semibold text-gray-900">Signalements automatiques</h3>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {reviewResult.flags.map((flag, i) => (
+                    <Badge key={i} className="bg-red-50 text-red-600 border-red-200">{flag}</Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Score overview */}
           <div className="grid grid-cols-3 gap-4">
             <Card className="p-5 text-center">

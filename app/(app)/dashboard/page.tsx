@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getCampaignStatusBg, getCampaignStatusLabel, getScoreColor, formatDateShort } from '@/lib/utils'
+import { computeCampaignHealthScore, isQualifiedAppointment } from '@/lib/review-flags'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -32,6 +33,7 @@ export default async function DashboardPage() {
   const totalCalls = calls?.length || 0
   const analyses = calls?.map((c: any) => c.call_analyses).filter(Boolean) || []
   const appointmentsBooked = analyses.filter((a: any) => a?.appointment_booked).length
+  const qualifiedAppointments = analyses.filter((a: any) => a && isQualifiedAppointment(a)).length
   const avgAppointmentQuality = analyses.length > 0
     ? Math.round(analyses.reduce((s: number, a: any) => s + (a?.appointment_quality_score || 0), 0) / analyses.length) : 0
   const avgSdrQuality = analyses.length > 0
@@ -45,11 +47,13 @@ export default async function DashboardPage() {
     return { ...sdr, totalCalls: sdrCalls.length, avgQuality: avgQ, rdvBooked: sdrAnalyses.filter((a: any) => a?.appointment_booked).length }
   }).sort((a: any, b: any) => b.avgQuality - a.avgQuality)
 
+  // Part 3 — campaign health score per campaign
   const campaignStats = (campaigns || []).map((c: any) => {
     const cc = calls?.filter((call: any) => call.campaign_id === c.id) || []
     const an = cc.map((call: any) => call.call_analyses).filter(Boolean)
     const avgQ = an.length > 0 ? Math.round(an.reduce((s: number, a: any) => s + (a?.appointment_quality_score || 0), 0) / an.length) : 0
-    return { ...c, totalCalls: cc.length, avgQuality: avgQ, rdvBooked: an.filter((a: any) => a?.appointment_booked).length }
+    const health = computeCampaignHealthScore(an)
+    return { ...c, totalCalls: cc.length, avgQuality: avgQ, rdvBooked: an.filter((a: any) => a?.appointment_booked).length, health }
   })
 
   return (
@@ -58,15 +62,17 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold text-gray-900">Vue d&apos;ensemble</h1>
         <p className="text-gray-500 text-sm mt-1">Supervision globale de votre activité</p>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
         <StatCard label="Appels analysés" value={totalCalls} />
         <StatCard label="RDV posés" value={appointmentsBooked} />
+        <StatCard label="RDV qualifiés" value={qualifiedAppointments} sub="décideur + besoin + date + score ≥60" />
         <StatCard label="Qualité RDV moy." value={avgAppointmentQuality} sub="/100" />
         <StatCard label="Qualité SDR moy." value={avgSdrQuality} sub="/100" />
         <StatCard label="Campagnes actives" value={activeCampaigns} />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
+          {/* Part 3 — campaign list with health score */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -83,8 +89,10 @@ export default async function DashboardPage() {
                       <p className="text-sm font-medium text-gray-800 truncate">{c.campaign_name}</p>
                       <p className="text-xs text-gray-400">{c.client_name} · {c.totalCalls} appel(s) · {c.rdvBooked} RDV</p>
                     </div>
-                    <div className="flex items-center gap-3 ml-4 shrink-0">
-                      <ScoreBadge score={c.avgQuality} />
+                    <div className="flex items-center gap-2 ml-4 shrink-0">
+                      {c.totalCalls > 0 && (
+                        <Badge className={c.health.labelBg}>{c.health.label} {c.health.score}/100</Badge>
+                      )}
                       <Badge className={getCampaignStatusBg(c.status)}>{getCampaignStatusLabel(c.status)}</Badge>
                     </div>
                   </div>
@@ -135,9 +143,13 @@ export default async function DashboardPage() {
                     <td className="px-6 py-3 font-medium text-gray-800">{call.users?.name || '—'}</td>
                     <td className="px-6 py-3 text-gray-600">{call.call_analyses?.prospect_company || '—'}</td>
                     <td className="px-6 py-3">
-                      {call.call_analyses?.appointment_booked
-                        ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Posé</Badge>
-                        : <Badge className="bg-gray-100 text-gray-500 border-gray-200">Non</Badge>}
+                      {call.call_analyses?.appointment_booked ? (
+                        isQualifiedAppointment(call.call_analyses)
+                          ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Qualifié</Badge>
+                          : <Badge className="bg-amber-50 text-amber-700 border-amber-200">~ Posé</Badge>
+                      ) : (
+                        <Badge className="bg-gray-100 text-gray-500 border-gray-200">Non</Badge>
+                      )}
                     </td>
                     <td className="px-6 py-3"><Link href={`/calls/${call.id}`}><ScoreBadge score={call.call_analyses?.appointment_quality_score ?? null} /></Link></td>
                     <td className="px-6 py-3"><ScoreBadge score={call.call_analyses?.sdr_quality_score ?? null} /></td>

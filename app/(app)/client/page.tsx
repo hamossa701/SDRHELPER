@@ -1,6 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
+﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { createServerSupabaseClient } from '@/lib/supabase'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getInterestBg, getInterestLabel, formatDate, formatDateShort } from '@/lib/utils'
