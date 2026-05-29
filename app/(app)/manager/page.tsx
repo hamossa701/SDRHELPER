@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
+import { computeTrustScore } from '@/lib/trust-score'
 import Link from 'next/link'
 import type { Call, CallAnalysis, User, Campaign } from '@/types'
 
@@ -37,6 +38,14 @@ export default async function ManagerPage() {
   const qualificationRate = appointmentsBooked > 0
     ? Math.round((qualifiedAppointments / appointmentsBooked) * 100)
     : 0
+
+  // Part 5 — Trust score KPIs
+  const callsReviewed = analyses.filter((a: CallAnalysis) => a?.human_validated).length
+  const callsPending  = analyses.filter((a: CallAnalysis) => a && !a.human_validated).length
+  const totalCorrections = analyses.reduce((n: number, a: CallAnalysis) => {
+    return n + Object.values(a?.field_validations || {}).filter(s => s === 'corrected').length
+  }, 0)
+  const trust = computeTrustScore(analyses)
 
   // Part 4 — Review queue: calls with any review flag, sorted by criticality
   const callsWithFlags = (allCalls || [])
@@ -79,13 +88,24 @@ export default async function ManagerPage() {
         <p className="text-gray-500 text-sm mt-1">Vue opérationnelle du jour</p>
       </div>
 
-      {/* KPIs — Part 2: qualified appointment metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      {/* KPIs — appointment metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
         <StatCard label="Appels aujourd'hui" value={todayCalls.length} />
         <StatCard label="À réviser" value={callsWithFlags.length} sub="flags détectés" />
         <StatCard label="RDV posés" value={appointmentsBooked} />
         <StatCard label="RDV qualifiés" value={qualifiedAppointments} sub="décideur + besoin + date + score ≥60" />
         <StatCard label="Taux qualification" value={`${qualificationRate}%`} sub="RDV qualifiés / RDV posés" />
+      </div>
+      {/* Part 5 — AI trust score KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard label="Appels révisés" value={callsReviewed} sub="human_validated = true" />
+        <StatCard label="En attente révision" value={callsPending} sub="analyses non approuvées" />
+        <StatCard label="Champs corrigés" value={totalCorrections} sub="corrections enregistrées" />
+        <StatCard
+          label="Fiabilité IA"
+          value={trust.score !== null ? `${trust.score}%` : '—'}
+          sub={trust.label}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -3,6 +3,7 @@
 // ============================================================
 
 export type UserRole = 'owner' | 'manager' | 'sdr' | 'client'
+export type FieldValidationStatus = 'pending' | 'validated' | 'corrected'
 export type CampaignStatus = 'active' | 'paused' | 'completed'
 export type InterestLevel = 'cold' | 'warm' | 'hot' | 'unclear'
 export type HallucinationRisk = 'low' | 'medium' | 'high'
@@ -93,7 +94,36 @@ export interface CallAnalysis {
   human_validated: boolean
   correction_notes: string | null
 
+  // Human validation workflow (added via migration-validation.sql)
+  field_validations: Record<string, FieldValidationStatus>
+  validated_by: string | null
+  validated_at: string | null
+
   created_at: string
+}
+
+export interface FieldCorrection {
+  id: string
+  analysis_id: string
+  field_name: string
+  original_value: string | null
+  corrected_value: string | null
+  corrected_by: string
+  corrected_at: string
+}
+
+export interface AuditEntry {
+  id: string
+  organization_id: string
+  user_id: string
+  analysis_id: string | null
+  field_name: string | null
+  old_value: string | null
+  new_value: string | null
+  action: 'validate_field' | 'correct_field' | 'approve_analysis'
+  created_at: string
+  // joined
+  user?: { name: string }
 }
 
 // AI Analysis JSON response shape

@@ -8,12 +8,17 @@ import {
   getScoreBg, formatDate
 } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment } from '@/lib/review-flags'
-import { CorrectionForm } from '@/components/calls/CorrectionForm'
+import { ValidationPanel } from '@/components/calls/ValidationPanel'
+import type { AuditEntry, FieldCorrection } from '@/types'
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const cookieStore = await cookies()
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } }
+  )
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -31,6 +36,36 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   const a = call.call_analyses
   const canValidate = ['owner', 'manager'].includes(profile.role)
+
+  // Fetch corrections and audit log (only for managers/owners — RLS enforces this)
+  let corrections: FieldCorrection[] = []
+  let auditLog: AuditEntry[] = []
+
+  if (canValidate && a) {
+    const [corrRes, auditRes] = await Promise.all([
+      supabase
+        .from('field_corrections')
+        .select('*')
+        .eq('analysis_id', a.id)
+        .order('corrected_at', { ascending: false }),
+      supabase
+        .from('audit_log')
+        .select('*, user:users(name)')
+        .eq('analysis_id', a.id)
+        .order('created_at', { ascending: false }),
+    ])
+    corrections = (corrRes.data || []) as FieldCorrection[]
+    auditLog = (auditRes.data || []) as AuditEntry[]
+  }
+
+  // Fetch the name of the manager who validated (if any)
+  let validatedByName: string | null = null
+  if (a?.validated_by) {
+    const { data: validator } = await supabase
+      .from('users').select('name').eq('id', a.validated_by).single()
+    validatedByName = validator?.name || null
+  }
+
   const reviewResult = a ? computeReviewFlags(a) : null
   const qualifiedAppt = a ? isQualifiedAppointment(a) : false
 
@@ -48,9 +83,9 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
               {call.campaigns?.campaign_name} · {call.users?.name} · {formatDate(call.call_datetime)}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {a?.human_validated && (
-              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Validé</Badge>
+              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Approuvé</Badge>
             )}
             {qualifiedAppt && (
               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ RDV qualifié</Badge>
@@ -75,7 +110,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
         </Card>
       ) : (
         <div className="space-y-4">
-          {/* Part 1 — Review flags */}
+          {/* Review flags */}
           {reviewResult && reviewResult.flags.length > 0 && (
             <Card>
               <CardHeader>
@@ -232,7 +267,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
           {/* Missing information */}
           {a.missing_information?.length > 0 && (
             <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">⚠️ Informations manquantes</h3></CardHeader>
+              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Informations manquantes</h3></CardHeader>
               <CardContent>
                 <ul className="space-y-1">
                   {a.missing_information.map((item: string, i: number) => (
@@ -245,11 +280,11 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
             </Card>
           )}
 
-          {/* SDR Coaching - only for owner/manager */}
+          {/* SDR Coaching — owner/manager only */}
           {canValidate && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card>
-                <CardHeader><h3 className="text-sm font-semibold text-gray-900">✅ Points forts SDR</h3></CardHeader>
+                <CardHeader><h3 className="text-sm font-semibold text-gray-900">Points forts SDR</h3></CardHeader>
                 <CardContent>
                   {a.strengths?.length > 0 ? (
                     <ul className="space-y-1.5">
@@ -264,7 +299,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
               </Card>
 
               <Card>
-                <CardHeader><h3 className="text-sm font-semibold text-gray-900">⚠️ Axes d&apos;amélioration</h3></CardHeader>
+                <CardHeader><h3 className="text-sm font-semibold text-gray-900">Axes d&apos;amélioration</h3></CardHeader>
                 <CardContent>
                   {a.weaknesses?.length > 0 ? (
                     <ul className="space-y-1.5">
@@ -280,7 +315,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
               {a.coaching_recommendations?.length > 0 && (
                 <Card className="lg:col-span-2">
-                  <CardHeader><h3 className="text-sm font-semibold text-gray-900">🎯 Recommandations coaching</h3></CardHeader>
+                  <CardHeader><h3 className="text-sm font-semibold text-gray-900">Recommandations coaching</h3></CardHeader>
                   <CardContent>
                     <ul className="space-y-1.5">
                       {a.coaching_recommendations.map((r: string, i: number) => (
@@ -295,7 +330,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
 
-          {/* AI Risk */}
+          {/* AI indicators — Part 5: confidence always visible */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -309,7 +344,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
               <div className="flex items-center gap-4 text-sm mb-3">
                 <div>
                   <span className="text-gray-400">Confiance IA :</span>
-                  <span className="ml-2 font-medium text-gray-800">{a.ai_confidence}%</span>
+                  <span className="ml-2 font-medium text-gray-800">{a.ai_confidence ?? '—'}%</span>
                 </div>
               </div>
               {a.uncertain_fields?.length > 0 && (
@@ -337,12 +372,13 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
             </Card>
           )}
 
-          {/* Manager correction mode */}
+          {/* Parts 1-4 & 6 — Full validation panel (manager/owner only) */}
           {canValidate && (
-            <CorrectionForm
-              analysisId={a.id}
-              humanValidated={a.human_validated}
-              correctionNotes={a.correction_notes}
+            <ValidationPanel
+              analysis={{ ...a, validated_by_name: validatedByName }}
+              corrections={corrections}
+              auditLog={auditLog}
+              canEdit={canValidate}
             />
           )}
         </div>
