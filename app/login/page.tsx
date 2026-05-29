@@ -68,7 +68,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right panel */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
         <div style={{ width: '100%', maxWidth: 380 }}>
           <div style={{ marginBottom: 28, textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Connexion</div>
