@@ -1,15 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Card, CardContent, CardHeader, Button, Badge } from '@/components/ui'
 
-interface Props {
-  analysisId: string
-  humanValidated: boolean
-  correctionNotes: string | null
-}
-
-export function CorrectionForm({ analysisId, humanValidated, correctionNotes }: Props) {
+export function CorrectionForm({ analysisId, humanValidated, correctionNotes }: { analysisId: string; humanValidated: boolean; correctionNotes: string | null }) {
   const [notes, setNotes] = useState(correctionNotes || '')
   const [validated, setValidated] = useState(humanValidated)
   const [saving, setSaving] = useState(false)
@@ -17,55 +10,29 @@ export function CorrectionForm({ analysisId, humanValidated, correctionNotes }: 
 
   async function handleSave() {
     setSaving(true)
-    const supabase = createClient()
-    await supabase
-      .from('call_analyses')
-      .update({
-        human_validated: validated,
-        correction_notes: notes || null,
-      })
-      .eq('id', analysisId)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    await createClient().from('call_analyses').update({ human_validated: validated, correction_notes: notes || null }).eq('id', analysisId)
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">Validation superviseur</h3>
-          {validated && <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Validé</Badge>}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes de correction</label>
-          <textarea
-            rows={4}
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="Ajoutez vos corrections ou commentaires sur l'analyse IA..."
-            className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 resize-none"
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={validated}
-              onChange={e => setValidated(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-slate-800 focus:ring-slate-500"
-            />
-            <span className="text-sm text-gray-700">Marquer comme validé</span>
+    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>Validation superviseur</div>
+      <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes de correction ou commentaires sur l'analyse IA..."
+          style={{ width: '100%', padding: '9px 12px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 13, fontFamily: 'Geist, sans-serif', outline: 'none', resize: 'none' }}
+          onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-strong)' }}
+          onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
+            <input type="checkbox" checked={validated} onChange={e => setValidated(e.target.checked)} style={{ width: 14, height: 14 }} />
+            Marquer comme validé
           </label>
-
-          <Button onClick={handleSave} loading={saving} size="sm">
-            {saved ? '✓ Sauvegardé' : 'Sauvegarder'}
-          </Button>
+          <button onClick={handleSave} disabled={saving} style={{ padding: '7px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, color: '#fff', cursor: 'pointer', background: saved ? 'rgba(34,197,94,.8)' : 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', fontFamily: 'Geist, sans-serif' }}>
+            {saving ? 'Sauvegarde...' : saved ? 'Sauvegarde' : 'Sauvegarder'}
+          </button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

@@ -8,31 +8,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(c) { try { c.forEach(({name,value,options}) => cookieStore.set(name,value,options)) } catch {} }
-      }
-    }
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c) { try { c.forEach(({name,value,options}) => cookieStore.set(name,value,options)) } catch {} } } }
   )
-
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*, organizations(name)')
-    .eq('id', user.id)
-    .single()
-
+  const { data: profile } = await supabase.from('users').select('*, organizations(name)').eq('id', user.id).single()
   if (!profile) redirect('/login')
-
-  const orgName = (profile.organizations as { name: string } | null)?.name || 'Organisation'
+  const orgName = (profile.organizations as { name: string } | null)?.name || ''
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar userRole={profile.role} userName={profile.name} orgName={orgName} />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflowY: 'auto', minWidth: 0 }}>
+        {children}
+      </main>
     </div>
   )
 }

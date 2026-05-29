@@ -2,15 +2,30 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader, Badge, ScoreBadge } from '@/components/ui'
-import {
-  getInterestBg, getInterestLabel, getRiskBg, getRiskLabel,
-  getScoreBg, formatDate
-} from '@/lib/utils'
+import { ScoreBadge, InterestBadge, RiskBadge } from '@/components/ui'
+import { formatDate } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment } from '@/lib/review-flags'
 import { ValidationPanel } from '@/components/calls/ValidationPanel'
 import { JobStatusBanner } from '@/components/calls/JobStatusBanner'
 import type { AuditEntry, FieldCorrection } from '@/types'
+
+function Row({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+      <span style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, flexShrink: 0, minWidth: 160 }}>{label}</span>
+      <span style={{ fontSize: 13, color: 'var(--text)', textAlign: 'right' }}>{value || <span style={{ color: 'var(--muted-2)' }}>—</span>}</span>
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>{title}</div>
+      <div style={{ padding: '4px 16px 12px' }}>{children}</div>
+    </div>
+  )
+}
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -23,7 +38,6 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile) redirect('/login')
   if (profile.role === 'client') redirect('/client')
@@ -35,40 +49,27 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
     .single()
 
   if (!call) notFound()
-
   const a = call.call_analyses
   const canValidate = ['owner', 'manager'].includes(profile.role)
 
-  // Fetch corrections and audit log (only for managers/owners — RLS enforces this)
   let corrections: FieldCorrection[] = []
   let auditLog: AuditEntry[] = []
 
   if (canValidate && a) {
     const [corrRes, auditRes] = await Promise.all([
-      supabase
-        .from('field_corrections')
-        .select('*')
-        .eq('analysis_id', a.id)
-        .order('corrected_at', { ascending: false }),
-      supabase
-        .from('audit_log')
-        .select('*, user:users(name)')
-        .eq('analysis_id', a.id)
-        .order('created_at', { ascending: false }),
+      supabase.from('field_corrections').select('*').eq('analysis_id', a.id).order('corrected_at', { ascending: false }),
+      supabase.from('audit_log').select('*, user:users(name)').eq('analysis_id', a.id).order('created_at', { ascending: false }),
     ])
     corrections = (corrRes.data || []) as FieldCorrection[]
     auditLog = (auditRes.data || []) as AuditEntry[]
   }
 
-  // Fetch the name of the manager who validated (if any)
   let validatedByName: string | null = null
   if (a?.validated_by) {
-    const { data: validator } = await supabase
-      .from('users').select('name').eq('id', a.validated_by).single()
+    const { data: validator } = await supabase.from('users').select('name').eq('id', a.validated_by).single()
     validatedByName = validator?.name || null
   }
 
-  // Fetch job status so failed analyses are visible, not silent (Part 1 fix)
   let analysisJob = null
   if (!a) {
     const { data: jobData } = await supabase
@@ -85,315 +86,179 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   const qualifiedAppt = a ? isQualifiedAppointment(a) : false
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <Link href="/campaigns" className="text-xs text-gray-400 hover:text-gray-600 mb-3 inline-block">← Retour</Link>
-        <div className="flex items-start justify-between">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Link href="/campaigns" style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span className="mat" style={{ fontSize: 14 }}>arrow_back</span> Retour
+          </Link>
+          <div style={{ width: 1, height: 16, background: 'var(--border)' }} />
           <div>
-            <h1 className="text-xl font-bold text-gray-900">
-              {a?.prospect_company || 'Prospect non identifié'}
-            </h1>
-            <p className="text-gray-500 text-sm mt-0.5">
-              {call.campaigns?.campaign_name} · {call.users?.name} · {formatDate(call.call_datetime)}
-            </p>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{a?.prospect_company || 'Prospect non identifié'}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>{call.campaigns?.campaign_name} · {call.users?.name} · {formatDate(call.call_datetime)}</div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {a?.human_validated && (
-              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Approuvé</Badge>
-            )}
-            {qualifiedAppt && (
-              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ RDV qualifié</Badge>
-            )}
-            {reviewResult?.review_required && (
-              <Badge className="bg-red-50 text-red-600 border-red-200">À réviser</Badge>
-            )}
-            {a?.hallucination_risk && (
-              <Badge className={getRiskBg(a.hallucination_risk)}>
-                IA : {getRiskLabel(a.hallucination_risk)}
-              </Badge>
-            )}
-          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {a?.human_validated && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(34,197,94,.10)', color: '#86efac', border: '1px solid rgba(34,197,94,.35)' }}>✓ Approuvé</span>
+          )}
+          {qualifiedAppt && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(125,211,252,.10)', color: 'var(--cyan)', border: '1px solid rgba(125,211,252,.35)' }}>✓ RDV qualifié</span>
+          )}
+          {reviewResult?.review_required && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(239,68,68,.10)', color: '#fca5a5', border: '1px solid rgba(239,68,68,.35)' }}>À réviser</span>
+          )}
+          {a?.hallucination_risk && <RiskBadge risk={a.hallucination_risk} />}
         </div>
       </div>
 
-      {!a ? (
-        <Card><CardContent><JobStatusBanner job={analysisJob} /></CardContent></Card>
-      ) : (
-        <div className="space-y-4">
-          {/* Review flags */}
-          {reviewResult && reviewResult.flags.length > 0 && (
-            <Card>
-              <CardHeader>
-                <h3 className="text-sm font-semibold text-gray-900">Signalements automatiques</h3>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {reviewResult.flags.map((flag, i) => (
-                    <Badge key={i} className="bg-red-50 text-red-600 border-red-200">{flag}</Badge>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+        {!a ? (
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
+            <JobStatusBanner job={analysisJob} />
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 900, margin: '0 auto' }}>
+            {reviewResult && reviewResult.flags.length > 0 && (
+              <Section title="Signalements automatiques">
+                <div style={{ paddingTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {reviewResult.flags.map((flag: string, i: number) => (
+                    <span key={i} style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(239,68,68,.10)', color: '#fca5a5', border: '1px solid rgba(239,68,68,.35)' }}>{flag}</span>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Score overview */}
-          <div className="grid grid-cols-3 gap-4">
-            <Card className="p-5 text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Qualité RDV</p>
-              <div className="flex justify-center mb-1"><ScoreBadge score={a.appointment_quality_score} /></div>
-              <p className="text-xs text-gray-400 mt-1">{a.appointment_quality_reason}</p>
-            </Card>
-            <Card className="p-5 text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Score SDR</p>
-              <div className="flex justify-center"><ScoreBadge score={a.sdr_quality_score} /></div>
-            </Card>
-            <Card className="p-5 text-center">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Qualification</p>
-              <div className="flex justify-center"><ScoreBadge score={a.qualification_completeness_score} /></div>
-            </Card>
-          </div>
-
-          {/* Summary */}
-          {a.call_summary && (
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Résumé de l&apos;appel</h3></CardHeader>
-              <CardContent><p className="text-sm text-gray-700">{a.call_summary}</p></CardContent>
-            </Card>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Prospect */}
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Prospect</h3></CardHeader>
-              <CardContent>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-gray-400">Entreprise</dt>
-                    <dd className="font-medium text-gray-800">{a.prospect_company || '—'}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-400">Contact</dt>
-                    <dd className="font-medium text-gray-800">{a.contact_name || '—'}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-400">Fonction</dt>
-                    <dd className="font-medium text-gray-800">{a.contact_role || '—'}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-400">Décideur</dt>
-                    <dd>
-                      {a.decision_maker_detected === true
-                        ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Confirmé</Badge>
-                        : a.decision_maker_detected === false
-                        ? <Badge className="bg-red-50 text-red-700 border-red-200">Non confirmé</Badge>
-                        : <span className="text-gray-400">—</span>
-                      }
-                    </dd>
-                  </div>
-                </dl>
-              </CardContent>
-            </Card>
-
-            {/* Qualification */}
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Qualification</h3></CardHeader>
-              <CardContent>
-                <dl className="space-y-2 text-sm">
-                  <div className="flex justify-between items-start">
-                    <dt className="text-gray-400">Intérêt</dt>
-                    <Badge className={getInterestBg(a.interest_level)}>
-                      {getInterestLabel(a.interest_level)}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-400">Besoin</dt>
-                    <dd className="font-medium text-gray-800">{a.pain_point_detected ? '✓ Identifié' : '—'}</dd>
-                  </div>
-                  {a.pain_point_details && (
-                    <div>
-                      <dt className="text-gray-400 mb-0.5">Détail</dt>
-                      <dd className="text-gray-700 text-xs">{a.pain_point_details}</dd>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <dt className="text-gray-400">Urgence</dt>
-                    <dd className="font-medium text-gray-800">{a.urgency || '—'}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-400">Solution actuelle</dt>
-                    <dd className="font-medium text-gray-800">{a.current_solution || '—'}</dd>
-                  </div>
-                </dl>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Objection */}
-          {a.objection_detected && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-gray-900">Objection détectée</h3>
-                  {a.objection_type && <Badge className="bg-red-50 text-red-600 border-red-200">{a.objection_type}</Badge>}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-700">{a.objection_details || '—'}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Appointment */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900">Rendez-vous</h3>
-                {a.appointment_booked
-                  ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-sm">✓ RDV posé</Badge>
-                  : <Badge className="bg-gray-100 text-gray-500 border-gray-200 text-sm">Pas de RDV</Badge>
-                }
-              </div>
-            </CardHeader>
-            {a.appointment_booked && (
-              <CardContent>
-                <dl className="space-y-2 text-sm">
-                  {a.appointment_datetime && (
-                    <div className="flex justify-between">
-                      <dt className="text-gray-400">Date RDV</dt>
-                      <dd className="font-medium text-gray-800">{formatDate(a.appointment_datetime)}</dd>
-                    </div>
-                  )}
-                  {a.next_step && (
-                    <div>
-                      <dt className="text-gray-400 mb-0.5">Prochaine étape</dt>
-                      <dd className="text-gray-700">{a.next_step}</dd>
-                    </div>
-                  )}
-                </dl>
-              </CardContent>
+              </Section>
             )}
-          </Card>
 
-          {/* Missing information */}
-          {a.missing_information?.length > 0 && (
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Informations manquantes</h3></CardHeader>
-              <CardContent>
-                <ul className="space-y-1">
-                  {a.missing_information.map((item: string, i: number) => (
-                    <li key={i} className="text-sm text-amber-700 flex items-start gap-1.5">
-                      <span className="mt-0.5">•</span>{item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* SDR Coaching — owner/manager only */}
-          {canValidate && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader><h3 className="text-sm font-semibold text-gray-900">Points forts SDR</h3></CardHeader>
-                <CardContent>
-                  {a.strengths?.length > 0 ? (
-                    <ul className="space-y-1.5">
-                      {a.strengths.map((s: string, i: number) => (
-                        <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
-                          <span className="text-emerald-500 mt-0.5">+</span>{s}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <p className="text-sm text-gray-400">—</p>}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader><h3 className="text-sm font-semibold text-gray-900">Axes d&apos;amélioration</h3></CardHeader>
-                <CardContent>
-                  {a.weaknesses?.length > 0 ? (
-                    <ul className="space-y-1.5">
-                      {a.weaknesses.map((w: string, i: number) => (
-                        <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
-                          <span className="text-amber-500 mt-0.5">−</span>{w}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : <p className="text-sm text-gray-400">—</p>}
-                </CardContent>
-              </Card>
-
-              {a.coaching_recommendations?.length > 0 && (
-                <Card className="lg:col-span-2">
-                  <CardHeader><h3 className="text-sm font-semibold text-gray-900">Recommandations coaching</h3></CardHeader>
-                  <CardContent>
-                    <ul className="space-y-1.5">
-                      {a.coaching_recommendations.map((r: string, i: number) => (
-                        <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
-                          <span className="text-blue-500 mt-0.5">→</span>{r}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              {[
+                { label: 'Qualité RDV', score: a.appointment_quality_score, sub: a.appointment_quality_reason },
+                { label: 'Score SDR', score: a.sdr_quality_score, sub: null },
+                { label: 'Qualification', score: a.qualification_completeness_score, sub: null },
+              ].map(item => (
+                <div key={item.label} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, backdropFilter: 'blur(18px)', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)', opacity: .7 }} />
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 8 }}>{item.label}</div>
+                  <ScoreBadge score={item.score} />
+                  {item.sub && <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 6, lineHeight: 1.4 }}>{item.sub}</div>}
+                </div>
+              ))}
             </div>
-          )}
 
-          {/* AI indicators — Part 5: confidence always visible */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-semibold text-gray-900">Indicateurs IA</h3>
-                <Badge className={getRiskBg(a.hallucination_risk)}>
-                  Risque : {getRiskLabel(a.hallucination_risk)}
-                </Badge>
+            {a.call_summary && (
+              <Section title="Résumé">
+                <div style={{ paddingTop: 10, fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>{a.call_summary}</div>
+              </Section>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <Section title="Prospect">
+                <Row label="Entreprise" value={a.prospect_company} />
+                <Row label="Contact" value={a.contact_name} />
+                <Row label="Fonction" value={a.contact_role} />
+                <Row label="Décideur" value={
+                  a.decision_maker_detected === true
+                    ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(34,197,94,.10)', color: '#86efac', border: '1px solid rgba(34,197,94,.35)' }}>Confirmé</span>
+                    : a.decision_maker_detected === false
+                    ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: 'rgba(239,68,68,.12)', color: '#fca5a5', border: '1px solid rgba(239,68,68,.32)' }}>Non confirmé</span>
+                    : null
+                } />
+              </Section>
+
+              <Section title="Qualification">
+                <Row label="Intérêt" value={<InterestBadge level={a.interest_level} />} />
+                <Row label="Besoin identifié" value={a.pain_point_detected ? 'Oui' : a.pain_point_detected === false ? 'Non' : null} />
+                <Row label="Détail besoin" value={a.pain_point_details} />
+                <Row label="Urgence" value={a.urgency} />
+                <Row label="Solution actuelle" value={a.current_solution} />
+              </Section>
+            </div>
+
+            <Section title="Rendez-vous">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 8 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 6,
+                  background: a.appointment_booked ? 'rgba(34,197,94,.10)' : 'rgba(2,6,23,.28)',
+                  color: a.appointment_booked ? '#86efac' : 'var(--muted)',
+                  border: `1px solid ${a.appointment_booked ? 'rgba(34,197,94,.35)' : 'var(--border)'}`,
+                }}>{a.appointment_booked ? 'RDV posé' : 'Pas de RDV'}</span>
+                {a.appointment_datetime && <span style={{ fontSize: 13, color: 'var(--cyan)' }}>{formatDate(a.appointment_datetime)}</span>}
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-4 text-sm mb-3">
-                <div>
-                  <span className="text-gray-400">Confiance IA :</span>
-                  <span className="ml-2 font-medium text-gray-800">{a.ai_confidence ?? '—'}%</span>
+              {a.next_step && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--muted)' }}><span style={{ color: 'var(--muted-2)' }}>Prochaine étape : </span>{a.next_step}</div>}
+            </Section>
+
+            {a.objection_detected && (
+              <Section title="Objection détectée">
+                <Row label="Type" value={a.objection_type} />
+                <Row label="Détail" value={a.objection_details} />
+              </Section>
+            )}
+
+            {a.missing_information?.length > 0 && (
+              <Section title="Informations manquantes">
+                <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {a.missing_information.map((item: string, i: number) => (
+                    <div key={i} style={{ fontSize: 13, color: '#fcd34d', display: 'flex', gap: 8 }}>
+                      <span style={{ color: 'var(--muted-2)', flexShrink: 0 }}>·</span>{item}
+                    </div>
+                  ))}
                 </div>
+              </Section>
+            )}
+
+            {canValidate && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {a.strengths?.length > 0 && (
+                  <Section title="Points forts SDR">
+                    <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {a.strengths.map((s: string, i: number) => (
+                        <div key={i} style={{ fontSize: 13, color: '#86efac', display: 'flex', gap: 8 }}><span style={{ color: 'var(--muted-2)' }}>+</span>{s}</div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+                {a.weaknesses?.length > 0 && (
+                  <Section title="Axes d'amélioration">
+                    <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {a.weaknesses.map((w: string, i: number) => (
+                        <div key={i} style={{ fontSize: 13, color: '#fcd34d', display: 'flex', gap: 8 }}><span style={{ color: 'var(--muted-2)' }}>−</span>{w}</div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
+                {a.coaching_recommendations?.length > 0 && (
+                  <Section title="Recommandations coaching">
+                    <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {a.coaching_recommendations.map((r: string, i: number) => (
+                        <div key={i} style={{ fontSize: 13, color: 'var(--cyan)', display: 'flex', gap: 8 }}><span style={{ color: 'var(--muted-2)' }}>→</span>{r}</div>
+                      ))}
+                    </div>
+                  </Section>
+                )}
               </div>
-              {a.uncertain_fields?.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">Champs incertains :</p>
-                  <div className="flex flex-wrap gap-1">
-                    {a.uncertain_fields.map((f: string, i: number) => (
-                      <Badge key={i} className="bg-amber-50 text-amber-600 border-amber-200 text-xs">{f}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            )}
 
-          {/* Transcript */}
-          {call.transcript && (
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Transcription</h3></CardHeader>
-              <CardContent>
-                <pre className="text-xs text-gray-600 whitespace-pre-wrap font-mono bg-gray-50 rounded-lg p-4 max-h-60 overflow-y-auto">
-                  {call.transcript}
-                </pre>
-              </CardContent>
-            </Card>
-          )}
+            {call.transcript && (
+              <Section title="Transcription">
+                <pre style={{ paddingTop: 10, fontSize: 12, color: 'var(--muted)', whiteSpace: 'pre-wrap', fontFamily: 'JetBrains Mono, monospace', lineHeight: 1.6, maxHeight: 300, overflowY: 'auto' }}>{call.transcript}</pre>
+              </Section>
+            )}
 
-          {/* Parts 1-4 & 6 — Full validation panel (manager/owner only) */}
-          {canValidate && (
-            <ValidationPanel
-              analysis={{ ...a, validated_by_name: validatedByName }}
-              corrections={corrections}
-              auditLog={auditLog}
-              canEdit={canValidate}
-            />
-          )}
-        </div>
-      )}
+            <Section title="Indicateurs IA">
+              <Row label="Risque IA" value={<RiskBadge risk={a.hallucination_risk} />} />
+              <Row label="Confiance IA" value={a.ai_confidence != null ? `${a.ai_confidence}%` : null} />
+            </Section>
+
+            {canValidate && (
+              <ValidationPanel
+                analysis={{ ...a, validated_by_name: validatedByName }}
+                corrections={corrections}
+                auditLog={auditLog}
+                canEdit={canValidate}
+              />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

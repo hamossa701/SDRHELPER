@@ -1,103 +1,74 @@
 ﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Card, CardHeader, Badge, ScoreBadge } from '@/components/ui'
-import { getCampaignStatusBg, getCampaignStatusLabel } from '@/lib/utils'
+import { ScoreBadge, StatusBadge } from '@/components/ui'
 import Link from 'next/link'
-import type { Campaign, Call, CallAnalysis } from '@/types'
 
 export default async function CampaignsPage() {
   const cookieStore = await cookies()
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
-
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile) redirect('/login')
+  const { data: campaigns } = await supabase.from('campaigns').select('*').eq('organization_id', profile.organization_id).order('created_at', { ascending: false })
+  const { data: calls } = await supabase.from('calls').select('campaign_id, call_analyses(appointment_booked, appointment_quality_score)').eq('organization_id', profile.organization_id)
 
-  const { data: campaigns } = await supabase
-    .from('campaigns')
-    .select('*')
-    .eq('organization_id', profile.organization_id)
-    .order('created_at', { ascending: false })
-
-  const { data: calls } = await supabase
-    .from('calls')
-    .select('campaign_id, call_analyses(appointment_booked, appointment_quality_score)')
-    .eq('organization_id', profile.organization_id)
-
-  // Compute per-campaign stats
-  const campaignStats = (campaigns || []).map((c: Campaign) => {
-    const cc = calls?.filter((call: { campaign_id: string }) => call.campaign_id === c.id) || []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const an = cc.map((call: any) => call.call_analyses).filter(Boolean)
-    const rdv = an.filter((a: CallAnalysis) => a?.appointment_booked).length
-    const avg = an.length > 0
-      ? Math.round(an.reduce((s: number, a: CallAnalysis) => s + (a?.appointment_quality_score || 0), 0) / an.length)
-      : null
+  const stats = (campaigns || []).map((c: any) => {
+    const cc = calls?.filter((x: any) => x.campaign_id === c.id) || []
+    const an = cc.map((x: any) => x.call_analyses).filter(Boolean)
+    const rdv = an.filter((a: any) => a?.appointment_booked).length
+    const avg = an.length > 0 ? Math.round(an.reduce((s: number, a: any) => s + (a?.appointment_quality_score || 0), 0) / an.length) : null
     return { ...c, totalCalls: cc.length, rdvBooked: rdv, avgQuality: avg }
   })
 
   const canCreate = ['owner', 'manager'].includes(profile.role)
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Campagnes</h1>
-          <p className="text-gray-500 text-sm mt-1">{campaigns?.length || 0} campagne(s)</p>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Campagnes</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{campaigns?.length || 0} campagne(s)</div>
         </div>
         {canCreate && (
-          <Link
-            href="/campaigns/new"
-            className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors"
-          >
-            + Nouvelle campagne
+          <Link href="/campaigns/new" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', textDecoration: 'none', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.18)' }}>
+            <span className="mat" style={{ fontSize: 16 }}>add</span> Nouvelle campagne
           </Link>
         )}
       </div>
 
-      <div className="space-y-3">
-        {campaignStats.length === 0 && (
-          <Card>
-            <div className="px-6 py-12 text-center text-sm text-gray-400">
-              Aucune campagne créée.
-              {canCreate && <> <Link href="/campaigns/new" className="text-slate-600 underline ml-1">Créer la première</Link>.</>}
-            </div>
-          </Card>
-        )}
-
-        {campaignStats.map(c => (
-          <Link key={c.id} href={`/campaigns/${c.id}`}>
-            <Card className="hover:border-gray-300 transition-colors cursor-pointer">
-              <div className="px-6 py-4 flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-sm font-semibold text-gray-900">{c.campaign_name}</h3>
-                    <Badge className={getCampaignStatusBg(c.status)}>
-                      {getCampaignStatusLabel(c.status)}
-                    </Badge>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {stats.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--muted)', fontSize: 13 }}>Aucune campagne créée.</div>
+          )}
+          {stats.map((c: any) => (
+            <Link key={c.id} href={`/campaigns/${c.id}`} style={{ textDecoration: 'none' }}>
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(18px)', cursor: 'pointer', transition: 'border-color .15s' }}
+                onMouseOver={e => (e.currentTarget.style.borderColor = 'rgba(125,211,252,.22)')}
+                onMouseOut={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{c.campaign_name}</span>
+                    <StatusBadge status={c.status} />
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Client : <strong className="text-gray-700">{c.client_name}</strong>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                    <span style={{ color: 'var(--muted-2)' }}>Client :</span> <span style={{ color: 'var(--text)', fontWeight: 600 }}>{c.client_name}</span>
                     {c.sector && <> · {c.sector}</>}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {c.totalCalls} appel(s) · {c.rdvBooked} RDV posé(s)
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 ml-6 shrink-0">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400 mb-1">Qualité RDV</p>
-                    <ScoreBadge score={c.avgQuality} />
+                    <span style={{ marginLeft: 12, color: 'var(--muted-2)' }}>{c.totalCalls} appel(s) · {c.rdvBooked} RDV</span>
                   </div>
-                  <span className="text-gray-300">→</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 20, flexShrink: 0 }}>
+                  <ScoreBadge score={c.avgQuality} />
+                  <span className="mat" style={{ fontSize: 16, color: 'var(--muted-2)' }}>arrow_forward</span>
                 </div>
               </div>
-            </Card>
-          </Link>
-        ))}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   )

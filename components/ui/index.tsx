@@ -2,78 +2,72 @@
 import { cn } from '@/lib/utils'
 
 // ---- Badge ----
-interface BadgeProps {
-  children: React.ReactNode
-  className?: string
-}
-export function Badge({ children, className }: BadgeProps) {
+export function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border', className)}>
+    <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-600 border', className)}>
       {children}
     </span>
   )
 }
 
 // ---- Card ----
-interface CardProps {
-  children: React.ReactNode
-  className?: string
-}
-export function Card({ children, className }: CardProps) {
+export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('bg-white rounded-xl border border-gray-200 shadow-sm', className)}>
+    <div className={cn('h3a-card', className)} style={{
+      background: 'var(--card-bg)',
+      border: '1px solid var(--border)',
+      borderRadius: '12px',
+      boxShadow: 'var(--shadow)',
+      backdropFilter: 'blur(18px)',
+    }}>
       {children}
     </div>
   )
 }
 
-export function CardHeader({ children, className }: CardProps) {
+export function CardHeader({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn('px-6 py-4 border-b border-gray-100', className)}>
+    <div className={cn('px-5 py-3.5 border-b', className)} style={{ borderColor: 'var(--border)' }}>
       {children}
     </div>
   )
 }
 
-export function CardContent({ children, className }: CardProps) {
-  return (
-    <div className={cn('px-6 py-4', className)}>
-      {children}
-    </div>
-  )
+export function CardContent({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('px-5 py-4', className)}>{children}</div>
 }
 
 // ---- Button ----
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
   children: React.ReactNode
 }
 export function Button({ variant = 'primary', size = 'md', loading, children, className, disabled, ...props }: ButtonProps) {
-  const base = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed'
+  const base = 'inline-flex items-center justify-center font-semibold transition-opacity focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed gap-1.5'
   const variants = {
-    primary: 'bg-slate-800 text-white hover:bg-slate-700 focus:ring-slate-500',
-    secondary: 'bg-white text-slate-700 border border-gray-300 hover:bg-gray-50 focus:ring-slate-300',
-    ghost: 'text-slate-600 hover:bg-gray-100 focus:ring-slate-300',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+    primary: 'text-white border',
+    secondary: 'border text-sm',
+    ghost: 'border text-sm',
   }
-  const sizes = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2 gap-2',
-    lg: 'text-base px-5 py-2.5 gap-2',
+  const sizes = { sm: 'text-xs px-3 py-1.5 rounded-lg h-7', md: 'text-sm px-4 py-2 rounded-xl h-9', lg: 'text-sm px-5 py-2.5 rounded-xl h-10' }
+  const styles = {
+    primary: { background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)' },
+    secondary: { background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)' },
+    ghost: { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' },
   }
   return (
     <button
       className={cn(base, variants[variant], sizes[size], className)}
+      style={styles[variant]}
       disabled={disabled || loading}
+      onMouseOver={e => (e.currentTarget.style.opacity = '.88')}
+      onMouseOut={e => (e.currentTarget.style.opacity = '1')}
       {...props}
     >
       {loading && (
-        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
+        <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin .7s linear infinite' }} />
       )}
       {children}
     </button>
@@ -81,66 +75,124 @@ export function Button({ variant = 'primary', size = 'md', loading, children, cl
 }
 
 // ---- Score Badge ----
-import { getScoreBg } from '@/lib/utils'
-interface ScoreBadgeProps {
-  score: number | null
-  label?: string
-}
-export function ScoreBadge({ score, label }: ScoreBadgeProps) {
+export function ScoreBadge({ score }: { score: number | null }) {
+  const color = score === null ? 'var(--muted-2)'
+    : score >= 80 ? '#86efac'
+    : score >= 60 ? 'var(--cyan)'
+    : score >= 40 ? '#fcd34d'
+    : '#fca5a5'
+  const bg = score === null ? 'rgba(2,6,23,.28)'
+    : score >= 80 ? 'rgba(34,197,94,.10)'
+    : score >= 60 ? 'var(--cyan-soft)'
+    : score >= 40 ? 'rgba(245,158,11,.12)'
+    : 'rgba(239,68,68,.12)'
+  const border = score === null ? 'var(--border)'
+    : score >= 80 ? 'rgba(34,197,94,.35)'
+    : score >= 60 ? 'rgba(125,211,252,.28)'
+    : score >= 40 ? 'rgba(245,158,11,.32)'
+    : 'rgba(239,68,68,.32)'
   return (
-    <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-sm font-semibold border', getScoreBg(score))}>
-      {score !== null ? score : '—'}{label && <span className="text-xs font-normal opacity-70">/100</span>}
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700, color, background: bg, border: `1px solid ${border}` }}>
+      {score !== null ? score : '—'}
     </span>
   )
 }
 
 // ---- Stat Card ----
-interface StatCardProps {
-  label: string
-  value: string | number
-  sub?: string
-  icon?: React.ReactNode
-  className?: string
-}
-export function StatCard({ label, value, sub, icon, className }: StatCardProps) {
+export function StatCard({ label, value, sub, dot }: { label: string; value: string | number; sub?: string; dot?: string }) {
   return (
-    <Card className={cn('p-5', className)}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-gray-400">{sub}</p>}
-        </div>
-        {icon && <div className="text-gray-400">{icon}</div>}
+    <div style={{
+      background: 'var(--card-bg)',
+      border: '1px solid var(--border)',
+      borderRadius: 12,
+      padding: '16px',
+      backdropFilter: 'blur(18px)',
+      boxShadow: 'var(--shadow)',
+      position: 'relative',
+      overflow: 'hidden',
+      minHeight: 100,
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+    }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)', opacity: .7 }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>
+        {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
+        {label}
       </div>
-    </Card>
+      <div>
+        <div style={{ fontSize: 30, fontWeight: 600, color: 'var(--text)', lineHeight: 1, letterSpacing: '-.02em' }}>{value}</div>
+        {sub && <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 2 }}>{sub}</div>}
+      </div>
+    </div>
   )
 }
 
-// ---- Empty State ----
-interface EmptyProps {
-  title: string
-  description?: string
-  action?: React.ReactNode
-}
-export function Empty({ title, description, action }: EmptyProps) {
+// ---- Empty ----
+export function Empty({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
   return (
-    <div className="text-center py-12">
-      <div className="text-4xl mb-3">📭</div>
-      <p className="text-sm font-medium text-gray-700">{title}</p>
-      {description && <p className="text-xs text-gray-400 mt-1">{description}</p>}
-      {action && <div className="mt-4">{action}</div>}
+    <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
+      <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{title}</div>
+      {description && <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>{description}</div>}
+      {action && <div style={{ marginTop: 12 }}>{action}</div>}
     </div>
   )
 }
 
 // ---- Spinner ----
 export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-8 w-8' }
+  const s = size === 'sm' ? 16 : size === 'md' ? 24 : 36
   return (
-    <svg className={cn('animate-spin text-slate-600', sizes[size])} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-    </svg>
+    <span style={{ width: s, height: s, border: `3px solid rgba(148,163,184,.18)`, borderTopColor: 'var(--cyan)', borderRadius: '50%', display: 'inline-block', animation: 'spin .8s linear infinite' }} />
+  )
+}
+
+// ---- Interest Badge ----
+import { getInterestLabel } from '@/lib/utils'
+import type { InterestLevel } from '@/types'
+export function InterestBadge({ level }: { level: InterestLevel | null }) {
+  const styles: Record<string, { bg: string; color: string; border: string }> = {
+    hot:     { bg: 'rgba(239,68,68,.12)',   color: '#fca5a5', border: 'rgba(239,68,68,.32)' },
+    warm:    { bg: 'rgba(245,158,11,.12)',  color: '#fcd34d', border: 'rgba(245,158,11,.32)' },
+    cold:    { bg: 'rgba(59,130,246,.12)',  color: '#93c5fd', border: 'rgba(59,130,246,.30)' },
+    unclear: { bg: 'rgba(2,6,23,.28)',      color: 'var(--muted)', border: 'var(--border)' },
+  }
+  const s = level ? styles[level] : styles.unclear
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+      {getInterestLabel(level)}
+    </span>
+  )
+}
+
+// ---- Risk Badge ----
+import { getRiskLabel } from '@/lib/utils'
+import type { HallucinationRisk } from '@/types'
+export function RiskBadge({ risk }: { risk: HallucinationRisk | null }) {
+  const styles: Record<string, { bg: string; color: string; border: string }> = {
+    low:    { bg: 'rgba(34,197,94,.10)',  color: '#86efac', border: 'rgba(34,197,94,.35)' },
+    medium: { bg: 'rgba(245,158,11,.12)', color: '#fcd34d', border: 'rgba(245,158,11,.32)' },
+    high:   { bg: 'rgba(239,68,68,.12)',  color: '#fca5a5', border: 'rgba(239,68,68,.32)' },
+  }
+  const s = risk ? styles[risk] : { bg: 'rgba(2,6,23,.28)', color: 'var(--muted)', border: 'var(--border)' }
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+      IA : {getRiskLabel(risk)}
+    </span>
+  )
+}
+
+// ---- Status Badge ----
+export function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { bg: string; color: string; border: string; label: string }> = {
+    active:    { bg: 'rgba(34,197,94,.10)',  color: '#86efac', border: 'rgba(34,197,94,.35)',   label: 'Active' },
+    paused:    { bg: 'rgba(245,158,11,.12)', color: '#fcd34d', border: 'rgba(245,158,11,.32)',  label: 'En pause' },
+    completed: { bg: 'rgba(2,6,23,.28)',     color: 'var(--muted)', border: 'var(--border)',   label: 'Terminée' },
+  }
+  const s = map[status] || map.completed
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+      {s.label}
+    </span>
   )
 }

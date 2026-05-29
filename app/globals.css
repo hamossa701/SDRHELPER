@@ -1,1 +1,72 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #060914;
+  --panel: #0a1020;
+  --panel-2: #0f172a;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --muted-2: #64748b;
+  --border: rgba(148,163,184,.16);
+  --border-strong: rgba(125,211,252,.28);
+  --indigo: #6366f1;
+  --cyan: #7dd3fc;
+  --cyan-soft: rgba(125,211,252,.12);
+  --shadow: 0 12px 32px rgba(0,0,0,.32);
+  --card-bg: linear-gradient(180deg,rgba(15,23,42,.78),rgba(10,16,32,.68));
+  --sidebar-bg: linear-gradient(180deg,rgba(10,16,32,.96),rgba(6,9,20,.98));
+  --header-bg: rgba(6,9,20,.72);
+  --toolbar-bg: linear-gradient(180deg,rgba(15,23,42,.66),rgba(10,16,32,.52));
+  --thead: rgba(15,23,42,.86);
+  --row-h: rgba(125,211,252,.06);
+  --input-bg: rgba(2,6,23,.52);
+}
+
+html { background: #060914; }
+
+body {
+  background:
+    radial-gradient(circle at 18% 12%, rgba(99,102,241,.18), transparent 32%),
+    radial-gradient(circle at 86% 78%, rgba(125,211,252,.14), transparent 34%),
+    linear-gradient(135deg, rgba(10,16,32,.95), rgba(6,9,20,.98));
+  color: var(--text);
+  font-family: 'Geist', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148,163,184,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,.055) 1px, transparent 1px);
+  background-size: 58px 58px;
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+  opacity: .45;
+  z-index: -1;
+}
+
+/* Material icons */
+.mat {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  user-select: none;
+}
