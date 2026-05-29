@@ -5,18 +5,13 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, StatCard, Badge } from '@/components/ui'
 import { formatDate, formatDateShort, getCampaignStatusLabel, getCampaignStatusBg } from '@/lib/utils'
 import { PrintButton } from '@/components/client/PrintButton'
-import {
-  computeClientKPIs,
-  computeValueReport,
-  generateExecutiveSummary,
-  appointmentQualityLabel,
-  clientCampaignHealthLabel,
-  filterByPeriod,
-  type ReportPeriod,
-} from '@/lib/client-reporting'
-import type { Call, CallAnalysis, Campaign } from '@/types'
+import { appointmentQualityLabel } from '@/lib/client-reporting'
+import type {
+  Campaign, ClientKPIsRow, ClientValueReportRow,
+  ClientCampaignStatsRow,
+} from '@/types'
 
-type CallRow = Call & { call_analyses: CallAnalysis | null; campaigns: Pick<Campaign, 'campaign_name' | 'client_name'> | null }
+type ReportPeriod = '7d' | '30d' | 'month'
 
 const PERIOD_LABELS: Record<ReportPeriod, string> = {
   '7d':    '7 derniers jours',
@@ -24,15 +19,54 @@ const PERIOD_LABELS: Record<ReportPeriod, string> = {
   'month': 'Mois en cours',
 }
 
+function periodBounds(period: ReportPeriod): { since: string; until: string } {
+  const now = new Date()
+  const until = now.toISOString()
+  if (period === 'month') {
+    return { since: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(), until }
+  }
+  const days = period === '7d' ? 7 : 30
+  return { since: new Date(now.getTime() - days * 86_400_000).toISOString(), until }
+}
+
+function clientHealthLabel(s: ClientCampaignStatsRow): { label: string; bg: string } {
+  if (s.total_calls === 0) return { label: 'En cours', bg: 'bg-gray-100 text-gray-500 border-gray-200' }
+  const qualRate = s.appointments_booked > 0 ? s.qualified_appointments / s.appointments_booked : 0
+  const score = Math.round(
+    0.40 * (s.avg_appointment_quality ?? 0) +
+    0.25 * (s.avg_sdr_quality         ?? 0) +
+    0.20 * (qualRate * 100) +
+    0.15 * (s.avg_ai_confidence       ?? 0)
+  )
+  if (score >= 75) return { label: 'Saine',            bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+  if (score >= 55) return { label: 'En bonne voie',    bg: 'bg-blue-50 text-blue-700 border-blue-200' }
+  if (score >= 40) return { label: 'À surveiller',     bg: 'bg-amber-50 text-amber-700 border-amber-200' }
+  return             { label: 'Attention requise', bg: 'bg-red-50 text-red-700 border-red-200' }
+}
+
+function buildExecSummary(kpis: ClientKPIsRow): string {
+  if (kpis.total_calls === 0) return 'Aucune donnée disponible pour cette période.'
+  const month = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  let s = `Ce mois-ci (${month}), ${kpis.total_calls} appel${kpis.total_calls !== 1 ? 's' : ''} ont été traités`
+  if (kpis.appointments_booked > 0) {
+    s += `, dont ${kpis.appointments_booked} rendez-vous posé${kpis.appointments_booked !== 1 ? 's' : ''}`
+    if (kpis.qualified_appointments > 0) {
+      s += `. ${kpis.qualified_appointments} ${kpis.qualified_appointments !== 1 ? 'répondent' : 'répond'} à l'ensemble des critères de qualification`
+    }
+  }
+  s += '.'
+  if (kpis.decision_maker_rate !== null && kpis.decision_maker_rate > 0) {
+    s += ` Les décideurs ont été atteints dans ${kpis.decision_maker_rate}% des conversations.`
+  }
+  return s
+}
+
 function PeriodTab({ period, current }: { period: ReportPeriod; current: ReportPeriod }) {
-  const active = period === current
   return (
     <Link
       href={`?period=${period}`}
       className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-        active
-          ? 'bg-slate-800 text-white'
-          : 'text-slate-600 hover:bg-gray-100'
+        period === current ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-gray-100'
       }`}
     >
       {PERIOD_LABELS[period]}
@@ -65,54 +99,105 @@ export default async function ClientPage({
 
   const { period: periodParam } = await searchParams
   const period: ReportPeriod =
-    periodParam === '7d' || periodParam === '30d' || periodParam === 'month'
-      ? periodParam
-      : 'month'
+    periodParam === '7d' || periodParam === '30d' || periodParam === 'month' ? periodParam : 'month'
 
   const { data: assignments } = await supabase
     .from('campaign_clients').select('campaign_id').eq('user_id', user.id)
-  const rawCampaignIds = assignments?.map((a: any) => a.campaign_id) || []
+  const rawIds = (assignments || []).map((a: any) => a.campaign_id)
 
-  // RBAC: verify assigned campaigns belong to this org — prevents cross-org data access (Part 5/7)
-  const { data: validCampaignRows } = rawCampaignIds.length > 0
-    ? await supabase.from('campaigns').select('id').in('id', rawCampaignIds).eq('organization_id', profile.organization_id)
-    : { data: [] }
-  const campaignIds = (validCampaignRows || []).map((c: any) => c.id)
+  // RBAC: verify assignments belong to this org — prevents cross-org data access
+  const { data: validRows } = rawIds.length > 0
+    ? await supabase.from('campaigns').select('id').in('id', rawIds).eq('organization_id', profile.organization_id)
+    : { data: [] as { id: string }[] }
+  const campaignIds: string[] = (validRows || []).map((r: any) => r.id)
 
-  const [{ data: campaigns }, { data: allCalls }] = await Promise.all([
-    campaignIds.length > 0
-      ? supabase.from('campaigns').select('*').in('id', campaignIds)
-      : Promise.resolve({ data: [] }),
-    campaignIds.length > 0
-      ? supabase
-          .from('calls')
-          .select('*, call_analyses(*), campaigns(campaign_name, client_name)')
-          .in('campaign_id', campaignIds)
-          .order('call_datetime', { ascending: false })
-          .limit(500)
-      : Promise.resolve({ data: [] }),
+  if (campaignIds.length === 0) {
+    return (
+      <div className="p-8 max-w-5xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Tableau de bord</h1>
+        <Card>
+          <CardContent className="py-12 text-center text-sm text-gray-400">
+            Aucune campagne assignée à votre compte.
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const { since, until } = periodBounds(period)
+  const monthBounds = periodBounds('month')
+
+  // All KPIs are SQL aggregations — correct at any call volume.
+  // Appointment list is display-only, paginated to 50 most recent.
+  const [
+    { data: kpisData },
+    { data: valueData },
+    { data: campaignStatsData },
+    { data: campaigns },
+    { data: monthKpisData },
+    { data: bookedCalls },
+  ] = await Promise.all([
+    supabase.rpc('get_client_kpis', {
+      p_campaign_ids: campaignIds,
+      p_org_id: profile.organization_id,
+      p_since: since,
+      p_until: until,
+    }),
+    supabase.rpc('get_client_value_report', {
+      p_campaign_ids: campaignIds,
+      p_org_id: profile.organization_id,
+      p_since: since,
+      p_until: until,
+    }),
+    supabase.rpc('get_client_campaign_stats', {
+      p_campaign_ids: campaignIds,
+      p_org_id: profile.organization_id,
+    }),
+    supabase.from('campaigns').select('*').in('id', campaignIds),
+    supabase.rpc('get_client_kpis', {
+      p_campaign_ids: campaignIds,
+      p_org_id: profile.organization_id,
+      p_since: monthBounds.since,
+      p_until: monthBounds.until,
+    }),
+    // Display list — limited; not used for any KPI computation
+    supabase
+      .from('calls')
+      .select('id, call_datetime, call_analyses!inner(prospect_company, contact_name, contact_role, appointment_booked, appointment_datetime, appointment_quality_score, pain_point_details, next_step, decision_maker_detected)')
+      .in('campaign_id', campaignIds)
+      .eq('organization_id', profile.organization_id)
+      .gte('call_datetime', since)
+      .lte('call_datetime', until)
+      .eq('call_analyses.appointment_booked', true)
+      .order('call_datetime', { ascending: false })
+      .limit(50),
   ])
 
-  const allCallsTyped = (allCalls || []) as CallRow[]
+  const kpis: ClientKPIsRow = kpisData?.[0] ?? {
+    total_calls: 0, hot_warm_contacts: 0, appointments_booked: 0,
+    qualified_appointments: 0, qualification_rate: null,
+    decision_maker_rate: null, appointment_conversion_rate: null,
+  }
+  const monthKpis: ClientKPIsRow = monthKpisData?.[0] ?? kpis
 
-  const periodCalls   = filterByPeriod(allCallsTyped, period)
-  const periodAnalyses = periodCalls.map(c => c.call_analyses).filter(Boolean) as CallAnalysis[]
+  const valueRows  = (valueData  || []) as ClientValueReportRow[]
+  const statsRows  = (campaignStatsData || []) as ClientCampaignStatsRow[]
+  const statsMap   = Object.fromEntries(statsRows.map(s => [s.campaign_id, s]))
 
-  const monthCalls    = filterByPeriod(allCallsTyped, 'month')
-  const monthAnalyses = monthCalls.map(c => c.call_analyses).filter(Boolean) as CallAnalysis[]
-
-  const kpis          = computeClientKPIs(periodCalls as any)
-  const valueReport   = computeValueReport(periodAnalyses, kpis.totalCalls)
-  const execSummary   = generateExecutiveSummary(monthAnalyses, monthCalls.length)
+  const topPainPoints = valueRows.filter(r => r.kind === 'pain_point').map(r => ({ label: r.label, count: r.cnt }))
+  const topObjections = valueRows.filter(r => r.kind === 'objection').map(r => ({ label: r.label, count: r.cnt }))
 
   const campaignStats = (campaigns || []).map((c: Campaign) => {
-    const cc = allCallsTyped.filter(call => call.campaign_id === c.id)
-    const an = cc.map(call => call.call_analyses).filter(Boolean) as CallAnalysis[]
-    const booked = an.filter(a => a.appointment_booked).length
-    return { ...c, totalCalls: cc.length, booked, health: clientCampaignHealthLabel(an) }
+    const s = statsMap[c.id]
+    return {
+      ...c,
+      health:     s ? clientHealthLabel(s) : { label: 'En cours', bg: 'bg-gray-100 text-gray-500 border-gray-200' },
+      totalCalls: s?.total_calls        ?? 0,
+      booked:     s?.appointments_booked ?? 0,
+    }
   })
 
-  const bookedInPeriod = periodCalls.filter(c => c.call_analyses?.appointment_booked)
+  const execSummary = buildExecSummary(monthKpis)
 
   return (
     <>
@@ -124,7 +209,6 @@ export default async function ClientPage({
       `}</style>
 
       <div className="p-8 max-w-5xl mx-auto">
-        {/* Header */}
         <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Tableau de bord</h1>
@@ -133,27 +217,24 @@ export default async function ClientPage({
           <PrintButton />
         </div>
 
-        {/* Part 1 — Period selector */}
         <div className="no-print flex items-center gap-2 mb-6 bg-gray-50 rounded-xl p-1.5 w-fit">
           {(['7d', '30d', 'month'] as ReportPeriod[]).map(p => (
             <PeriodTab key={p} period={p} current={period} />
           ))}
         </div>
 
-        {/* Part 1 — KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <StatCard label="Appels traités"        value={kpis.totalCalls} />
-          <StatCard label="Contacts intéressés"   value={kpis.hotWarmContacts} sub="chaud ou tiède" />
-          <StatCard label="RDV posés"              value={kpis.appointmentsBooked} />
-          <StatCard label="RDV qualifiés"          value={kpis.qualifiedAppointments} sub="décideur + besoin + date" />
+          <StatCard label="Appels traités"       value={kpis.total_calls} />
+          <StatCard label="Contacts intéressés"  value={kpis.hot_warm_contacts} sub="chaud ou tiède" />
+          <StatCard label="RDV posés"             value={kpis.appointments_booked} />
+          <StatCard label="RDV qualifiés"         value={kpis.qualified_appointments} sub="décideur + besoin + date" />
           <StatCard
             label="Taux de qualification"
-            value={kpis.qualificationRate !== null ? `${kpis.qualificationRate}%` : '—'}
+            value={kpis.qualification_rate !== null ? `${kpis.qualification_rate}%` : '—'}
             sub="RDV qualifiés / RDV posés"
           />
         </div>
 
-        {/* Part 3 — Campaign health */}
         {campaignStats.length > 0 && (
           <Card className="mb-6">
             <CardHeader>
@@ -178,22 +259,22 @@ export default async function ClientPage({
           </Card>
         )}
 
-        {/* Part 2 — Appointment quality report */}
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">Rendez-vous posés</h2>
-              <span className="text-xs text-gray-400">{bookedInPeriod.length} RDV · {PERIOD_LABELS[period]}</span>
+              <span className="text-xs text-gray-400">{kpis.appointments_booked} RDV · {PERIOD_LABELS[period]}</span>
             </div>
           </CardHeader>
-          {bookedInPeriod.length === 0 ? (
+          {!bookedCalls?.length ? (
             <CardContent>
               <p className="text-sm text-gray-400 text-center py-6">Aucun rendez-vous sur cette période.</p>
             </CardContent>
           ) : (
             <div className="divide-y divide-gray-50">
-              {bookedInPeriod.map((call: CallRow) => {
-                const a = call.call_analyses!
+              {(bookedCalls || []).map((call: any) => {
+                const a = call.call_analyses
+                if (!a) return null
                 const quality = appointmentQualityLabel(a.appointment_quality_score)
                 return (
                   <div key={call.id} className="px-6 py-4">
@@ -238,7 +319,6 @@ export default async function ClientPage({
           )}
         </Card>
 
-        {/* Part 4 — Value report */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <Card>
             <CardHeader>
@@ -246,11 +326,11 @@ export default async function ClientPage({
               <p className="text-xs text-gray-400 mt-0.5">Retours marché de vos prospects</p>
             </CardHeader>
             <CardContent>
-              {valueReport.topPainPoints.length === 0 ? (
+              {topPainPoints.length === 0 ? (
                 <p className="text-sm text-gray-400">Pas encore de données.</p>
               ) : (
                 <div className="space-y-3">
-                  {valueReport.topPainPoints.map(({ label, count }, i) => (
+                  {topPainPoints.map(({ label, count }, i) => (
                     <div key={i} className="flex items-start justify-between gap-3">
                       <p className="text-sm text-gray-700 leading-snug flex-1">{label}</p>
                       <Badge className="bg-slate-100 text-slate-600 border-slate-200 shrink-0">{count}×</Badge>
@@ -267,11 +347,11 @@ export default async function ClientPage({
                 <h2 className="text-sm font-semibold text-gray-900">Objections fréquentes</h2>
               </CardHeader>
               <CardContent>
-                {valueReport.topObjections.length === 0 ? (
+                {topObjections.length === 0 ? (
                   <p className="text-sm text-gray-400">Pas encore de données.</p>
                 ) : (
                   <div className="space-y-2">
-                    {valueReport.topObjections.map(({ label, count }, i) => (
+                    {topObjections.map(({ label, count }, i) => (
                       <div key={i} className="flex items-center justify-between">
                         <span className="text-sm text-gray-700">{label}</span>
                         <Badge className="bg-red-50 text-red-600 border-red-200">{count}×</Badge>
@@ -284,19 +364,18 @@ export default async function ClientPage({
             <div className="grid grid-cols-2 gap-4">
               <StatCard
                 label="Taux décideurs"
-                value={valueReport.decisionMakerRate !== null ? `${valueReport.decisionMakerRate}%` : '—'}
+                value={kpis.decision_maker_rate !== null ? `${kpis.decision_maker_rate}%` : '—'}
                 sub="parmi les contacts atteints"
               />
               <StatCard
                 label="Taux de conversion"
-                value={valueReport.appointmentConversionRate !== null ? `${valueReport.appointmentConversionRate}%` : '—'}
+                value={kpis.appointment_conversion_rate !== null ? `${kpis.appointment_conversion_rate}%` : '—'}
                 sub="appels → RDV"
               />
             </div>
           </div>
         </div>
 
-        {/* Part 5 — Executive summary */}
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -308,14 +387,6 @@ export default async function ClientPage({
             <p className="text-sm text-gray-700 leading-relaxed">{execSummary}</p>
           </CardContent>
         </Card>
-
-        {(campaigns || []).length === 0 && (
-          <Card>
-            <CardContent className="py-12 text-center text-sm text-gray-400">
-              Aucune campagne assignée à votre compte.
-            </CardContent>
-          </Card>
-        )}
       </div>
     </>
   )

@@ -1,14 +1,18 @@
-﻿import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge, Empty } from '@/components/ui'
-import { getInterestBg, getInterestLabel, formatDateShort, getScoreBg } from '@/lib/utils'
+import { getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import Link from 'next/link'
-import type { Call, CallAnalysis } from '@/types'
+import type { CallAnalysis, SDRDashboardKPIs } from '@/types'
 
 export default async function SDRPage() {
   const cookieStore = await cookies()
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } }
+  )
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -16,42 +20,32 @@ export default async function SDRPage() {
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile || profile.role !== 'sdr') redirect('/login')
 
-  const { data: calls } = await supabase
-    .from('calls')
-    .select('*, call_analyses(*), campaigns(campaign_name, client_name)')
-    .eq('sdr_id', user.id)
-    .order('call_datetime', { ascending: false })
-    .limit(200)
+  // KPIs: full SQL aggregation — correct regardless of call volume
+  // Display list: limited to 50 most recent for the table view only
+  const [{ data: kpisData }, { data: calls }] = await Promise.all([
+    supabase.rpc('get_sdr_dashboard_kpis', { p_sdr_id: user.id }),
+    supabase
+      .from('calls')
+      .select('id, call_datetime, call_analyses(appointment_booked, sdr_quality_score, prospect_company, interest_level, strengths, weaknesses, coaching_recommendations), campaigns(campaign_name, client_name)')
+      .eq('sdr_id', user.id)
+      .order('call_datetime', { ascending: false })
+      .limit(50),
+  ])
 
-  const analyses = calls?.map((c: Call & { call_analyses: CallAnalysis }) => c.call_analyses).filter(Boolean) || []
-  const totalCalls = calls?.length || 0
-  const rdvBooked = analyses.filter((a: CallAnalysis) => a?.appointment_booked).length
-  const avgRdvQ = analyses.length > 0
-    ? Math.round(analyses.reduce((s: number, a: CallAnalysis) => s + (a?.appointment_quality_score || 0), 0) / analyses.length)
-    : 0
-  const avgSdrQ = analyses.length > 0
-    ? Math.round(analyses.reduce((s: number, a: CallAnalysis) => s + (a?.sdr_quality_score || 0), 0) / analyses.length)
-    : 0
+  const kpis: SDRDashboardKPIs = kpisData?.[0] ?? {
+    total_calls: 0, rdv_booked: 0, avg_rdv_quality: null, avg_sdr_quality: null, conversion_rate: 0,
+  }
 
-  // Aggregate strengths and weaknesses
-  const allStrengths: string[] = []
-  const allWeaknesses: string[] = []
-  const allCoaching: string[] = []
-  analyses.forEach((a: CallAnalysis) => {
-    if (a?.strengths) allStrengths.push(...a.strengths)
-    if (a?.weaknesses) allWeaknesses.push(...a.weaknesses)
-    if (a?.coaching_recommendations) allCoaching.push(...a.coaching_recommendations)
-  })
-
-  // Frequency count
+  // Qualitative feedback — from last 50 fetched calls (qualitative, not KPIs)
+  const analyses = (calls || []).map((c: any) => c.call_analyses).filter(Boolean) as CallAnalysis[]
   const countFreq = (arr: string[]) => {
     const map: Record<string, number> = {}
     arr.forEach(item => { map[item] = (map[item] || 0) + 1 })
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5)
   }
-  const topStrengths = countFreq(allStrengths)
-  const topWeaknesses = countFreq(allWeaknesses)
-  const topCoaching = countFreq(allCoaching)
+  const topStrengths = countFreq(analyses.flatMap(a => a?.strengths || []))
+  const topWeaknesses = countFreq(analyses.flatMap(a => a?.weaknesses || []))
+  const topCoaching  = countFreq(analyses.flatMap(a => a?.coaching_recommendations || []))
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -60,16 +54,14 @@ export default async function SDRPage() {
         <p className="text-gray-500 text-sm mt-1">Bonjour {profile.name} — voici vos performances</p>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Appels analysés" value={totalCalls} />
-        <StatCard label="RDV posés" value={rdvBooked} />
-        <StatCard label="Qualité RDV" value={avgRdvQ} sub="/100" />
-        <StatCard label="Mon score SDR" value={avgSdrQ} sub="/100" />
+        <StatCard label="Appels analysés" value={kpis.total_calls} />
+        <StatCard label="RDV posés"        value={kpis.rdv_booked} />
+        <StatCard label="Qualité RDV"      value={kpis.avg_rdv_quality ?? '—'} sub="/100" />
+        <StatCard label="Mon score SDR"    value={kpis.avg_sdr_quality ?? '—'} sub="/100" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Calls list */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
@@ -78,7 +70,7 @@ export default async function SDRPage() {
                 <Link href="/calls/upload" className="text-xs text-slate-600 hover:underline">+ Analyser un appel</Link>
               </div>
             </CardHeader>
-            {calls?.length === 0 ? (
+            {!calls?.length ? (
               <CardContent>
                 <Empty
                   title="Aucun appel analysé"
@@ -99,7 +91,7 @@ export default async function SDRPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {calls?.map((call: Call & { call_analyses: CallAnalysis }) => (
+                    {calls.map((call: any) => (
                       <tr key={call.id} className="hover:bg-gray-50">
                         <td className="px-6 py-3 text-gray-500">{formatDateShort(call.call_datetime)}</td>
                         <td className="px-6 py-3 font-medium text-gray-800">{call.call_analyses?.prospect_company || '—'}</td>
@@ -128,34 +120,31 @@ export default async function SDRPage() {
           </Card>
         </div>
 
-        {/* Feedback panel */}
         <div className="space-y-4">
-          {/* Score overview */}
           <Card>
             <CardContent className="pt-5">
               <div className="text-center mb-4">
-                <div className={`text-5xl font-bold mb-1 ${avgSdrQ >= 70 ? 'text-emerald-600' : avgSdrQ >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {avgSdrQ || '—'}
+                <div className={`text-5xl font-bold mb-1 ${(kpis.avg_sdr_quality ?? 0) >= 70 ? 'text-emerald-600' : (kpis.avg_sdr_quality ?? 0) >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
+                  {kpis.avg_sdr_quality ?? '—'}
                 </div>
                 <p className="text-xs text-gray-400">Score SDR moyen</p>
               </div>
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Appels analysés</span>
-                  <span className="font-medium">{totalCalls}</span>
+                  <span className="font-medium">{kpis.total_calls}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Taux de RDV</span>
-                  <span className="font-medium">{totalCalls > 0 ? Math.round(rdvBooked / totalCalls * 100) : 0}%</span>
+                  <span className="font-medium">{kpis.conversion_rate}%</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Strengths */}
           {topStrengths.length > 0 && (
             <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">✅ Vos points forts</h3></CardHeader>
+              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Vos points forts</h3></CardHeader>
               <CardContent>
                 <ul className="space-y-1.5">
                   {topStrengths.map(([item]) => (
@@ -168,10 +157,9 @@ export default async function SDRPage() {
             </Card>
           )}
 
-          {/* Weaknesses */}
           {topWeaknesses.length > 0 && (
             <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">⚠️ Axes d&apos;amélioration</h3></CardHeader>
+              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Axes d&apos;amélioration</h3></CardHeader>
               <CardContent>
                 <ul className="space-y-1.5">
                   {topWeaknesses.map(([item]) => (
@@ -184,10 +172,9 @@ export default async function SDRPage() {
             </Card>
           )}
 
-          {/* Coaching */}
           {topCoaching.length > 0 && (
             <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">🎯 Conseils coaching</h3></CardHeader>
+              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Conseils coaching</h3></CardHeader>
               <CardContent>
                 <ul className="space-y-1.5">
                   {topCoaching.map(([item]) => (

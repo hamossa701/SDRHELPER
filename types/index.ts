@@ -240,3 +240,99 @@ export interface SDRStats {
   avg_quality: number
   avg_sdr_score: number
 }
+
+// ── RPC return types ──────────────────────────────────────────────────────────
+
+export interface DashboardKPIs {
+  total_calls: number
+  appointments_booked: number
+  qualified_appointments: number
+  avg_appointment_quality: number | null
+  avg_sdr_quality: number | null
+  active_campaigns: number
+  sdrs_needing_coaching: number
+  team_trend: 'improving' | 'stable' | 'declining'
+}
+
+export interface SDRLeaderboardRow {
+  sdr_id: string
+  sdr_name: string
+  total_calls: number
+  rdv_booked: number
+  avg_sdr_quality: number | null
+}
+
+export interface ManagerKPIs {
+  today_calls: number
+  calls_requiring_review: number
+  appointments_booked: number
+  qualified_appointments: number
+  qualification_rate: number
+  calls_reviewed: number
+  calls_pending: number
+  ai_trust_validated: number
+  ai_trust_corrected: number
+}
+
+export interface SDRCoachingStatsRow {
+  sdr_id: string
+  sdr_name: string
+  total_calls: number
+  avg_sdr_quality: number | null
+  avg_appointment_quality: number | null
+  appointments_booked: number
+  qualified_appointments: number
+  qualification_rate: number
+  calls_reviewed: number
+  calls_requiring_review: number
+  review_flag_rate: number | null
+  avg_ai_confidence: number | null
+  skill_opening: number
+  skill_discovery: number
+  skill_pain_point: number
+  skill_objection_handling: number
+  skill_qualification: number
+  skill_closing: number
+  trend: 'improving' | 'stable' | 'declining'
+  booked_without_dm_rate: number
+  booked_without_pain_rate: number
+  missing_next_step_rate: number
+  objection_no_detail_rate: number
+  category: 'top' | 'stable' | 'needs_coaching'
+  best_call_id: string | null
+  worst_call_id: string | null
+}
+
+export interface ClientKPIsRow {
+  total_calls: number
+  hot_warm_contacts: number
+  appointments_booked: number
+  qualified_appointments: number
+  qualification_rate: number | null
+  decision_maker_rate: number | null
+  appointment_conversion_rate: number | null
+}
+
+export interface ClientValueReportRow {
+  label: string
+  cnt: number
+  kind: 'pain_point' | 'objection'
+}
+
+export interface ClientCampaignStatsRow {
+  campaign_id: string
+  total_calls: number
+  appointments_booked: number
+  qualified_appointments: number
+  avg_appointment_quality: number | null
+  avg_sdr_quality: number | null
+  avg_ai_confidence: number | null
+}
+
+export interface SDRDashboardKPIs {
+  total_calls: number
+  rdv_booked: number
+  avg_rdv_quality: number | null
+  avg_sdr_quality: number | null
+  conversion_rate: number
+}
