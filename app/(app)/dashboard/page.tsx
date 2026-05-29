@@ -7,10 +7,10 @@ import { isQualifiedAppointment } from '@/lib/review-flags'
 import Link from 'next/link'
 import type {
   Campaign, DashboardKPIs, SDRLeaderboardRow,
-  ClientCampaignStatsRow, CampaignHealthResult,
+  DashboardCampaignStatsRow, CampaignHealthResult,
 } from '@/types'
 
-function campaignHealthFromStats(s: ClientCampaignStatsRow): CampaignHealthResult {
+function campaignHealthFromStats(s: DashboardCampaignStatsRow): CampaignHealthResult {
   if (s.total_calls === 0) {
     return { score: 0, label: 'Pas de données', labelClass: 'text-gray-400', labelBg: 'bg-gray-100 text-gray-500 border-gray-200' }
   }
@@ -60,11 +60,11 @@ export default async function DashboardPage() {
     supabase.rpc('get_dashboard_kpis', { p_org_id: profile.organization_id }),
     supabase.rpc('get_sdr_leaderboard', { p_org_id: profile.organization_id }),
     campaignIds.length > 0
-      ? supabase.rpc('get_client_campaign_stats', {
+      ? supabase.rpc('get_dashboard_campaign_stats', {
           p_campaign_ids: campaignIds,
           p_org_id: profile.organization_id,
         })
-      : Promise.resolve({ data: [] as ClientCampaignStatsRow[] }),
+      : Promise.resolve({ data: [] as DashboardCampaignStatsRow[] }),
     supabase
       .from('calls')
       .select('id, call_datetime, call_analyses(appointment_booked, appointment_quality_score, sdr_quality_score, prospect_company, decision_maker_detected, pain_point_detected, appointment_datetime), users!calls_sdr_id_fkey(name)')
@@ -89,9 +89,9 @@ export default async function DashboardPage() {
     : kpis.team_trend === 'declining' ? 'text-red-500' : 'text-blue-600'
 
   const statsMap = Object.fromEntries(
-    ((campaignStatsData || []) as ClientCampaignStatsRow[]).map(s => [s.campaign_id, s])
+    ((campaignStatsData || []) as DashboardCampaignStatsRow[]).map(s => [s.campaign_id, s])
   )
-  const emptyStat = (id: string): ClientCampaignStatsRow => ({
+  const emptyStat = (id: string): DashboardCampaignStatsRow => ({
     campaign_id: id, total_calls: 0, appointments_booked: 0, qualified_appointments: 0,
     avg_appointment_quality: null, avg_sdr_quality: null, avg_ai_confidence: null,
   })

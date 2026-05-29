@@ -325,6 +325,17 @@ export interface ClientCampaignStatsRow {
   appointments_booked: number
   qualified_appointments: number
   avg_appointment_quality: number | null
+  health_label: string
+  health_bg: string
+}
+
+// Internal-only: used by the owner dashboard which is allowed to see SDR/AI metrics
+export interface DashboardCampaignStatsRow {
+  campaign_id: string
+  total_calls: number
+  appointments_booked: number
+  qualified_appointments: number
+  avg_appointment_quality: number | null
   avg_sdr_quality: number | null
   avg_ai_confidence: number | null
 }

@@ -30,6 +30,9 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await supabase
       .from('users').select('organization_id, role').eq('id', user.id).single()
     if (!profile) return NextResponse.json({ error: 'Profil introuvable' }, { status: 401 })
+    if (!['owner', 'manager', 'sdr'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+    }
 
     // ── Parse body ────────────────────────────────────────────────────────────
     const body = await request.json()

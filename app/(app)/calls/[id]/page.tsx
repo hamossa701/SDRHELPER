@@ -26,6 +26,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile) redirect('/login')
+  if (profile.role === 'client') redirect('/client')
 
   const { data: call } = await supabase
     .from('calls')

@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, StatCard, Badge } from '@/components/ui'
 import { formatDate, formatDateShort, getCampaignStatusLabel, getCampaignStatusBg } from '@/lib/utils'
 import { PrintButton } from '@/components/client/PrintButton'
 import { appointmentQualityLabel } from '@/lib/client-reporting'
+import { createAdminClient } from '@/lib/supabase-admin'
 import type {
-  Campaign, ClientKPIsRow, ClientValueReportRow,
+  ClientKPIsRow, ClientValueReportRow,
   ClientCampaignStatsRow,
 } from '@/types'
 
@@ -27,21 +28,6 @@ function periodBounds(period: ReportPeriod): { since: string; until: string } {
   }
   const days = period === '7d' ? 7 : 30
   return { since: new Date(now.getTime() - days * 86_400_000).toISOString(), until }
-}
-
-function clientHealthLabel(s: ClientCampaignStatsRow): { label: string; bg: string } {
-  if (s.total_calls === 0) return { label: 'En cours', bg: 'bg-gray-100 text-gray-500 border-gray-200' }
-  const qualRate = s.appointments_booked > 0 ? s.qualified_appointments / s.appointments_booked : 0
-  const score = Math.round(
-    0.40 * (s.avg_appointment_quality ?? 0) +
-    0.25 * (s.avg_sdr_quality         ?? 0) +
-    0.20 * (qualRate * 100) +
-    0.15 * (s.avg_ai_confidence       ?? 0)
-  )
-  if (score >= 75) return { label: 'Saine',            bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
-  if (score >= 55) return { label: 'En bonne voie',    bg: 'bg-blue-50 text-blue-700 border-blue-200' }
-  if (score >= 40) return { label: 'À surveiller',     bg: 'bg-amber-50 text-amber-700 border-amber-200' }
-  return             { label: 'Attention requise', bg: 'bg-red-50 text-red-700 border-red-200' }
 }
 
 function buildExecSummary(kpis: ClientKPIsRow): string {
@@ -74,12 +60,17 @@ function PeriodTab({ period, current }: { period: ReportPeriod; current: ReportP
   )
 }
 
+// Explicit safe columns — script_notes and organization_id are intentionally excluded
+const CAMPAIGN_SAFE_COLS = 'id, campaign_name, client_name, sector, status, created_at'
+
 export default async function ClientPage({
   searchParams,
 }: {
   searchParams: Promise<{ period?: string }>
 }) {
   const cookieStore = await cookies()
+
+  // Anon client for auth verification and campaign_clients (policy allows own rows)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -101,15 +92,28 @@ export default async function ClientPage({
   const period: ReportPeriod =
     periodParam === '7d' || periodParam === '30d' || periodParam === 'month' ? periodParam : 'month'
 
+  // campaign_clients_select policy allows clients to read their own rows
   const { data: assignments } = await supabase
     .from('campaign_clients').select('campaign_id').eq('user_id', user.id)
   const rawIds = (assignments || []).map((a: any) => a.campaign_id)
 
-  // RBAC: verify assignments belong to this org — prevents cross-org data access
-  const { data: validRows } = rawIds.length > 0
-    ? await supabase.from('campaigns').select('id').in('id', rawIds).eq('organization_id', profile.organization_id)
-    : { data: [] as { id: string }[] }
-  const campaignIds: string[] = (validRows || []).map((r: any) => r.id)
+  // Service role client for data queries — bypasses RLS.
+  // Security is enforced manually: every query includes
+  // .eq('organization_id', profile.organization_id) and .in('id'/'campaign_id', campaignIds).
+  const adminSupabase = createAdminClient()
+
+  // Fetch campaigns with safe columns only.
+  // The .eq('organization_id') filter also validates rawIds — any forged UUID
+  // belonging to a different org is silently excluded.
+  const { data: campaigns } = rawIds.length > 0
+    ? await adminSupabase
+        .from('campaigns')
+        .select(CAMPAIGN_SAFE_COLS)
+        .in('id', rawIds)
+        .eq('organization_id', profile.organization_id)
+    : { data: [] as any[] }
+
+  const campaignIds: string[] = (campaigns || []).map((c: any) => c.id)
 
   if (campaignIds.length === 0) {
     return (
@@ -127,13 +131,13 @@ export default async function ClientPage({
   const { since, until } = periodBounds(period)
   const monthBounds = periodBounds('month')
 
-  // All KPIs are SQL aggregations — correct at any call volume.
-  // Appointment list is display-only, paginated to 50 most recent.
+  // Client RPCs are SECURITY DEFINER — they bypass base-table RLS but enforce
+  // access internally by intersecting p_campaign_ids with the caller's actual
+  // campaign_clients assignments via auth.uid(). Safe to call via anon+session.
   const [
     { data: kpisData },
     { data: valueData },
     { data: campaignStatsData },
-    { data: campaigns },
     { data: monthKpisData },
     { data: bookedCalls },
   ] = await Promise.all([
@@ -153,15 +157,16 @@ export default async function ClientPage({
       p_campaign_ids: campaignIds,
       p_org_id: profile.organization_id,
     }),
-    supabase.from('campaigns').select('*').in('id', campaignIds),
     supabase.rpc('get_client_kpis', {
       p_campaign_ids: campaignIds,
       p_org_id: profile.organization_id,
       p_since: monthBounds.since,
       p_until: monthBounds.until,
     }),
-    // Display list — limited; not used for any KPI computation
-    supabase
+    // Booked calls display list — admin client required because clients are now
+    // excluded from direct calls/call_analyses base table access.
+    // Only 9 safe analysis fields are selected; sdr_id and transcript are never fetched.
+    adminSupabase
       .from('calls')
       .select('id, call_datetime, call_analyses!inner(prospect_company, contact_name, contact_role, appointment_booked, appointment_datetime, appointment_quality_score, pain_point_details, next_step, decision_maker_detected)')
       .in('campaign_id', campaignIds)
@@ -187,11 +192,15 @@ export default async function ClientPage({
   const topPainPoints = valueRows.filter(r => r.kind === 'pain_point').map(r => ({ label: r.label, count: r.cnt }))
   const topObjections = valueRows.filter(r => r.kind === 'objection').map(r => ({ label: r.label, count: r.cnt }))
 
-  const campaignStats = (campaigns || []).map((c: Campaign) => {
+  // Health label comes from the RPC — no internal metrics (sdr_quality, ai_confidence)
+  // ever reach this layer
+  const campaignStats = (campaigns || []).map((c: any) => {
     const s = statsMap[c.id]
     return {
       ...c,
-      health:     s ? clientHealthLabel(s) : { label: 'En cours', bg: 'bg-gray-100 text-gray-500 border-gray-200' },
+      health: s
+        ? { label: s.health_label, bg: s.health_bg }
+        : { label: 'En cours', bg: 'bg-gray-100 text-gray-500 border-gray-200' },
       totalCalls: s?.total_calls        ?? 0,
       booked:     s?.appointments_booked ?? 0,
     }
