@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/co
 import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
 import { computeTrustScore } from '@/lib/trust-score'
+import { buildSDRProfile } from '@/lib/coaching'
 import Link from 'next/link'
 import type { Call, CallAnalysis, User, Campaign } from '@/types'
 
@@ -67,7 +68,7 @@ export default async function ManagerPage() {
   })
   const topObjections = Object.entries(objectionTypes).sort((a, b) => b[1] - a[1]).slice(0, 5)
 
-  // SDR leaderboard
+  // SDR leaderboard + coaching profiles
   const { data: sdrs } = await supabase
     .from('users').select('*').eq('organization_id', profile.organization_id).eq('role', 'sdr')
 
@@ -80,6 +81,12 @@ export default async function ManagerPage() {
     const rdv = sdrAnalyses.filter((a: CallAnalysis) => a?.appointment_booked).length
     return { ...sdr, totalCalls: sdrCalls.length, avgQuality: avgQ, rdvBooked: rdv }
   }).sort((a: any, b: any) => b.avgQuality - a.avgQuality)
+
+  // Coaching: SDRs needing attention
+  const coachingNeeded = (sdrs || []).map((sdr: User) => {
+    const sdrCalls = (allCalls || []).filter((c: CallRow) => c.sdr_id === sdr.id)
+    return buildSDRProfile(sdr, sdrCalls as any)
+  }).filter((p: any) => p.category === 'needs_coaching')
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -219,6 +226,31 @@ export default async function ManagerPage() {
               {sdrStats.length === 0 && <div className="px-6 py-6 text-center text-sm text-gray-400">Aucun SDR</div>}
             </CardContent>
           </Card>
+
+          {/* Coaching needs widget */}
+          {coachingNeeded.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-gray-900">Coaching requis</h2>
+                  <Link href="/coaching" className="text-xs text-slate-600 hover:underline">Voir tout →</Link>
+                </div>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                {coachingNeeded.map((p: any) => (
+                  <div key={p.sdrId} className="px-6 py-3 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-800">{p.sdrName}</p>
+                      <ScoreBadge score={p.avgSdrQuality} />
+                    </div>
+                    {p.priorities[0] && (
+                      <p className="text-xs text-red-500 mt-0.5">● {p.priorities[0].label}</p>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader><h2 className="text-sm font-semibold text-gray-900">Objections fréquentes</h2></CardHeader>

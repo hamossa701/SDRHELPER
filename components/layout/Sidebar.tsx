@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/manager',       label: 'Supervision',        icon: '◼',  roles: ['manager'] },
   { href: '/sdr',           label: 'Mon tableau',        icon: '◼',  roles: ['sdr'] },
   { href: '/client',        label: 'Rapport client',     icon: '◼',  roles: ['client'] },
+  { href: '/coaching',      label: 'Coaching SDR',       icon: '🎯', roles: ['owner', 'manager'] },
   { href: '/campaigns',     label: 'Campagnes',          icon: '📁', roles: ['owner', 'manager', 'sdr'] },
   { href: '/calls/upload',  label: 'Analyser un appel',  icon: '🎙️', roles: ['owner', 'manager', 'sdr'] },
   { href: '/admin/users',   label: 'Utilisateurs',       icon: '👥', roles: ['owner'] },

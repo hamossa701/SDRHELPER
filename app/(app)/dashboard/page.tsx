@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getCampaignStatusBg, getCampaignStatusLabel, getScoreColor, formatDateShort } from '@/lib/utils'
 import { computeCampaignHealthScore, isQualifiedAppointment } from '@/lib/review-flags'
+import { buildSDRProfile, computeTrend } from '@/lib/coaching'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
@@ -46,6 +47,19 @@ export default async function DashboardPage() {
     const avgQ = sdrAnalyses.length > 0 ? Math.round(sdrAnalyses.reduce((s: number, a: any) => s + (a?.sdr_quality_score || 0), 0) / sdrAnalyses.length) : 0
     return { ...sdr, totalCalls: sdrCalls.length, avgQuality: avgQ, rdvBooked: sdrAnalyses.filter((a: any) => a?.appointment_booked).length }
   }).sort((a: any, b: any) => b.avgQuality - a.avgQuality)
+
+  // Part 6 — SDR coaching overview for owner
+  const sdrProfiles = ((sdrs || []) as any[]).map((sdr: any) => {
+    const sdrCalls = (calls || []).filter((c: any) => c.sdr_id === sdr.id)
+    return buildSDRProfile(sdr, sdrCalls as any)
+  }).sort((a: any, b: any) => (b.avgSdrQuality ?? 0) - (a.avgSdrQuality ?? 0))
+  const bestSdr    = sdrProfiles[0] || null
+  const weakestSdr = sdrProfiles[sdrProfiles.length - 1] || null
+  const needsCoachingCount = sdrProfiles.filter((p: any) => p.category === 'needs_coaching').length
+  const allAnalyses = (calls || []).map((c: any) => c.call_analyses).filter(Boolean)
+  const teamTrend = computeTrend([...allAnalyses].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+  const teamTrendLabel = teamTrend === 'improving' ? '↑ Équipe en progression' : teamTrend === 'declining' ? '↓ Équipe en régression' : '→ Équipe stable'
+  const teamTrendCls   = teamTrend === 'improving' ? 'text-emerald-600' : teamTrend === 'declining' ? 'text-red-500' : 'text-blue-600'
 
   // Part 3 — campaign health score per campaign
   const campaignStats = (campaigns || []).map((c: any) => {
@@ -121,6 +135,32 @@ export default async function DashboardPage() {
           </Card>
         </div>
       </div>
+      {/* Part 6 — Owner coaching overview */}
+      {sdrProfiles.length > 0 && (
+        <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Meilleur SDR</p>
+            <p className="text-lg font-bold text-gray-900 mt-1 truncate">{bestSdr?.sdrName || '—'}</p>
+            <p className="text-xs text-gray-400">Score moy. {bestSdr?.avgSdrQuality ?? '—'}</p>
+          </Card>
+          <Card className="p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">SDR à coacher</p>
+            <p className="text-lg font-bold text-gray-900 mt-1 truncate">{weakestSdr?.sdrName || '—'}</p>
+            <p className="text-xs text-gray-400">Score moy. {weakestSdr?.avgSdrQuality ?? '—'}</p>
+          </Card>
+          <Card className="p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Charge coaching</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{needsCoachingCount}</p>
+            <p className="text-xs text-gray-400">SDR nécessitant coaching</p>
+          </Card>
+          <Card className="p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Tendance équipe</p>
+            <p className={`text-lg font-bold mt-1 ${teamTrendCls}`}>{teamTrendLabel}</p>
+            <Link href="/coaching" className="text-xs text-slate-500 hover:underline">Voir coaching →</Link>
+          </Card>
+        </div>
+      )}
+
       <div className="mt-6">
         <Card>
           <CardHeader><h2 className="text-sm font-semibold text-gray-900">Appels récents</h2></CardHeader>

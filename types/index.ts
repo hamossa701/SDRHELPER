@@ -180,6 +180,9 @@ export interface CampaignHealthResult {
   labelBg: string
 }
 
+// Coaching intelligence (computed from existing fields — no AI calls)
+export type { TrendDirection, SkillBreakdown, CoachingPriority, CoachingCall, SDRProfile } from '@/lib/coaching'
+
 // Dashboard stats types
 export interface OwnerStats {
   total_calls: number
