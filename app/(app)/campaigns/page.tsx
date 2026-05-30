@@ -46,10 +46,7 @@ export default async function CampaignsPage() {
           )}
           {stats.map((c: any) => (
             <Link key={c.id} href={`/campaigns/${c.id}`} style={{ textDecoration: 'none' }}>
-              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(18px)', cursor: 'pointer', transition: 'border-color .15s' }}
-                onMouseOver={e => (e.currentTarget.style.borderColor = 'rgba(125,211,252,.22)')}
-                onMouseOut={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-              >
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(18px)', cursor: 'pointer', transition: 'border-color .15s' }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{c.campaign_name}</span>

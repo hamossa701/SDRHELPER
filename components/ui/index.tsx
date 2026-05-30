@@ -45,7 +45,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode
 }
 export function Button({ variant = 'primary', size = 'md', loading, children, className, disabled, ...props }: ButtonProps) {
-  const base = 'inline-flex items-center justify-center font-semibold transition-opacity focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed gap-1.5'
+  const base = 'inline-flex items-center justify-center font-semibold transition-opacity focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed gap-1.5 hover:opacity-90'
   const variants = {
     primary: 'text-white border',
     secondary: 'border text-sm',
@@ -62,8 +62,6 @@ export function Button({ variant = 'primary', size = 'md', loading, children, cl
       className={cn(base, variants[variant], sizes[size], className)}
       style={styles[variant]}
       disabled={disabled || loading}
-      onMouseOver={e => (e.currentTarget.style.opacity = '.88')}
-      onMouseOut={e => (e.currentTarget.style.opacity = '1')}
       {...props}
     >
       {loading && (

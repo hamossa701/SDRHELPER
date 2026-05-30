@@ -22,8 +22,6 @@ export default async function ManagerPage() {
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile || profile.role !== 'manager') redirect('/login')
 
-  // All KPIs are SQL aggregations — correct at any call volume.
-  // Review queue and recent calls are display-only, explicitly limited.
   const [
     { data: kpisData },
     { data: leaderboardData },
@@ -46,10 +44,7 @@ export default async function ManagerPage() {
       .eq('organization_id', profile.organization_id)
       .order('call_datetime', { ascending: false })
       .limit(10),
-    supabase
-      .from('users').select('id, name')
-      .eq('organization_id', profile.organization_id)
-      .in('role', ['owner', 'manager']),
+    supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).in('role', ['owner', 'manager']),
   ])
 
   const kpis: ManagerKPIs = kpisData?.[0] ?? {
@@ -63,16 +58,14 @@ export default async function ManagerPage() {
     (orgManagers || []).map((u: any) => [u.id, u.name])
   )
 
-  // Trust score from RPC counts — no row scan needed
-  const trustTotal  = kpis.ai_trust_validated + kpis.ai_trust_corrected
-  const trustScore  = trustTotal > 0 ? Math.round((kpis.ai_trust_validated / trustTotal) * 100) : null
-  const trustLabel  = trustScore === null ? 'Pas de données' : trustScore >= 80 ? 'Excellent' : trustScore >= 60 ? 'Bon' : 'À améliorer'
-  const trustBg     = trustScore === null ? 'bg-gray-100 text-gray-500 border-gray-200'
-    : trustScore >= 80 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-    : trustScore >= 60 ? 'bg-blue-50 text-blue-700 border-blue-200'
-    : 'bg-amber-50 text-amber-700 border-amber-200'
+  const trustTotal = kpis.ai_trust_validated + kpis.ai_trust_corrected
+  const trustScore = trustTotal > 0 ? Math.round((kpis.ai_trust_validated / trustTotal) * 100) : null
+  const trustLabel = trustScore === null ? 'Pas de données' : trustScore >= 80 ? 'Excellent' : trustScore >= 60 ? 'Bon' : 'À améliorer'
+  const trustBg    = trustScore === null ? 'bg-slate-800 text-slate-400 border-slate-600'
+    : trustScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+    : trustScore >= 60 ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+    : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
 
-  // JS flag filter applies to the 30 display rows; KPI count comes from the RPC
   const callsWithFlags = (reviewQueue || [])
     .filter((c: any) => {
       if (!c.call_analyses) return false
@@ -88,8 +81,8 @@ export default async function ManagerPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Supervision</h1>
-        <p className="text-gray-500 text-sm mt-1">Vue opérationnelle du jour</p>
+        <h1 className="text-2xl font-bold">Supervision</h1>
+        <p className="text-slate-400 text-sm mt-1">Vue opérationnelle du jour</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
@@ -100,8 +93,8 @@ export default async function ManagerPage() {
         <StatCard label="Taux qualification"  value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" />
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Appels révisés"      value={kpis.calls_reviewed}    sub="human_validated = true" />
-        <StatCard label="En attente révision" value={kpis.calls_pending}     sub="analyses non approuvées" />
+        <StatCard label="Appels révisés"      value={kpis.calls_reviewed}     sub="human_validated = true" />
+        <StatCard label="En attente révision" value={kpis.calls_pending}      sub="analyses non approuvées" />
         <StatCard label="Champs corrigés"     value={kpis.ai_trust_corrected} sub="corrections enregistrées" />
         <StatCard label="Fiabilité IA"        value={trustScore !== null ? `${trustScore}%` : '—'} sub={trustLabel} />
       </div>
@@ -111,29 +104,29 @@ export default async function ManagerPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-900">Appels nécessitant une révision</h2>
-                <span className="text-xs text-gray-400">{kpis.calls_requiring_review} appel(s)</span>
+                <h2 className="text-sm font-semibold">Appels nécessitant une révision</h2>
+                <span className="text-xs text-slate-500">{kpis.calls_requiring_review} appel(s)</span>
               </div>
             </CardHeader>
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-white/10">
               {callsWithFlags.length === 0 && (
-                <div className="px-6 py-8 text-center text-sm text-gray-400">Aucun appel en attente de révision ✓</div>
+                <div className="px-6 py-8 text-center text-sm text-slate-500">Aucun appel en attente de révision ✓</div>
               )}
               {callsWithFlags.slice(0, 10).map((call: any) => {
                 const { flags } = computeReviewFlags(call.call_analyses as CallAnalysis)
                 return (
-                  <div key={call.id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                  <div key={call.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
                     <div className="flex items-start justify-between gap-4">
                       <Link href={`/calls/${call.id}`} className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-800">
+                        <p className="text-sm font-medium text-slate-200">
                           {call.call_analyses?.prospect_company || 'Prospect inconnu'}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {call.users?.name} · {call.campaigns?.campaign_name} · {formatDateShort(call.call_datetime)}
                         </p>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {flags.map((flag: string, i: number) => (
-                            <Badge key={i} className="bg-red-50 text-red-600 border-red-200 text-xs">{flag}</Badge>
+                            <Badge key={i} className="bg-red-500/10 text-red-400 border-red-500/30 text-xs">{flag}</Badge>
                           ))}
                         </div>
                       </Link>
@@ -155,23 +148,23 @@ export default async function ManagerPage() {
           </Card>
 
           <Card className="mt-6">
-            <CardHeader><h2 className="text-sm font-semibold text-gray-900">Appels récents</h2></CardHeader>
+            <CardHeader><h2 className="text-sm font-semibold">Appels récents</h2></CardHeader>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">SDR</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Prospect</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Intérêt</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">RDV</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Score</th>
+                  <tr className="border-b border-white/10">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">SDR</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Prospect</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Intérêt</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">RDV</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Score</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-white/10">
                   {(recentCalls || []).map((call: any) => (
-                    <tr key={call.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 font-medium text-gray-800">{call.users?.name || '—'}</td>
-                      <td className="px-6 py-3 text-gray-600">{call.call_analyses?.prospect_company || '—'}</td>
+                    <tr key={call.id} className="hover:bg-white/5">
+                      <td className="px-6 py-3 font-medium text-slate-200">{call.users?.name || '—'}</td>
+                      <td className="px-6 py-3 text-slate-400">{call.call_analyses?.prospect_company || '—'}</td>
                       <td className="px-6 py-3">
                         <Badge className={getInterestBg(call.call_analyses?.interest_level ?? null)}>
                           {getInterestLabel(call.call_analyses?.interest_level ?? null)}
@@ -180,9 +173,9 @@ export default async function ManagerPage() {
                       <td className="px-6 py-3">
                         {call.call_analyses?.appointment_booked ? (
                           isQualifiedAppointment(call.call_analyses as CallAnalysis)
-                            ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Qualifié</Badge>
-                            : <Badge className="bg-amber-50 text-amber-700 border-amber-200">~ Posé</Badge>
-                        ) : <span className="text-gray-400">—</span>}
+                            ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Qualifié</Badge>
+                            : <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30">~ Posé</Badge>
+                        ) : <span className="text-slate-500">—</span>}
                       </td>
                       <td className="px-6 py-3">
                         <Link href={`/calls/${call.id}`}>
@@ -192,7 +185,7 @@ export default async function ManagerPage() {
                     </tr>
                   ))}
                   {!recentCalls?.length && (
-                    <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-gray-400">Aucun appel</td></tr>
+                    <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Aucun appel</td></tr>
                   )}
                 </tbody>
               </table>
@@ -202,19 +195,19 @@ export default async function ManagerPage() {
 
         <div className="space-y-6">
           <Card>
-            <CardHeader><h2 className="text-sm font-semibold text-gray-900">Classement SDR</h2></CardHeader>
+            <CardHeader><h2 className="text-sm font-semibold">Classement SDR</h2></CardHeader>
             <CardContent className="px-0 pb-0">
               {sdrStats.map((sdr, i) => (
-                <div key={sdr.sdr_id} className="flex items-center gap-3 px-6 py-3 border-b border-gray-50 last:border-0">
-                  <span className={`font-bold text-sm w-4 ${i === 0 ? 'text-amber-500' : 'text-gray-300'}`}>{i + 1}</span>
+                <div key={sdr.sdr_id} className="flex items-center gap-3 px-6 py-3 border-b border-white/10 last:border-0">
+                  <span className={`font-bold text-sm w-4 ${i === 0 ? 'text-amber-500' : 'text-slate-500'}`}>{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{sdr.sdr_name}</p>
-                    <p className="text-xs text-gray-400">{sdr.total_calls} appels · {sdr.rdv_booked} RDV</p>
+                    <p className="text-sm font-medium text-slate-200">{sdr.sdr_name}</p>
+                    <p className="text-xs text-slate-500">{sdr.total_calls} appels · {sdr.rdv_booked} RDV</p>
                   </div>
                   <span className={`text-sm font-semibold ${getScoreColor(sdr.avg_sdr_quality)}`}>{sdr.avg_sdr_quality ?? '—'}</span>
                 </div>
               ))}
-              {sdrStats.length === 0 && <div className="px-6 py-6 text-center text-sm text-gray-400">Aucun SDR</div>}
+              {sdrStats.length === 0 && <div className="px-6 py-6 text-center text-sm text-slate-500">Aucun SDR</div>}
             </CardContent>
           </Card>
 
@@ -222,15 +215,15 @@ export default async function ManagerPage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-gray-900">Coaching requis</h2>
-                  <Link href="/coaching" className="text-xs text-slate-600 hover:underline">Voir tout →</Link>
+                  <h2 className="text-sm font-semibold">Coaching requis</h2>
+                  <Link href="/coaching" className="text-xs text-slate-400 hover:underline">Voir tout →</Link>
                 </div>
               </CardHeader>
               <CardContent className="px-0 pb-0">
                 {coachingNeeded.map(s => (
-                  <div key={s.sdr_id} className="px-6 py-3 border-b border-gray-50 last:border-0">
+                  <div key={s.sdr_id} className="px-6 py-3 border-b border-white/10 last:border-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-gray-800">{s.sdr_name}</p>
+                      <p className="text-sm font-medium text-slate-200">{s.sdr_name}</p>
                       <ScoreBadge score={s.avg_sdr_quality} />
                     </div>
                   </div>
@@ -242,19 +235,19 @@ export default async function ManagerPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-900">Fiabilité IA</h2>
+                <h2 className="text-sm font-semibold">Fiabilité IA</h2>
                 <Badge className={trustBg}>{trustScore !== null ? `${trustScore}%` : '—'} · {trustLabel}</Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Champs validés</span>
-                  <span className="font-medium text-emerald-600">{kpis.ai_trust_validated}</span>
+                  <span className="text-slate-500">Champs validés</span>
+                  <span className="font-medium text-emerald-400">{kpis.ai_trust_validated}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Champs corrigés</span>
-                  <span className="font-medium text-blue-600">{kpis.ai_trust_corrected}</span>
+                  <span className="text-slate-500">Champs corrigés</span>
+                  <span className="font-medium text-blue-400">{kpis.ai_trust_corrected}</span>
                 </div>
               </div>
             </CardContent>
