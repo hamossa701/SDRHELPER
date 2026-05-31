@@ -2,7 +2,29 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Button, Card, CardContent, CardHeader } from '@/components/ui'
+import { Button, Card } from '@/components/ui'
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  borderRadius: 10,
+  background: 'var(--input-bg)',
+  border: '1px solid var(--border)',
+  color: 'var(--text)',
+  fontSize: 13,
+  outline: 'none',
+  transition: 'border-color .15s',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 11,
+  fontWeight: 700,
+  color: 'var(--muted)',
+  marginBottom: 7,
+  textTransform: 'uppercase',
+  letterSpacing: '.04em',
+}
 
 export default function NewCampaignPage() {
   const router = useRouter()
@@ -45,112 +67,171 @@ export default function NewCampaignPage() {
   }
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <div className="mb-8">
-        <button onClick={() => router.back()} className="text-xs text-gray-400 hover:text-gray-600 mb-3 block">← Retour</button>
-        <h1 className="text-2xl font-bold text-gray-900">Nouvelle campagne</h1>
-        <p className="text-gray-500 text-sm mt-1">Configurez votre campagne de prise de rendez-vous</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <style>{`
+        .h3a-input:focus { border-color: var(--border-strong) !important; box-shadow: 0 0 0 3px rgba(125,211,252,.1); }
+        .h3a-input::placeholder { color: var(--muted-2); }
+        .h3a-input option { background: #0f172a; color: var(--text); }
+      `}</style>
+
+      <div style={{
+        height: 56,
+        flexShrink: 0,
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--header-bg)',
+        backdropFilter: 'blur(18px)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 24px',
+      }}>
+        <div style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 650 }}>Campagnes</div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader><h2 className="text-sm font-semibold text-gray-900">Informations principales</h2></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom client *</label>
-                <input
-                  required
-                  value={form.client_name}
-                  onChange={e => update('client_name', e.target.value)}
-                  placeholder="ex: TechSolutions France"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
+      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 40px' }}>
+        <div style={{ maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          <section>
+            <button
+              onClick={() => router.back()}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 14, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              ← Retour
+            </button>
+            <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.12, fontWeight: 700, color: 'var(--text)' }}>
+              Nouvelle campagne
+            </h1>
+            <p style={{ margin: '8px 0 0', color: 'var(--muted)', fontSize: 14 }}>
+              Configurez une campagne de prise de rendez-vous
+            </p>
+          </section>
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            <Card>
+              <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)' }}>
+                <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Informations principales</h2>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom de campagne *</label>
-                <input
-                  required
-                  value={form.campaign_name}
-                  onChange={e => update('campaign_name', e.target.value)}
-                  placeholder="ex: Prospection DSI Île-de-France"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
+              <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <label style={labelStyle}>Nom client *</label>
+                    <input
+                      required
+                      className="h3a-input"
+                      value={form.client_name}
+                      onChange={e => update('client_name', e.target.value)}
+                      placeholder="ex: TechSolutions France"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Nom de campagne *</label>
+                    <input
+                      required
+                      className="h3a-input"
+                      value={form.campaign_name}
+                      onChange={e => update('campaign_name', e.target.value)}
+                      placeholder="ex: Prospection DSI Île-de-France"
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <label style={labelStyle}>Secteur</label>
+                    <input
+                      className="h3a-input"
+                      value={form.sector}
+                      onChange={e => update('sector', e.target.value)}
+                      placeholder="ex: Logiciels B2B / SaaS"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Statut</label>
+                    <select
+                      className="h3a-input"
+                      value={form.status}
+                      onChange={e => update('status', e.target.value)}
+                      style={inputStyle}
+                    >
+                      <option value="active">Active</option>
+                      <option value="paused">En pause</option>
+                      <option value="completed">Terminée</option>
+                    </select>
+                  </div>
+                </div>
+
               </div>
+            </Card>
+
+            <Card>
+              <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)' }}>
+                <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Contexte de vente</h2>
+              </div>
+              <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                <div>
+                  <label style={labelStyle}>Persona cible</label>
+                  <input
+                    className="h3a-input"
+                    value={form.target_persona}
+                    onChange={e => update('target_persona', e.target.value)}
+                    placeholder="ex: DSI ou DG dans PME 50-500 salariés"
+                    style={inputStyle}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Description de l&apos;offre</label>
+                  <textarea
+                    rows={4}
+                    className="h3a-input"
+                    value={form.offer_description}
+                    onChange={e => update('offer_description', e.target.value)}
+                    placeholder="Décrivez l'offre : bénéfices clés, différenciateurs..."
+                    style={{ ...inputStyle, resize: 'none' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Notes de script</label>
+                  <textarea
+                    rows={4}
+                    className="h3a-input"
+                    value={form.script_notes}
+                    onChange={e => update('script_notes', e.target.value)}
+                    placeholder="Consignes pour les SDRs, points à qualifier, objections courantes..."
+                    style={{ ...inputStyle, resize: 'none' }}
+                  />
+                </div>
+
+              </div>
+            </Card>
+
+            {error && (
+              <div style={{
+                background: 'rgba(239,68,68,.10)',
+                border: '1px solid rgba(239,68,68,.32)',
+                borderRadius: 10,
+                padding: '12px 16px',
+                fontSize: 13,
+                color: '#fca5a5',
+              }}>
+                {error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
+              <Button type="button" variant="secondary" onClick={() => router.back()}>Annuler</Button>
+              <Button type="submit" loading={loading}>Créer la campagne</Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Secteur</label>
-                <input
-                  value={form.sector}
-                  onChange={e => update('sector', e.target.value)}
-                  placeholder="ex: Logiciels B2B / SaaS"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Statut</label>
-                <select
-                  value={form.status}
-                  onChange={e => update('status', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-                >
-                  <option value="active">Active</option>
-                  <option value="paused">En pause</option>
-                  <option value="completed">Terminée</option>
-                </select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="mt-4">
-          <CardHeader><h2 className="text-sm font-semibold text-gray-900">Contexte de vente</h2></CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Persona cible</label>
-              <input
-                value={form.target_persona}
-                onChange={e => update('target_persona', e.target.value)}
-                placeholder="ex: DSI ou DG dans PME 50-500 salariés"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Description de l&apos;offre</label>
-              <textarea
-                rows={3}
-                value={form.offer_description}
-                onChange={e => update('offer_description', e.target.value)}
-                placeholder="Décrivez l'offre : bénéfices clés, différenciateurs..."
-                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 resize-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes de script</label>
-              <textarea
-                rows={3}
-                value={form.script_notes}
-                onChange={e => update('script_notes', e.target.value)}
-                placeholder="Consignes pour les SDRs, points à qualifier, objections courantes..."
-                className="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 resize-none"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {error && (
-          <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-3 mt-6">
-          <Button type="button" variant="secondary" onClick={() => router.back()}>Annuler</Button>
-          <Button type="submit" loading={loading}>Créer la campagne</Button>
+          </form>
         </div>
-      </form>
+      </main>
     </div>
   )
 }
