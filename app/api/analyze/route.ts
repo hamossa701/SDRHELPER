@@ -96,13 +96,28 @@ export async function POST(request: NextRequest) {
         hint: jobErr?.hint ?? null,
       }, { status: 500 })
     }
+    console.log('[JOB CREATED] job_id:', job.id, '| call_id:', call.id)
 
-    // ── Trigger worker (server-side only — secret never reaches browser) ──────
+    // ── Trigger worker (awaited — fire-and-forget is unreliable in Next.js) ───
+    // Awaiting ensures processing starts before we return. The route takes
+    // ~15s but the client already shows a spinner, so UX is fine.
     const origin = new URL(request.url).origin
-    fetch(`${origin}/api/analysis-worker/process`, {
-      method: 'POST',
-      headers: { 'x-worker-secret': process.env.WORKER_SECRET ?? '' },
-    }).catch(() => {})
+    console.log('[analyze] triggering worker for job:', job.id)
+    try {
+      const workerRes = await fetch(`${origin}/api/analysis-worker/process`, {
+        method: 'POST',
+        headers: { 'x-worker-secret': process.env.WORKER_SECRET ?? '' },
+      })
+      if (!workerRes.ok) {
+        const body = await workerRes.text().catch(() => '(no body)')
+        console.error(`[analyze] worker returned HTTP ${workerRes.status} — body: ${body} — job ${job.id} stuck in pending`)
+      } else {
+        const result = await workerRes.json().catch(() => null)
+        console.log(`[analyze] worker completed for job ${job.id}:`, JSON.stringify(result))
+      }
+    } catch (workerErr) {
+      console.error('[analyze] worker fetch threw:', workerErr instanceof Error ? workerErr.message : workerErr, '— job', job.id, 'stuck in pending')
+    }
 
     console.log('[analyze] success — call:', call.id, 'job:', job.id)
     return NextResponse.json({ call_id: call.id, job_id: job.id })

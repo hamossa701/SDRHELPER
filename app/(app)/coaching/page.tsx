@@ -1,8 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Card, CardContent, CardHeader, Badge, ScoreBadge } from '@/components/ui'
-import { getScoreColor } from '@/lib/utils'
+import { ScoreBadge } from '@/components/ui'
 import Link from 'next/link'
 import type { SDRCoachingStatsRow } from '@/types'
 
@@ -10,10 +9,10 @@ type TrendDir = 'improving' | 'stable' | 'declining'
 type Category = 'top' | 'stable' | 'needs_coaching'
 interface Priority { label: string; severity: 'high' | 'medium' }
 
-const TREND_CFG: Record<TrendDir, { label: string; cls: string }> = {
-  improving: { label: '↑ Progression', cls: 'text-emerald-600' },
-  stable:    { label: '→ Stable',      cls: 'text-blue-600'    },
-  declining: { label: '↓ Régression',  cls: 'text-red-500'     },
+const TREND_CFG: Record<TrendDir, { label: string; color: string }> = {
+  improving: { label: '↑ Progression', color: '#86efac' },
+  stable:    { label: '→ Stable',      color: 'var(--cyan)' },
+  declining: { label: '↓ Régression',  color: '#fca5a5' },
 }
 
 const SKILL_LABELS: Record<string, string> = {
@@ -22,8 +21,9 @@ const SKILL_LABELS: Record<string, string> = {
   skill_pain_point:         'Exploration besoin',
   skill_objection_handling: 'Gestion objections',
   skill_qualification:      'Qualification',
-  skill_closing:            'Closing / Prochaine étape',
+  skill_closing:            'Closing',
 }
+
 const SKILL_KEYS = [
   'skill_opening', 'skill_discovery', 'skill_pain_point',
   'skill_objection_handling', 'skill_qualification', 'skill_closing',
@@ -31,17 +31,15 @@ const SKILL_KEYS = [
 
 function prioritiesFromStats(s: SDRCoachingStatsRow): Priority[] {
   const c: Priority[] = []
-  if (s.booked_without_dm_rate   > 0.4) c.push({ label: 'Échoue fréquemment à confirmer le décideur',              severity: 'high' })
-  if (s.booked_without_pain_rate > 0.3) c.push({ label: 'RDV posés sans besoin identifié',                          severity: 'high' })
-  if (s.missing_next_step_rate   > 0.5) c.push({ label: 'Prochaines étapes souvent manquantes',                     severity: 'high' })
-  if (s.objection_no_detail_rate > 0.4) c.push({ label: 'Objections détectées mais non détaillées',                severity: 'high' })
-  else if (s.skill_objection_handling < 55) c.push({ label: 'Traitement des objections insuffisant',               severity: 'medium' })
-  if (s.skill_qualification < 55) c.push({ label: 'Qualification incomplète sur la majorité des appels',           severity: 'medium' })
-  if (s.skill_discovery     < 50) c.push({ label: 'Découverte insuffisante — décideur, besoin, urgence non explorés', severity: 'medium' })
-  if ((s.avg_sdr_quality ?? 100) < 50) c.push({ label: 'Score SDR globalement faible — revoir la structure des appels', severity: 'medium' })
-  return c
-    .sort((a, b) => (a.severity === 'high' ? 0 : 1) - (b.severity === 'high' ? 0 : 1))
-    .slice(0, 3)
+  if (s.booked_without_dm_rate   > 0.4) c.push({ label: 'Échoue à confirmer le décideur',           severity: 'high' })
+  if (s.booked_without_pain_rate > 0.3) c.push({ label: 'RDV posés sans besoin identifié',           severity: 'high' })
+  if (s.missing_next_step_rate   > 0.5) c.push({ label: 'Prochaines étapes souvent manquantes',      severity: 'high' })
+  if (s.objection_no_detail_rate > 0.4) c.push({ label: 'Objections non détaillées',                 severity: 'high' })
+  else if (s.skill_objection_handling < 55) c.push({ label: 'Traitement des objections insuffisant', severity: 'medium' })
+  if (s.skill_qualification < 55) c.push({ label: 'Qualification incomplète',                        severity: 'medium' })
+  if (s.skill_discovery     < 50) c.push({ label: 'Découverte insuffisante',                         severity: 'medium' })
+  if ((s.avg_sdr_quality ?? 100) < 50) c.push({ label: 'Score SDR globalement faible',               severity: 'medium' })
+  return c.sort((a, b) => (a.severity === 'high' ? 0 : 1) - (b.severity === 'high' ? 0 : 1)).slice(0, 3)
 }
 
 function finalCategory(s: SDRCoachingStatsRow, priorities: Priority[]): Category {
@@ -52,14 +50,14 @@ function finalCategory(s: SDRCoachingStatsRow, priorities: Priority[]): Category
 }
 
 function SkillBar({ label, score }: { label: string; score: number }) {
-  const color = score >= 70 ? 'bg-emerald-400' : score >= 50 ? 'bg-amber-400' : 'bg-red-400'
+  const barColor = score >= 70 ? '#86efac' : score >= 50 ? '#fcd34d' : '#fca5a5'
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-gray-500 w-40 shrink-0">{label}</span>
-      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className={`h-2 rounded-full ${color}`} style={{ width: `${score}%` }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9 }}>
+      <span style={{ fontSize: 12, color: 'var(--muted)', width: 140, flexShrink: 0, lineHeight: 1.3 }}>{label}</span>
+      <div style={{ flex: 1, height: 6, background: 'rgba(148,163,184,.14)', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ height: 6, borderRadius: 4, background: barColor, width: `${score}%` }} />
       </div>
-      <span className={`text-xs font-semibold w-8 text-right ${getScoreColor(score)}`}>{score}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, width: 28, textAlign: 'right', color: barColor, flexShrink: 0 }}>{score}</span>
     </div>
   )
 }
@@ -69,20 +67,19 @@ export default async function CoachingPage() {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } }
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: { name: string; value: string; options: object }[]) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {} } } }
   )
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile || !['owner', 'manager'].includes(profile.role)) redirect('/login')
 
-  // Single RPC call aggregates all per-SDR stats in SQL — no full call fetch
+  // eslint-disable-next-line react-hooks/purity
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
   const { data: statsData } = await supabase.rpc('get_sdr_coaching_stats', {
     p_org_id: profile.organization_id,
-    p_since:  thirtyDaysAgo,
+    p_since: thirtyDaysAgo,
   })
 
   const profiles = ((statsData || []) as SDRCoachingStatsRow[]).map(s => {
@@ -95,136 +92,132 @@ export default async function CoachingPage() {
   const improved = profiles.filter(p => p.trend === 'improving' && p.total_calls >= 4)
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Coaching SDR</h1>
-        <p className="text-gray-500 text-sm mt-1">Basé uniquement sur les données réelles — aucune invention</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+
+      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Coaching SDR</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Basé uniquement sur les données réelles · 30 derniers jours</div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <Card className="p-5 border-l-4 border-emerald-400">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Top Performers</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{top.length}</p>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{top.map(p => p.sdr_name).join(', ') || '—'}</p>
-        </Card>
-        <Card className="p-5 border-l-4 border-amber-400">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">En progression</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{improved.length}</p>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{improved.map(p => p.sdr_name).join(', ') || '—'}</p>
-        </Card>
-        <Card className="p-5 border-l-4 border-red-400">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Coaching requis</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{needs.length}</p>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{needs.map(p => p.sdr_name).join(', ') || '—'}</p>
-        </Card>
-      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {profiles.length === 0 && (
-        <Card><CardContent className="py-12 text-center text-sm text-gray-400">Aucun SDR dans cette organisation.</CardContent></Card>
-      )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(34,197,94,.7)', borderRadius: '12px 0 0 12px' }} />
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Top Performers</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: '#86efac', lineHeight: 1, marginBottom: 4 }}>{top.length}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{top.map(p => p.sdr_name).join(', ') || '—'}</div>
+          </div>
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(125,211,252,.6)', borderRadius: '12px 0 0 12px' }} />
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>En progression</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--cyan)', lineHeight: 1, marginBottom: 4 }}>{improved.length}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{improved.map(p => p.sdr_name).join(', ') || '—'}</div>
+          </div>
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(239,68,68,.7)', borderRadius: '12px 0 0 12px' }} />
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Coaching requis</div>
+            <div style={{ fontSize: 28, fontWeight: 700, color: '#fca5a5', lineHeight: 1, marginBottom: 4 }}>{needs.length}</div>
+            <div style={{ fontSize: 11, color: 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{needs.map(p => p.sdr_name).join(', ') || '—'}</div>
+          </div>
+        </div>
 
-      <div className="space-y-6">
+        {profiles.length === 0 && (
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted-2)' }}>Aucun SDR dans cette organisation.</div>
+          </div>
+        )}
+
         {profiles.map(p => {
-          const trend   = TREND_CFG[p.trend as TrendDir] ?? TREND_CFG.stable
-          const catCls  = p.cat === 'top'            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : p.cat === 'needs_coaching'              ? 'bg-red-50 text-red-600 border-red-200'
-            : 'bg-gray-100 text-gray-600 border-gray-200'
-          const catLabel = p.cat === 'top' ? 'Top Performer' : p.cat === 'needs_coaching' ? 'Coaching requis' : 'Stable'
+          const trend = TREND_CFG[p.trend as TrendDir] ?? TREND_CFG.stable
+          const catBg     = p.cat === 'top' ? 'rgba(34,197,94,.10)'   : p.cat === 'needs_coaching' ? 'rgba(239,68,68,.10)'  : 'rgba(125,211,252,.08)'
+          const catColor  = p.cat === 'top' ? '#86efac'               : p.cat === 'needs_coaching' ? '#fca5a5'              : 'var(--cyan)'
+          const catBorder = p.cat === 'top' ? 'rgba(34,197,94,.35)'   : p.cat === 'needs_coaching' ? 'rgba(239,68,68,.35)'  : 'rgba(125,211,252,.28)'
+          const catLabel  = p.cat === 'top' ? 'Top Performer'         : p.cat === 'needs_coaching' ? 'Coaching requis'      : 'Stable'
 
           return (
-            <Card key={p.sdr_id}>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600">
-                      {p.sdr_name.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{p.sdr_name}</p>
-                      <p className="text-xs text-gray-400">{p.total_calls} appel(s) · {p.calls_reviewed} révisé(s)</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className={catCls}>{catLabel}</Badge>
-                    <span className={`text-xs font-medium ${trend.cls}`}>{trend.label}</span>
-                  </div>
-                </div>
-              </CardHeader>
+            <div key={p.sdr_id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
 
-              <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4">
-                {/* Performance metrics */}
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Métriques</p>
-                  <div className="space-y-2 text-sm">
-                    {[
-                      { label: 'Score SDR moy.',     node: <ScoreBadge score={p.avg_sdr_quality} /> },
-                      { label: 'Qualité RDV moy.',   node: <ScoreBadge score={p.avg_appointment_quality} /> },
-                      { label: 'Taux qualification', node: <span className={`font-semibold text-sm ${getScoreColor(p.qualification_rate)}`}>{p.qualification_rate > 0 ? `${p.qualification_rate}%` : '—'}</span> },
-                      { label: 'Taux flags',         node: <span className={`font-semibold text-sm ${(p.review_flag_rate ?? 0) > 50 ? 'text-red-500' : 'text-gray-700'}`}>{p.review_flag_rate !== null ? `${p.review_flag_rate}%` : '—'}</span> },
-                      { label: 'Confiance IA moy.',  node: <span className="font-medium text-sm text-gray-700">{p.avg_ai_confidence !== null ? `${p.avg_ai_confidence}%` : '—'}</span> },
-                    ].map(({ label, node }) => (
-                      <div key={label} className="flex justify-between items-center">
-                        <span className="text-gray-500">{label}</span>
-                        {node}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Skill breakdown */}
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Compétences</p>
-                  <div className="space-y-2.5">
-                    {SKILL_KEYS.map(key => (
-                      <SkillBar key={key} label={SKILL_LABELS[key]} score={p[key] as number} />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Priorities + example calls */}
-                <div className="space-y-4">
+              <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,var(--indigo),var(--cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>{p.sdr_name.charAt(0)}</div>
                   <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Priorités coaching</p>
-                    {p.priorities.length === 0
-                      ? <p className="text-xs text-gray-400">Aucune priorité identifiée</p>
-                      : <ul className="space-y-1.5">
-                          {p.priorities.map((pr, i) => (
-                            <li key={i} className="flex items-start gap-2 text-xs">
-                              <span className={pr.severity === 'high' ? 'text-red-500 mt-0.5' : 'text-amber-500 mt-0.5'}>●</span>
-                              <span className="text-gray-700">{pr.label}</span>
-                            </li>
-                          ))}
-                        </ul>
-                    }
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Appels à écouter</p>
-                    <ul className="space-y-2">
-                      {p.best_call_id && (
-                        <li>
-                          <Link href={`/calls/${p.best_call_id}`} className="flex items-start gap-2 group">
-                            <span className="text-xs text-emerald-500 mt-0.5 shrink-0">✓</span>
-                            <p className="text-xs text-gray-700 group-hover:text-slate-900">Meilleur appel à partager</p>
-                          </Link>
-                        </li>
-                      )}
-                      {p.worst_call_id && p.worst_call_id !== p.best_call_id && (
-                        <li>
-                          <Link href={`/calls/${p.worst_call_id}`} className="flex items-start gap-2 group">
-                            <span className="text-xs text-red-400 mt-0.5 shrink-0">✗</span>
-                            <p className="text-xs text-gray-700 group-hover:text-slate-900">Appel à analyser ensemble</p>
-                          </Link>
-                        </li>
-                      )}
-                      {!p.best_call_id && <p className="text-xs text-gray-400">Pas encore d&apos;appels analysés</p>}
-                    </ul>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{p.sdr_name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-2)' }}>{p.total_calls} appel{p.total_calls !== 1 ? 's' : ''} · {p.calls_reviewed} révisé{p.calls_reviewed !== 1 ? 's' : ''}</div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: catBg, color: catColor, border: `1px solid ${catBorder}` }}>{catLabel}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: trend.color }}>{trend.label}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr' }}>
+
+                <div style={{ padding: '16px 18px', borderRight: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Métriques</div>
+                  {[
+                    { label: 'Score SDR moy.',     node: <ScoreBadge score={p.avg_sdr_quality} /> },
+                    { label: 'Qualité RDV moy.',   node: <ScoreBadge score={p.avg_appointment_quality} /> },
+                    { label: 'Taux qualification', node: <span style={{ fontSize: 12, fontWeight: 700, color: p.qualification_rate >= 60 ? '#86efac' : p.qualification_rate >= 40 ? '#fcd34d' : '#fca5a5' }}>{p.qualification_rate > 0 ? `${p.qualification_rate}%` : '—'}</span> },
+                    { label: 'Taux flags',         node: <span style={{ fontSize: 12, fontWeight: 700, color: (p.review_flag_rate ?? 0) > 50 ? '#fca5a5' : 'var(--muted)' }}>{p.review_flag_rate !== null ? `${p.review_flag_rate}%` : '—'}</span> },
+                    { label: 'Confiance IA',       node: <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{p.avg_ai_confidence !== null ? `${p.avg_ai_confidence}%` : '—'}</span> },
+                  ].map(({ label, node }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
+                      <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>{label}</span>
+                      {node}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ padding: '16px 18px', borderRight: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Compétences</div>
+                  {SKILL_KEYS.map(key => (
+                    <SkillBar key={key} label={SKILL_LABELS[key]} score={p[key] as number} />
+                  ))}
+                </div>
+
+                <div style={{ padding: '16px 18px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Priorités coaching</div>
+                  {p.priorities.length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--muted-2)', marginBottom: 16 }}>Aucune priorité identifiée</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                      {p.priorities.map((pr, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <span style={{ flexShrink: 0, marginTop: 3, width: 6, height: 6, borderRadius: '50%', background: pr.severity === 'high' ? '#fca5a5' : '#fcd34d', display: 'inline-block' }} />
+                          <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>{pr.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 10 }}>Appels à écouter</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {p.best_call_id && (
+                      <Link href={`/calls/${p.best_call_id}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ fontSize: 11, color: '#86efac', flexShrink: 0, marginTop: 1 }}>✓</span>
+                        <span style={{ fontSize: 12, color: 'var(--cyan)' }}>Meilleur appel à partager</span>
+                      </Link>
+                    )}
+                    {p.worst_call_id && p.worst_call_id !== p.best_call_id && (
+                      <Link href={`/calls/${p.worst_call_id}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ fontSize: 11, color: '#fca5a5', flexShrink: 0, marginTop: 1 }}>✗</span>
+                        <span style={{ fontSize: 12, color: 'var(--cyan)' }}>Appel à analyser ensemble</span>
+                      </Link>
+                    )}
+                    {!p.best_call_id && (
+                      <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>Pas encore d&apos;appels analysés</span>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
           )
         })}
+
       </div>
     </div>
   )

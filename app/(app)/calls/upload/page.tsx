@@ -27,7 +27,10 @@ export default function UploadCallPage() {
   const [jobError, setJobError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [retrying, setRetrying] = useState(false)
+  const [timedOut, setTimedOut] = useState(false)
+  const [lastKnownStatus, setLastKnownStatus] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -52,26 +55,36 @@ export default function UploadCallPage() {
 
   useEffect(() => {
     if (!jobId || step === 'form' || step === 'completed' || step === 'failed') return
+
+    // 60-second timeout — show stuck message with last known status
+    timeoutRef.current = setTimeout(() => setTimedOut(true), 60_000)
+
     pollRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/analyze/status?job_id=${jobId}`)
         if (!res.ok) return
         const data = await res.json()
+        setLastKnownStatus(data.status)
         if (data.status === 'processing' && step !== 'processing') setStep('processing')
         if (data.status === 'completed') {
           clearInterval(pollRef.current!)
+          clearTimeout(timeoutRef.current!)
           setStep('completed')
           setTimeout(() => router.push(`/calls/${data.call_id || callId}`), 1200)
         }
         if (data.status === 'failed') {
           clearInterval(pollRef.current!)
+          clearTimeout(timeoutRef.current!)
           setStep('failed')
           setJobError(data.error_message ?? null)
           setRetryCount(data.retry_count ?? 0)
         }
       } catch { /* network blip */ }
     }, 3000)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, step])
 
@@ -105,6 +118,31 @@ export default function UploadCallPage() {
   }
 
   if (step === 'queued' || step === 'processing') {
+    if (timedOut) {
+      return (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+          <div style={{ background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.32)', borderRadius: 12, padding: 24, maxWidth: 480, width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#fcd34d' }}>Analyse bloquée</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>
+              Le traitement dure plus de 60 secondes.{lastKnownStatus ? ` Dernier statut : ${lastKnownStatus}.` : ''}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>
+              Le job est peut-être toujours en cours. Vérifiez vos appels dans quelques instants ou relancez.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => { setTimedOut(false); setLastKnownStatus(null) }}
+                style={{ padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)', fontFamily: 'Geist, sans-serif' }}>
+                Continuer d&apos;attendre
+              </button>
+              <button onClick={() => { setStep('form'); setJobId(null); setCallId(null); setTimedOut(false) }}
+                style={{ padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#4f46e5,#2563eb)', border: '1px solid rgba(125,211,252,.42)', fontFamily: 'Geist, sans-serif' }}>
+                Nouvel appel
+              </button>
+            </div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 }}>
         <span style={{ width: 36, height: 36, border: '3px solid rgba(148,163,184,.18)', borderTopColor: 'var(--cyan)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />

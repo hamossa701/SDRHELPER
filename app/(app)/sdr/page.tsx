@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge, Empty } from '@/components/ui'
+import { StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import Link from 'next/link'
 import type { CallAnalysis, SDRDashboardKPIs } from '@/types'
@@ -11,17 +11,14 @@ export default async function SDRPage() {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } }
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: { name: string; value: string; options: object }[]) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {} } } }
   )
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile || profile.role !== 'sdr') redirect('/login')
 
-  // KPIs: full SQL aggregation — correct regardless of call volume
-  // Display list: limited to 50 most recent for the table view only
   const [{ data: kpisData }, { data: calls }] = await Promise.all([
     supabase.rpc('get_sdr_dashboard_kpis', { p_sdr_id: user.id }),
     supabase
@@ -36,80 +33,89 @@ export default async function SDRPage() {
     total_calls: 0, rdv_booked: 0, avg_rdv_quality: null, avg_sdr_quality: null, conversion_rate: 0,
   }
 
-  // Qualitative feedback — from last 50 fetched calls (qualitative, not KPIs)
-  const analyses = (calls || []).map((c: any) => c.call_analyses).filter(Boolean) as CallAnalysis[]
+  const analyses = (calls || []).map((c: { call_analyses: CallAnalysis }) => c.call_analyses).filter(Boolean) as CallAnalysis[]
   const countFreq = (arr: string[]) => {
     const map: Record<string, number> = {}
     arr.forEach(item => { map[item] = (map[item] || 0) + 1 })
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5)
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 4)
   }
-  const topStrengths = countFreq(analyses.flatMap(a => a?.strengths || []))
+  const topStrengths  = countFreq(analyses.flatMap(a => a?.strengths || []))
+  const topCoaching   = countFreq(analyses.flatMap(a => a?.coaching_recommendations || []))
   const topWeaknesses = countFreq(analyses.flatMap(a => a?.weaknesses || []))
-  const topCoaching  = countFreq(analyses.flatMap(a => a?.coaching_recommendations || []))
+  const hasRecommendation = topCoaching.length > 0 || topWeaknesses.length > 0
+
+  const scoreColor = (kpis.avg_sdr_quality ?? 0) >= 70 ? '#86efac'
+    : (kpis.avg_sdr_quality ?? 0) >= 50 ? '#fcd34d'
+    : '#fca5a5'
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Mon tableau de bord</h1>
-        <p className="text-gray-500 text-sm mt-1">Bonjour {profile.name} — voici vos performances</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+
+      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Mon tableau de bord</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Bonjour {profile.name} — vos performances en temps réel</div>
+        </div>
+        <Link href="/calls/upload" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 8px 20px rgba(37,99,235,.18)' }}>
+          <span className="mat" style={{ fontSize: 15 }}>mic</span>
+          Analyser un appel
+        </Link>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Appels analysés" value={kpis.total_calls} />
-        <StatCard label="RDV posés"        value={kpis.rdv_booked} />
-        <StatCard label="Qualité RDV"      value={kpis.avg_rdv_quality ?? '—'} sub="/100" />
-        <StatCard label="Mon score SDR"    value={kpis.avg_sdr_quality ?? '—'} sub="/100" />
-      </div>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-900">Mes appels récents</h2>
-                <Link href="/calls/upload" className="text-xs text-slate-600 hover:underline">+ Analyser un appel</Link>
-              </div>
-            </CardHeader>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          <StatCard label="Appels analysés" value={kpis.total_calls} />
+          <StatCard label="RDV posés"        value={kpis.rdv_booked} />
+          <StatCard label="Qualité RDV"      value={kpis.avg_rdv_quality ?? '—'} sub="/100" />
+          <StatCard label="Score SDR"        value={kpis.avg_sdr_quality ?? '—'} sub="/100" />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
+
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Mes appels récents</span>
+              <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{calls?.length || 0} appel{(calls?.length || 0) !== 1 ? 's' : ''}</span>
+            </div>
             {!calls?.length ? (
-              <CardContent>
-                <Empty
-                  title="Aucun appel analysé"
-                  description="Analysez votre premier appel pour voir vos performances."
-                  action={<Link href="/calls/upload"><Badge className="bg-slate-800 text-white border-slate-800 cursor-pointer">Analyser un appel</Badge></Link>}
-                />
-              </CardContent>
+              <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>Aucun appel analysé</div>
+                <div style={{ fontSize: 12, color: 'var(--muted-2)', marginBottom: 16 }}>Analysez votre premier appel pour voir vos performances.</div>
+                <Link href="/calls/upload" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)' }}>
+                  <span className="mat" style={{ fontSize: 15 }}>mic</span>
+                  Analyser un appel
+                </Link>
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Prospect</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Intérêt</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">RDV</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Mon score</th>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Date</th>
+                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Prospect</th>
+                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Intérêt</th>
+                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>RDV</th>
+                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Mon score</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {calls.map((call: any) => (
-                      <tr key={call.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-3 text-gray-500">{formatDateShort(call.call_datetime)}</td>
-                        <td className="px-6 py-3 font-medium text-gray-800">{call.call_analyses?.prospect_company || '—'}</td>
-                        <td className="px-6 py-3">
+                  <tbody>
+                    {calls.map((call) => (
+                      <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '11px 18px', color: 'var(--muted-2)', whiteSpace: 'nowrap' }}>{formatDateShort(call.call_datetime)}</td>
+                        <td style={{ padding: '11px 18px', fontWeight: 600, color: 'var(--text)' }}>{call.call_analyses?.prospect_company || '—'}</td>
+                        <td style={{ padding: '11px 18px' }}>
                           <Badge className={getInterestBg(call.call_analyses?.interest_level ?? null)}>
                             {getInterestLabel(call.call_analyses?.interest_level ?? null)}
                           </Badge>
                         </td>
-                        <td className="px-6 py-3">
+                        <td style={{ padding: '11px 18px' }}>
                           {call.call_analyses?.appointment_booked
-                            ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Posé</Badge>
-                            : <span className="text-gray-400">—</span>
-                          }
+                            ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Posé</Badge>
+                            : <span style={{ color: 'var(--muted-2)' }}>—</span>}
                         </td>
-                        <td className="px-6 py-3">
-                          <Link href={`/calls/${call.id}`}>
-                            <ScoreBadge score={call.call_analyses?.sdr_quality_score ?? null} />
-                          </Link>
+                        <td style={{ padding: '11px 18px' }}>
+                          <Link href={`/calls/${call.id}`}><ScoreBadge score={call.call_analyses?.sdr_quality_score ?? null} /></Link>
                         </td>
                       </tr>
                     ))}
@@ -117,75 +123,72 @@ export default async function SDRPage() {
                 </table>
               </div>
             )}
-          </Card>
-        </div>
+          </div>
 
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="pt-5">
-              <div className="text-center mb-4">
-                <div className={`text-5xl font-bold mb-1 ${(kpis.avg_sdr_quality ?? 0) >= 70 ? 'text-emerald-600' : (kpis.avg_sdr_quality ?? 0) >= 50 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {kpis.avg_sdr_quality ?? '—'}
-                </div>
-                <p className="text-xs text-gray-400">Score SDR moyen</p>
-              </div>
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Appels analysés</span>
-                  <span className="font-medium">{kpis.total_calls}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Taux de RDV</span>
-                  <span className="font-medium">{kpis.conversion_rate}%</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          {topStrengths.length > 0 && (
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Vos points forts</h3></CardHeader>
-              <CardContent>
-                <ul className="space-y-1.5">
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+              <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Résumé de performance</span>
+              </div>
+              <div style={{ padding: '20px 18px' }}>
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <div style={{ fontSize: 48, fontWeight: 700, color: scoreColor, lineHeight: 1, letterSpacing: '-.02em' }}>{kpis.avg_sdr_quality ?? '—'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 4 }}>Score SDR moyen</div>
+                </div>
+                {[
+                  { label: 'Appels analysés',  value: String(kpis.total_calls) },
+                  { label: 'RDV posés',         value: String(kpis.rdv_booked) },
+                  { label: 'Taux de RDV',       value: `${kpis.conversion_rate}%` },
+                  { label: 'Qualité RDV moy.',  value: kpis.avg_rdv_quality !== null ? `${kpis.avg_rdv_quality}/100` : '—' },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {topStrengths.length > 0 && (
+              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+                <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Vos points forts</span>
+                </div>
+                <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {topStrengths.map(([item]) => (
-                    <li key={item} className="text-xs text-gray-600 flex items-start gap-1.5">
-                      <span className="text-emerald-500 mt-0.5">•</span>{item}
-                    </li>
+                    <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span style={{ color: '#86efac', flexShrink: 0, fontSize: 12, marginTop: 1 }}>+</span>
+                      <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>{item}</span>
+                    </div>
                   ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+                </div>
+              </div>
+            )}
 
-          {topWeaknesses.length > 0 && (
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Axes d&apos;amélioration</h3></CardHeader>
-              <CardContent>
-                <ul className="space-y-1.5">
-                  {topWeaknesses.map(([item]) => (
-                    <li key={item} className="text-xs text-gray-600 flex items-start gap-1.5">
-                      <span className="text-amber-500 mt-0.5">•</span>{item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+              <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Prochaine amélioration</span>
+              </div>
+              <div style={{ padding: '14px 18px' }}>
+                {!hasRecommendation ? (
+                  <div style={{ fontSize: 12, color: 'var(--muted-2)', lineHeight: 1.5 }}>
+                    Analysez plus d&apos;appels pour générer une recommandation fiable.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(topCoaching.length > 0 ? topCoaching : topWeaknesses).slice(0, 3).map(([item]) => (
+                      <div key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ color: 'var(--cyan)', flexShrink: 0, fontSize: 12, marginTop: 1 }}>→</span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.4 }}>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
-          {topCoaching.length > 0 && (
-            <Card>
-              <CardHeader><h3 className="text-sm font-semibold text-gray-900">Conseils coaching</h3></CardHeader>
-              <CardContent>
-                <ul className="space-y-1.5">
-                  {topCoaching.map(([item]) => (
-                    <li key={item} className="text-xs text-gray-600 flex items-start gap-1.5">
-                      <span className="text-blue-500 mt-0.5">→</span>{item}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
+          </div>
         </div>
       </div>
     </div>

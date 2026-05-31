@@ -29,8 +29,10 @@ export async function POST(request: NextRequest) {
   }
 
   if (!jobs?.length) {
+    console.log('[worker] no pending jobs')
     return NextResponse.json({ processed: 0, results: [] })
   }
+  console.log(`[worker] claimed ${jobs.length} job(s):`, jobs.map((j: any) => j.id))
 
   const results: Array<{ job_id: string; outcome: string }> = []
 
@@ -43,18 +45,26 @@ export async function POST(request: NextRequest) {
 }
 
 async function processOneJob(supabase: ReturnType<typeof createAdminClient>, job: any) {
+  const tag = `[worker][${job.id}]`
   try {
+    console.log(`[JOB PROCESSING STARTED] job_id:${job.id} call_id:${job.call_id}`)
+    // ── Mark processing ─────────────────────────────────────────────────────
+    await supabase.from('analysis_jobs').update({ status: 'processing', started_at: new Date().toISOString() }).eq('id', job.id)
+
     // ── Fetch call + campaign ───────────────────────────────────────────────
+    console.log(`[TRANSCRIPTION STARTED] ${tag} fetching call row`)
     const { data: call, error: callErr } = await supabase
       .from('calls')
       .select('id, transcript, organization_id, campaigns(client_name, sector, offer_description, target_persona)')
       .eq('id', job.call_id)
       .single()
 
-    if (callErr || !call) throw new Error('Appel introuvable')
+    if (callErr || !call) throw new Error(`Appel introuvable: ${callErr?.message}`)
     if (!call.transcript?.trim()) throw new Error('Transcription vide')
+    console.log(`[TRANSCRIPTION DONE] ${tag} ${call.transcript.length} chars`)
 
     // ── Run AI analysis ─────────────────────────────────────────────────────
+    console.log(`[AI ANALYSIS STARTED] ${tag} calling claude-sonnet-4-5`)
     const campaign = (call as any).campaigns ?? {}
     const { analysis, inputTokens, outputTokens } = await analyzeCallTranscript(
       call.transcript,
@@ -65,8 +75,10 @@ async function processOneJob(supabase: ReturnType<typeof createAdminClient>, job
         target_persona:    campaign.target_persona,
       }
     )
+    console.log(`[AI ANALYSIS DONE] ${tag} in:${inputTokens} out:${outputTokens} tokens`)
 
     // ── Store analysis ──────────────────────────────────────────────────────
+    console.log(`[SUPABASE SAVE STARTED] ${tag} inserting call_analyses`)
     const { error: analysisErr } = await supabase.from('call_analyses').insert({
       call_id: call.id,
       call_summary: analysis.call_summary,
@@ -106,6 +118,7 @@ async function processOneJob(supabase: ReturnType<typeof createAdminClient>, job
     })
 
     if (analysisErr) throw new Error(`Stockage analyse : ${analysisErr.message}`)
+    console.log(`[SUPABASE SAVE DONE] ${tag} call_analyses saved`)
 
     // ── Log AI cost ─────────────────────────────────────────────────────────
     const estimatedCost = inputTokens * COST_PER_INPUT_TOKEN + outputTokens * COST_PER_OUTPUT_TOKEN
@@ -125,6 +138,7 @@ async function processOneJob(supabase: ReturnType<typeof createAdminClient>, job
       completed_at:  new Date().toISOString(),
       error_message: null,
     }).eq('id', job.id)
+    console.log(`[JOB COMPLETED] job_id:${job.id}`)
 
     return 'completed'
 
@@ -132,6 +146,7 @@ async function processOneJob(supabase: ReturnType<typeof createAdminClient>, job
     const message = err instanceof Error ? err.message : 'Erreur inconnue'
     const newCount = (job.retry_count ?? 0) + 1
     const permanent = newCount >= MAX_RETRIES
+    console.error(`[JOB FAILED] job_id:${job.id} attempt:${newCount}/${MAX_RETRIES} permanent:${permanent} error: ${message}`)
 
     const backoffIdx = Math.min(newCount - 1, BACKOFF_SECONDS.length - 1)
     const retryAfter = permanent
