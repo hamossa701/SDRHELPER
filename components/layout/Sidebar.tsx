@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { href: '/client',       label: 'Rapport client',    icon: 'description',     roles: ['client'] },
   { href: '/coaching',     label: 'Coaching SDR',      icon: 'school',          roles: ['owner', 'manager'] },
   { href: '/campaigns',     label: 'Campagnes',          icon: 'folder',          roles: ['owner', 'manager', 'sdr'] },
+  { href: '/admin/evaluation', label: 'Evaluation IA',    icon: 'science',         roles: ['owner'] },
   { href: '/admin/planning',label: 'Planning',           icon: 'calendar_month',  roles: ['owner'] },
   { href: '/calls/upload',  label: 'Analyser un appel',  icon: 'mic',             roles: ['owner', 'manager', 'sdr'] },
   { href: '/admin/users',  label: 'Utilisateurs',      icon: 'group',           roles: ['owner'] },

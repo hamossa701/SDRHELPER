@@ -12,6 +12,18 @@ export type HallucinationRisk = 'low' | 'medium' | 'high'
 export type Plan = 'starter' | 'pro' | 'enterprise'
 export type ReviewStatus = 'open' | 'in_review' | 'resolved'
 export type AnalysisJobStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type EvaluationCategory =
+  | 'qualified_appointment'
+  | 'unqualified_appointment'
+  | 'gatekeeper'
+  | 'voicemail'
+  | 'wrong_contact'
+  | 'budget_objection'
+  | 'competitor_locked'
+  | 'interested_no_meeting'
+  | 'strong_opportunity'
+  | 'no_need'
+export type EvaluationDifficulty = 'easy' | 'medium' | 'hard'
 
 export interface Organization {
   id: string
@@ -91,6 +103,41 @@ export interface AIUsageLog {
   input_tokens: number
   output_tokens: number
   estimated_cost_usd: number
+  created_at: string
+}
+
+export interface EvaluationCase {
+  id: string
+  title: string
+  transcript: string
+  expected_decision_maker: boolean
+  expected_rdv_pose: boolean
+  expected_rdv_qualifie: boolean
+  expected_temperature: InterestLevel
+  expected_reason: string
+  category: EvaluationCategory
+  difficulty: EvaluationDifficulty
+  created_at: string
+}
+
+export interface EvaluationResult {
+  id: string
+  case_id: string
+  run_id: string
+  model: string
+  actual_decision_maker: boolean | null
+  actual_rdv_pose: boolean | null
+  actual_rdv_qualifie: boolean | null
+  actual_temperature: InterestLevel | null
+  score: number | null
+  passed: boolean
+  mismatches: string[]
+  ai_summary: string | null
+  ai_reason: string | null
+  error_message: string | null
+  input_tokens: number | null
+  output_tokens: number | null
+  created_by: string | null
   created_at: string
 }
 

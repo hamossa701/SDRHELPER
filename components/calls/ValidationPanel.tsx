@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, Badge, Button } from '@/components/ui'
+import { Badge, Button } from '@/components/ui'
 import type { CallAnalysis, FieldCorrection, FieldValidationStatus, AuditEntry } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { computeTrustScore } from '@/lib/trust-score'
@@ -26,6 +26,21 @@ const AUDIT_LABELS: Record<string, string> = {
   validate_field:   'Champ validé',
   correct_field:    'Champ corrigé',
   approve_analysis: 'Analyse approuvée',
+}
+
+const STATUS_STYLES: Record<FieldValidationStatus, { bg: string; color: string; border: string }> = {
+  pending:   { bg: 'rgba(2,6,23,.28)',      color: 'var(--muted)',    border: 'var(--border)' },
+  validated: { bg: 'rgba(34,197,94,.10)',   color: '#86efac',         border: 'rgba(34,197,94,.35)' },
+  corrected: { bg: 'rgba(125,211,252,.10)', color: 'var(--cyan)',     border: 'rgba(125,211,252,.35)' },
+}
+
+function StatusBadge({ status }: { status: FieldValidationStatus }) {
+  const { bg, color, border } = STATUS_STYLES[status]
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: bg, color, border: `1px solid ${border}`, whiteSpace: 'nowrap' }}>
+      {STATUS_CFG[status].label}
+    </span>
+  )
 }
 
 interface Props {
@@ -110,169 +125,177 @@ export function ValidationPanel({ analysis, corrections, auditLog, canEdit }: Pr
     } finally { setApproving(false) }
   }
 
+  // column grid shared between header and rows
+  const COL = '140px 1fr 110px 160px'
+
   return (
-    <div className="space-y-4 h3a-review-panel">
+    <div className="h3a-review-panel">
       <style>{`
+        .h3a-review-panel .text-emerald-700,
+        .h3a-review-panel .text-emerald-600 { color: #86efac !important; }
+        .h3a-review-panel .text-blue-700,
+        .h3a-review-panel .text-blue-600 { color: var(--cyan) !important; }
+        .h3a-review-panel .bg-gray-100,
+        .h3a-review-panel .bg-emerald-50,
+        .h3a-review-panel .bg-blue-50 { background: rgba(2,6,23,.34) !important; }
+        .h3a-review-panel .border-gray-200,
+        .h3a-review-panel .border-blue-200,
+        .h3a-review-panel .border-emerald-200 { border-color: var(--border) !important; }
         .h3a-review-panel .text-gray-900,
         .h3a-review-panel .text-gray-800 { color: var(--text) !important; }
         .h3a-review-panel .text-gray-600,
         .h3a-review-panel .text-gray-500,
         .h3a-review-panel .text-gray-400 { color: var(--muted) !important; }
-        .h3a-review-panel .bg-gray-100,
-        .h3a-review-panel .bg-emerald-50,
-        .h3a-review-panel .bg-blue-50 { background: rgba(2,6,23,.34) !important; }
-        .h3a-review-panel .text-emerald-700,
-        .h3a-review-panel .text-emerald-600 { color: #86efac !important; }
-        .h3a-review-panel .text-blue-700,
-        .h3a-review-panel .text-blue-600 { color: var(--cyan) !important; }
-        .h3a-review-panel .border-gray-300,
-        .h3a-review-panel .border-gray-200,
-        .h3a-review-panel .border-blue-200,
-        .h3a-review-panel .border-emerald-200,
-        .h3a-review-panel .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border) !important; }
-        .h3a-review-panel input,
-        .h3a-review-panel textarea {
-          background: var(--input-bg) !important;
-          border-color: var(--border) !important;
-          color: var(--text) !important;
-          font-family: Geist, system-ui, sans-serif;
-        }
-        .h3a-review-panel input:focus,
-        .h3a-review-panel textarea:focus {
-          border-color: var(--border-strong) !important;
-          box-shadow: 0 0 0 3px rgba(125,211,252,.10) !important;
-        }
       `}</style>
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Panneau de révision</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {trust.validated + trust.corrected} champ(s) révisé(s) · {trust.validated} validé(s) · {trust.corrected} corrigé(s)
-              </p>
-              {approved && approvedBy && (
-                <p className="text-xs text-emerald-600 mt-1">
-                  Validé par {approvedBy}{approvedAt ? ` · ${formatDate(approvedAt)}` : ''}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {trust.score !== null && (
-                <Badge className={trust.labelBg}>Fiabilité IA : {trust.label} ({trust.score}%)</Badge>
-              )}
-              {approved
-                ? <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">✓ Approuvé</Badge>
-                : canEdit && <Button size="sm" onClick={handleApprove} loading={approving}>Approuver l&apos;analyse</Button>
-              }
-            </div>
+
+      {/* ── Panel header ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 3 }}>Panneau de révision</div>
+          <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>
+            {trust.validated + trust.corrected} champ(s) révisé(s) · {trust.validated} validé(s) · {trust.corrected} corrigé(s)
           </div>
-        </CardHeader>
+          {approved && approvedBy && (
+            <div style={{ fontSize: 12, color: '#86efac', marginTop: 4 }}>
+              Validé par {approvedBy}{approvedAt ? ` · ${formatDate(approvedAt)}` : ''}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {trust.score !== null && (
+            <Badge className={trust.labelBg}>Fiabilité IA : {trust.label} ({trust.score}%)</Badge>
+          )}
+          {approved
+            ? <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: 'rgba(34,197,94,.10)', color: '#86efac', border: '1px solid rgba(34,197,94,.35)' }}>✓ Approuvé</span>
+            : canEdit && <Button size="sm" onClick={handleApprove} loading={approving}>Approuver l&apos;analyse</Button>
+          }
+        </div>
+      </div>
 
-        <CardContent className="p-0">
-          <div className="divide-y divide-gray-50">
-            {REVIEW_FIELDS.map(field => {
-              const key     = field.key as string
-              const status  = getStatus(key)
-              const sc      = STATUS_CFG[status]
-              const display = getDisplayValue(field.key)
-              const corr    = corrMap[key]
-              const isEditing = editingField === key
-              const isSaving  = saving === key
+      {/* ── Review table ── */}
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
 
-              return (
-                <div key={key} className="px-6 py-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      {/* Part 1 — label + validation status badge + confidence */}
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{field.label}</span>
-                        <Badge className={sc.cls + ' text-xs'}>{sc.label}</Badge>
-                        {analysis.ai_confidence !== null && (
-                          <span className="text-xs text-gray-400">Confiance : {analysis.ai_confidence}%</span>
-                        )}
+        {/* Column headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: COL, padding: '8px 16px', background: 'var(--thead)', borderBottom: '1px solid var(--border)', gap: 0 }}>
+          {['Champ', 'Valeur extraite', 'Statut', 'Actions'].map(h => (
+            <span key={h} style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{h}</span>
+          ))}
+        </div>
+
+        {/* Rows */}
+        {REVIEW_FIELDS.map((field, idx) => {
+          const key       = field.key as string
+          const status    = getStatus(key)
+          const display   = getDisplayValue(field.key)
+          const corr      = corrMap[key]
+          const isEditing = editingField === key
+          const isSaving  = saving === key
+          const isLast    = idx === REVIEW_FIELDS.length - 1
+
+          return (
+            <div
+              key={key}
+              style={{ display: 'grid', gridTemplateColumns: COL, padding: '11px 16px', alignItems: isEditing ? 'flex-start' : 'center', gap: 0, borderBottom: isLast ? 'none' : '1px solid var(--border)' }}
+            >
+              {/* Champ */}
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', paddingRight: 12 }}>{field.label}</span>
+
+              {/* Valeur extraite */}
+              <div style={{ paddingRight: 16, minWidth: 0 }}>
+                {!isEditing ? (
+                  <>
+                    <span style={{ fontSize: 13, color: display ? 'var(--text)' : 'var(--muted-2)', fontStyle: display ? 'normal' : 'italic', lineHeight: 1.5, wordBreak: 'break-word' }}>
+                      {display || '—'}
+                    </span>
+                    {corr && corr.original_value !== corr.corrected_value && (
+                      <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 3, fontStyle: 'italic' }}>
+                        Original IA : {corr.original_value || '—'}
                       </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {field.multiline
+                      ? <textarea rows={3} value={editValue} onChange={e => setEditValue(e.target.value)} autoFocus
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'Geist, system-ui, sans-serif', resize: 'none', outline: 'none', lineHeight: 1.5 }}
+                        />
+                      : <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} autoFocus
+                          style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--input-bg)', color: 'var(--text)', fontSize: 13, fontFamily: 'Geist, system-ui, sans-serif', outline: 'none' }}
+                        />
+                    }
+                    {corr && (
+                      <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 4 }}>Original IA : {corr.original_value || '—'}</div>
+                    )}
+                  </>
+                )}
+              </div>
 
-                      {!isEditing ? (
-                        <>
-                          <p className="text-sm text-gray-800">{display || <span className="text-gray-400 italic">—</span>}</p>
-                          {corr && corr.original_value !== corr.corrected_value && (
-                            <p className="text-xs text-gray-400 mt-0.5 italic">Original IA : {corr.original_value || '—'}</p>
-                          )}
-                        </>
-                      ) : (
-                        <div className="mt-1 space-y-2">
-                          {field.multiline
-                            ? <textarea rows={3} value={editValue} onChange={e => setEditValue(e.target.value)} autoFocus className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 resize-none" />
-                            : <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} autoFocus className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500" />
-                          }
-                          <div className="flex gap-2">
-                            <Button size="sm" onClick={() => handleCorrect(field.key)} loading={isSaving}>Sauvegarder</Button>
-                            <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>Annuler</Button>
-                          </div>
-                          {corr && <p className="text-xs text-gray-400">Original IA : {corr.original_value || '—'}</p>}
-                        </div>
+              {/* Statut */}
+              <div>
+                <StatusBadge status={status} />
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+                {!isEditing ? (
+                  canEdit && (
+                    <>
+                      {status !== 'validated' && (
+                        <Button size="sm" variant="secondary" onClick={() => handleValidate(key)} loading={isSaving}>Valider</Button>
                       )}
-                    </div>
+                      <Button size="sm" variant="ghost" onClick={() => { setEditingField(key); setEditValue(display) }}>Corriger</Button>
+                    </>
+                  )
+                ) : (
+                  <>
+                    <Button size="sm" onClick={() => handleCorrect(field.key)} loading={isSaving}>Sauvegarder</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>Annuler</Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
 
-                    {/* Part 3 — validate / correct buttons */}
-                    {canEdit && !isEditing && (
-                      <div className="flex gap-1 shrink-0 mt-1">
-                        {status !== 'validated' && (
-                          <Button size="sm" variant="secondary" onClick={() => handleValidate(key)} loading={isSaving}>Valider</Button>
-                        )}
-                        <Button size="sm" variant="ghost" onClick={() => { setEditingField(key); setEditValue(display) }}>Corriger</Button>
+      {/* ── History (collapsed by default) ── */}
+      {canEdit && (
+        <div style={{ marginTop: 12, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          <button
+            onClick={() => setShowAudit(v => !v)}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: showAudit ? '1px solid var(--border)' : 'none' }}
+          >
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Historique des modifications</span>
+            <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{showAudit ? '▲ Masquer' : `▼ Voir (${auditEntries.length})`}</span>
+          </button>
+          {showAudit && (
+            <div>
+              {auditEntries.length === 0
+                ? <div style={{ padding: '14px 16px', fontSize: 13, color: 'var(--muted-2)' }}>Aucune modification enregistrée.</div>
+                : auditEntries.map((entry, idx) => (
+                  <div key={entry.id} style={{ padding: '10px 16px', borderBottom: idx < auditEntries.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <div style={{ fontSize: 13, minWidth: 0 }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text)' }}>{entry.user?.name || 'Manager'}</span>
+                        <span style={{ color: 'var(--muted-2)', margin: '0 6px' }}>·</span>
+                        <span style={{ color: 'var(--muted)' }}>{AUDIT_LABELS[entry.action] || entry.action}</span>
+                        {entry.field_name && <span style={{ color: 'var(--muted-2)', marginLeft: 6, fontSize: 12 }}>({entry.field_name})</span>}
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--muted-2)', whiteSpace: 'nowrap', flexShrink: 0 }}>{formatDate(entry.created_at)}</span>
+                    </div>
+                    {entry.action === 'correct_field' && entry.old_value && entry.new_value && (
+                      <div style={{ marginTop: 4, fontSize: 12 }}>
+                        <span style={{ textDecoration: 'line-through', color: '#fca5a5' }}>{entry.old_value}</span>
+                        <span style={{ margin: '0 6px', color: 'var(--muted-2)' }}>→</span>
+                        <span style={{ color: '#86efac' }}>{entry.new_value}</span>
                       </div>
                     )}
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Part 6 — Audit log: collapsible, managers/owners only */}
-      {canEdit && (
-        <Card>
-          <CardHeader>
-            <button onClick={() => setShowAudit(v => !v)} className="flex items-center justify-between w-full text-left">
-              <h3 className="text-sm font-semibold text-gray-900">Historique des modifications</h3>
-              <span className="text-xs text-gray-400">{showAudit ? '▲ Masquer' : `▼ Voir (${auditEntries.length})`}</span>
-            </button>
-          </CardHeader>
-          {showAudit && (
-            <CardContent className="p-0">
-              {auditEntries.length === 0
-                ? <p className="px-6 py-4 text-sm text-gray-400">Aucune modification enregistrée.</p>
-                : (
-                  <div className="divide-y divide-gray-50">
-                    {auditEntries.map(entry => (
-                      <div key={entry.id} className="px-6 py-3 text-sm">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <span className="font-medium text-gray-800">{entry.user?.name || 'Manager'}</span>
-                            <span className="text-gray-400 mx-1">·</span>
-                            <span className="text-gray-600">{AUDIT_LABELS[entry.action] || entry.action}</span>
-                            {entry.field_name && <span className="text-gray-400 ml-1">({entry.field_name})</span>}
-                          </div>
-                          <span className="text-xs text-gray-400 shrink-0 whitespace-nowrap">{formatDate(entry.created_at)}</span>
-                        </div>
-                        {entry.action === 'correct_field' && entry.old_value && entry.new_value && (
-                          <div className="mt-0.5 text-xs">
-                            <span className="line-through text-red-400">{entry.old_value}</span>
-                            <span className="mx-1 text-gray-400">→</span>
-                            <span className="text-emerald-600">{entry.new_value}</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )
+                ))
               }
-            </CardContent>
+            </div>
           )}
-        </Card>
+        </div>
       )}
     </div>
   )
