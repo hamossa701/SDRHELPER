@@ -33,14 +33,14 @@ export default async function ManagerPage() {
     supabase.rpc('get_sdr_leaderboard', { p_org_id: profile.organization_id }),
     supabase
       .from('calls')
-      .select('id, call_datetime, review_status, assigned_to, call_analyses(id, appointment_booked, appointment_quality_score, prospect_company, decision_maker_detected, pain_point_detected, appointment_datetime, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step), users!calls_sdr_id_fkey(name), campaigns(campaign_name, client_name)')
+      .select('id, call_datetime, review_status, assigned_to, call_analyses(id, appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, prospect_company, decision_maker_detected, pain_point_detected, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step), users!calls_sdr_id_fkey(name), campaigns(campaign_name, client_name)')
       .eq('organization_id', profile.organization_id)
       .neq('review_status', 'resolved')
       .order('call_datetime', { ascending: false })
       .limit(30),
     supabase
       .from('calls')
-      .select('id, call_datetime, call_analyses(appointment_booked, sdr_quality_score, prospect_company, interest_level, decision_maker_detected, pain_point_detected, appointment_datetime), users!calls_sdr_id_fkey(name)')
+      .select('id, call_datetime, call_analyses(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, sdr_quality_score, prospect_company, interest_level, decision_maker_detected, pain_point_detected), users!calls_sdr_id_fkey(name)')
       .eq('organization_id', profile.organization_id)
       .order('call_datetime', { ascending: false })
       .limit(10),

@@ -29,12 +29,12 @@ export default async function PlanningPage() {
   const today = new Date().toISOString().split('T')[0]
 
   const [
-    { data: campaignsRaw },
+    { data: campaignsRaw, error: campaignsError },
     { data: sdrsRaw },
-    { data: assignmentsRaw },
+    { data: assignmentsRaw, error: assignmentsError },
   ] = await Promise.all([
     supabase.from('campaigns')
-      .select('id, campaign_name, client_name, status, client_accounts(name)')
+      .select('id, campaign_name, client_name, status')
       .eq('organization_id', profile.organization_id)
       .neq('status', 'archived')
       .order('created_at', { ascending: false }),
@@ -50,6 +50,11 @@ export default async function PlanningPage() {
       .gte('ends_at', today)
       .order('starts_at', { ascending: true }),
   ])
+
+  console.log('[planning] user.id:', user.id, 'org_id:', profile.organization_id, 'role:', profile.role)
+  console.log('[planning] campaigns count:', campaignsRaw?.length ?? 0, 'error:', campaignsError?.message ?? 'none')
+  console.log('[planning] campaigns raw:', JSON.stringify(campaignsRaw?.map(c => ({ id: c.id, name: c.campaign_name, client: c.client_name, status: c.status }))))
+  if (assignmentsError) console.log('[planning] assignments error (migration may not be applied):', assignmentsError.message)
 
   const sdrs = (sdrsRaw ?? []) as { id: string; name: string }[]
   const rawAssignments = (assignmentsRaw ?? []) as {
@@ -71,7 +76,7 @@ export default async function PlanningPage() {
   const campaigns = (campaignsRaw ?? []).map(c => ({
     id: c.id,
     campaign_name: c.campaign_name,
-    client_name: (c.client_accounts as unknown as { name: string } | null)?.name ?? c.client_name,
+    client_name: c.client_name,
     status: c.status,
     assigned_sdr_names: sdrsByCampaign.get(c.id) ?? [],
   }))

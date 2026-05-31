@@ -1,4 +1,5 @@
 import type { CallAnalysis } from '@/types'
+import { hasQualifiedAppointmentDate } from '@/lib/appointment-date'
 
 export interface ReviewFlagsResult {
   flags: string[]
@@ -15,7 +16,7 @@ export function computeReviewFlags(a: CallAnalysis): ReviewFlagsResult {
   if (a.appointment_booked && a.appointment_quality_score !== null && a.appointment_quality_score < 60) {
     flags.push('RDV posé mais score qualité faible')
   }
-  if (a.appointment_booked && !a.appointment_datetime) {
+  if (a.appointment_booked && !hasQualifiedAppointmentDate(a)) {
     flags.push('RDV posé mais date manquante')
   }
   if (a.appointment_booked && !a.pain_point_detected) {
@@ -46,7 +47,7 @@ export function isQualifiedAppointment(a: CallAnalysis): boolean {
     a.appointment_booked === true &&
     a.decision_maker_detected === true &&
     a.pain_point_detected === true &&
-    !!a.appointment_datetime &&
+    hasQualifiedAppointmentDate(a) &&
     a.appointment_quality_score !== null &&
     a.appointment_quality_score >= 60
   )

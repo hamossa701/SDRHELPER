@@ -57,7 +57,7 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: [] as DashboardCampaignStatsRow[] }),
     supabase
       .from('calls')
-      .select('id, call_datetime, call_analyses(appointment_booked, appointment_quality_score, sdr_quality_score, prospect_company, decision_maker_detected, pain_point_detected, appointment_datetime), users!calls_sdr_id_fkey(name)')
+      .select('id, call_datetime, call_analyses(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, decision_maker_detected, pain_point_detected), users!calls_sdr_id_fkey(name)')
       .eq('organization_id', profile.organization_id)
       .order('call_datetime', { ascending: false })
       .limit(10),

@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment } from '@/lib/review-flags'
 import { ValidationPanel } from '@/components/calls/ValidationPanel'
 import { JobStatusBanner } from '@/components/calls/JobStatusBanner'
+import { createAdminClient } from '@/lib/supabase-admin'
 import type { AuditEntry, FieldCorrection } from '@/types'
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -33,16 +34,36 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } }
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll() },
+        setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof cookieStore.set>[2] }[]) {
+          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
+        },
+      },
+    }
   )
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile) redirect('/login')
-  if (profile.role === 'client') redirect('/client')
+  const isClient = profile.role === 'client'
 
-  const { data: call } = await supabase
+  if (isClient) {
+    if (!profile.client_id) redirect('/client')
+    const adminDb = createAdminClient()
+    const { data: clientCampaigns } = await adminDb
+      .from('campaigns')
+      .select('id')
+      .eq('organization_id', profile.organization_id)
+      .eq('client_id', profile.client_id)
+    const clientCampaignIds = (clientCampaigns ?? []).map((c: { id: string }) => c.id)
+    const { data: callCheck } = await adminDb.from('calls').select('id, campaign_id').eq('id', id).single()
+    if (!callCheck || !clientCampaignIds.includes(callCheck.campaign_id)) redirect('/client')
+  }
+
+  const { data: call } = await (isClient ? createAdminClient() : supabase)
     .from('calls')
     .select('*, call_analyses(*), users!calls_sdr_id_fkey(name), campaigns(campaign_name, client_name, offer_description)')
     .eq('id', id)
@@ -50,7 +71,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   if (!call) notFound()
   const a = call.call_analyses
-  const canValidate = ['owner', 'manager'].includes(profile.role)
+  const canValidate = !isClient && ['owner', 'manager'].includes(profile.role)
 
   let corrections: FieldCorrection[] = []
   let auditLog: AuditEntry[] = []
@@ -89,7 +110,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Link href="/campaigns" style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Link href={isClient ? '/client' : '/campaigns'} style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
             <span className="mat" style={{ fontSize: 14 }}>arrow_back</span> Retour
           </Link>
           <div style={{ width: 1, height: 16, background: 'var(--border)' }} />
@@ -115,11 +136,14 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
       <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
         {!a ? (
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 }}>
-            <JobStatusBanner job={analysisJob} />
+            {isClient
+              ? <div style={{ padding: '20px 0', textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>L&apos;analyse de cet appel n&apos;est pas encore disponible.</div>
+              : <JobStatusBanner job={analysisJob} />
+            }
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 900, margin: '0 auto' }}>
-            {reviewResult && reviewResult.flags.length > 0 && (
+            {!isClient && reviewResult && reviewResult.flags.length > 0 && (
               <Section title="Signalements automatiques">
                 <div style={{ paddingTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {reviewResult.flags.map((flag: string, i: number) => (
@@ -132,7 +156,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               {[
                 { label: 'Qualité RDV', score: a.appointment_quality_score, sub: a.appointment_quality_reason },
-                { label: 'Score SDR', score: a.sdr_quality_score, sub: null },
+                ...(!isClient ? [{ label: 'Score SDR', score: a.sdr_quality_score, sub: null }] : []),
                 { label: 'Qualification', score: a.qualification_completeness_score, sub: null },
               ].map(item => (
                 <div key={item.label} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, backdropFilter: 'blur(18px)', position: 'relative', overflow: 'hidden' }}>
@@ -182,6 +206,12 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
                   border: `1px solid ${a.appointment_booked ? 'rgba(34,197,94,.35)' : 'var(--border)'}`,
                 }}>{a.appointment_booked ? 'RDV posé' : 'Pas de RDV'}</span>
                 {a.appointment_datetime && <span style={{ fontSize: 13, color: 'var(--cyan)' }}>{formatDate(a.appointment_datetime)}</span>}
+                {!a.appointment_datetime && a.appointment_date_text && (
+                  <span style={{ fontSize: 13, color: 'var(--cyan)' }}>{a.appointment_date_text}</span>
+                )}
+                {a.appointment_date_confidence && (
+                  <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>Confiance date : {a.appointment_date_confidence}</span>
+                )}
               </div>
               {a.next_step && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--muted)' }}><span style={{ color: 'var(--muted-2)' }}>Prochaine étape : </span>{a.next_step}</div>}
             </Section>
@@ -237,16 +267,18 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
               </div>
             )}
 
-            {call.transcript && (
+            {!isClient && call.transcript && (
               <Section title="Transcription">
                 <pre style={{ paddingTop: 10, fontSize: 12, color: 'var(--muted)', whiteSpace: 'pre-wrap', fontFamily: 'JetBrains Mono, monospace', lineHeight: 1.6, maxHeight: 300, overflowY: 'auto' }}>{call.transcript}</pre>
               </Section>
             )}
 
-            <Section title="Indicateurs IA">
-              <Row label="Risque IA" value={<RiskBadge risk={a.hallucination_risk} />} />
-              <Row label="Confiance IA" value={a.ai_confidence != null ? `${a.ai_confidence}%` : null} />
-            </Section>
+            {!isClient && (
+              <Section title="Indicateurs IA">
+                <Row label="Risque IA" value={<RiskBadge risk={a.hallucination_risk} />} />
+                <Row label="Confiance IA" value={a.ai_confidence != null ? `${a.ai_confidence}%` : null} />
+              </Section>
+            )}
 
             {canValidate && (
               <ValidationPanel

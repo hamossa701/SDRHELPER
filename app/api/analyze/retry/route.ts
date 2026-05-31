@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { processJobById } from '@/lib/job-processor'
@@ -55,9 +55,9 @@ export async function POST(request: NextRequest) {
 
     if (resetErr) throw resetErr
 
-    // Re-process directly — no HTTP hop, no RPC dependency
-    processJobById({ id: jobId, call_id: job.call_id ?? '', retry_count: 0 })
-      .catch(e => console.error('[retry] background job error:', e instanceof Error ? e.message : e, '| job:', jobId))
+    // Re-process after response using Next's request-lifetime primitive.
+    after(() => processJobById({ id: jobId, call_id: job.call_id ?? '', retry_count: 0 })
+      .catch(e => console.error('[retry] background job error:', e instanceof Error ? e.message : e, '| job:', jobId)))
 
     return NextResponse.json({ ok: true })
   } catch (err) {

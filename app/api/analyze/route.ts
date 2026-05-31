@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase-admin'
@@ -46,6 +46,10 @@ export async function POST(request: NextRequest) {
 
     if (!transcript?.trim()) return NextResponse.json({ error: 'Transcription requise' }, { status: 400 })
     if (!campaign_id || !sdr_id) return NextResponse.json({ error: 'Campagne et SDR requis' }, { status: 400 })
+    if (profile.role === 'sdr' && sdr_id !== user.id) {
+      console.error('[analyze] sdr tried to submit for another SDR:', { user_id: user.id, sdr_id })
+      return NextResponse.json({ error: 'SDR non autorisé pour cet appel' }, { status: 403 })
+    }
 
     // ── RBAC: campaign must belong to this org ────────────────────────────────
     const { data: campaign, error: campaignErr } = await supabase
@@ -56,10 +60,21 @@ export async function POST(request: NextRequest) {
 
     // ── RBAC: sdr_id must belong to this org ─────────────────────────────────
     const { data: sdrUser, error: sdrErr } = await supabase
-      .from('users').select('id')
-      .eq('id', sdr_id).eq('organization_id', profile.organization_id).single()
+      .from('users').select('id, role')
+      .eq('id', sdr_id).eq('organization_id', profile.organization_id).eq('role', 'sdr').single()
     console.log('[analyze] sdr lookup:', sdrUser ? 'found' : 'not found', sdrErr?.message)
     if (!sdrUser) return NextResponse.json({ error: 'SDR non autorisé' }, { status: 403 })
+
+    const { data: assignment, error: assignmentErr } = await supabase
+      .from('campaign_sdrs')
+      .select('campaign_id')
+      .eq('campaign_id', campaign_id)
+      .eq('user_id', sdr_id)
+      .maybeSingle()
+    console.log('[analyze] campaign_sdr assignment:', assignment ? 'found' : 'not found', assignmentErr?.message)
+    if (!assignment) {
+      return NextResponse.json({ error: 'SDR non assigné à cette campagne' }, { status: 403 })
+    }
 
     // ── Create call + job via admin client (auth+RBAC already verified above) ─
     // Service role bypasses RLS; org boundary is enforced by the explicit
@@ -99,12 +114,9 @@ export async function POST(request: NextRequest) {
     }
     console.log('[JOB CREATED] job_id:', job.id, '| call_id:', call.id)
 
-    // ── Process in background (direct call — no HTTP hop, no RPC dependency) ─
-    // Node.js keeps unresolved Promises alive; this is reliable on a persistent
-    // server. If it fails, the catch updates job to failed/pending so the user
-    // sees the retry button.
-    processJobById({ id: job.id, call_id: call.id, retry_count: 0 })
-      .catch(e => console.error('[analyze] background job error:', e instanceof Error ? e.message : e, '| job:', job.id))
+    // ── Process after response using Next's request-lifetime primitive ─────
+    after(() => processJobById({ id: job.id, call_id: call.id, retry_count: 0 })
+      .catch(e => console.error('[analyze] background job error:', e instanceof Error ? e.message : e, '| job:', job.id)))
 
     console.log('[analyze] queued — call:', call.id, 'job:', job.id)
     return NextResponse.json({ call_id: call.id, job_id: job.id })

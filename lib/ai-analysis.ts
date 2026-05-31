@@ -56,7 +56,9 @@ RETOURNER UNIQUEMENT CE JSON VALIDE, SANS COMMENTAIRE, SANS MARKDOWN :
   },
   "appointment": {
     "appointment_booked": false,
+    "appointment_date_text": null,
     "appointment_datetime": null,
+    "appointment_date_confidence": null,
     "appointment_quality_score": 0,
     "quality_reason": "Explication courte du score",
     "next_step": null
@@ -88,6 +90,7 @@ export async function analyzeCallTranscript(
     sector?: string
     offer_description?: string
     target_persona?: string
+    call_datetime?: string
   }
 ): Promise<AIAnalysisResult> {
   const contextBlock = campaignContext
@@ -98,7 +101,16 @@ Offre : ${campaignContext.offer_description || 'Non précisée'}
 Persona cible : ${campaignContext.target_persona || 'Non précisé'}`
     : ''
 
-  const userMessage = `${contextBlock}\n\nTRANSCRIPTION DU CALL :\n\n${transcript}`
+  const userMessage = `${contextBlock}
+
+DATE DE REFERENCE DU CALL :
+${campaignContext?.call_datetime || 'Non précisée'}
+
+Si une date de RDV est exprimée en langage naturel ("mercredi prochain à 15h", "jeudi 14h"), retourne toujours le texte exact dans appointment.appointment_date_text. Si tu peux normaliser sans ambiguïté avec la date de référence, retourne aussi appointment.appointment_datetime au format ISO 8601. Sinon laisse appointment_datetime à null et mets appointment_date_confidence à "medium" ou "low".
+
+TRANSCRIPTION DU CALL :
+
+${transcript}`
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5',

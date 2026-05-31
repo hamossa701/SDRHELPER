@@ -1,15 +1,116 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
-import { Card, CardContent, CardHeader, Badge, ScoreBadge } from '@/components/ui'
-import { getCampaignStatusBg, getCampaignStatusLabel, getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import Link from 'next/link'
-import type { Call, CallAnalysis, User } from '@/types'
+import {
+  Card,
+  Empty,
+  InterestBadge,
+  ScoreBadge,
+  StatCard,
+  StatusBadge,
+} from '@/components/ui'
+import { formatDateShort } from '@/lib/utils'
+import type { AnalysisJob, Call, CallAnalysis, Campaign, User } from '@/types'
 
-export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
+type Joined<T> = T | T[] | null
+
+type CampaignCall = Pick<Call, 'id' | 'call_datetime'> & {
+  call_analyses: Joined<CallAnalysis>
+  analysis_jobs: Joined<Pick<AnalysisJob, 'status' | 'error_message'>>
+  users: Joined<Pick<User, 'name'>>
+}
+
+function firstJoined<T>(value: Joined<T>): T | null {
+  if (Array.isArray(value)) return value[0] ?? null
+  return value
+}
+
+function hasUsableProspect(analysis: CallAnalysis | null) {
+  const value = analysis?.prospect_company?.trim()
+  return Boolean(value && value !== 'En attente...' && value !== 'En attente…')
+}
+
+function isValidCompletedCall(call: CampaignCall) {
+  const analysis = firstJoined(call.call_analyses)
+  const job = firstJoined(call.analysis_jobs)
+  return job?.status === 'completed' && Boolean(analysis) && hasUsableProspect(analysis)
+}
+
+function filterHref(id: string, view: TableView) {
+  return view === 'completed' ? `/campaigns/${id}` : `/campaigns/${id}?view=${view}`
+}
+
+type TableView = 'completed' | 'failed' | 'all'
+
+function CopyBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)' }}>
+        <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{title}</h3>
+      </div>
+      <div style={{ padding: '12px 18px 16px' }}>
+        <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14, lineHeight: 1.7, maxWidth: 760 }}>
+          {children}
+        </p>
+      </div>
+    </Card>
+  )
+}
+
+function LinkedCell({
+  href,
+  children,
+  strong = false,
+}: {
+  href: string
+  children: React.ReactNode
+  strong?: boolean
+}) {
+  return (
+    <td style={{ padding: 0, borderBottom: '1px solid var(--border)' }}>
+      <Link
+        href={href}
+        style={{
+          display: 'block',
+          padding: '14px 18px',
+          color: strong ? 'var(--text)' : 'var(--muted)',
+          fontSize: 13,
+          fontWeight: strong ? 650 : 500,
+          textDecoration: 'none',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {children}
+      </Link>
+    </td>
+  )
+}
+
+export default async function CampaignDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ view?: string | string[] | undefined }>
+}) {
   const { id } = await params
+  const query = await searchParams
+  const requestedView = Array.isArray(query.view) ? query.view[0] : query.view
+  const tableView: TableView = requestedView === 'failed' || requestedView === 'all' ? requestedView : 'completed'
   const cookieStore = await cookies()
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
+  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        } catch {}
+      },
+    },
+  })
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -21,116 +122,251 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
   const { data: calls } = await supabase
     .from('calls')
-    .select('*, call_analyses(*), users!calls_sdr_id_fkey(name)')
+    .select('id, call_datetime, call_analyses(*), analysis_jobs(status, error_message), users!calls_sdr_id_fkey(name)')
     .eq('campaign_id', id)
     .order('call_datetime', { ascending: false })
 
-  const analyses = calls?.map((c: Call & { call_analyses: CallAnalysis }) => c.call_analyses).filter(Boolean) || []
-  const rdvBooked = analyses.filter((a: CallAnalysis) => a?.appointment_booked).length
-  const avgQ = analyses.length > 0
-    ? Math.round(analyses.reduce((s: number, a: CallAnalysis) => s + (a?.appointment_quality_score || 0), 0) / analyses.length)
+  const typedCampaign = campaign as Campaign
+  const allCalls = (calls ?? []) as CampaignCall[]
+  const completedCalls = allCalls.filter(isValidCompletedCall)
+  const failedOrInvalidCalls = allCalls.filter((call) => !isValidCompletedCall(call))
+  const displayedCalls = tableView === 'completed' ? completedCalls : tableView === 'failed' ? failedOrInvalidCalls : allCalls
+  const analyses = completedCalls.map((call) => firstJoined(call.call_analyses)).filter((analysis): analysis is CallAnalysis => Boolean(analysis))
+  const rdvBooked = analyses.filter((analysis) => analysis.appointment_booked).length
+  const scoredAnalyses = analyses.filter((analysis) => typeof analysis.appointment_quality_score === 'number')
+  const avgQ = scoredAnalyses.length
+    ? Math.round(scoredAnalyses.reduce((sum, analysis) => sum + (analysis.appointment_quality_score ?? 0), 0) / scoredAnalyses.length)
     : null
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-8">
-        <Link href="/campaigns" className="text-xs text-slate-400 hover:text-slate-300 mb-3 inline-block">← Campagnes</Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold">{campaign.campaign_name}</h1>
-              <Badge className={getCampaignStatusBg(campaign.status)}>{getCampaignStatusLabel(campaign.status)}</Badge>
-            </div>
-            <p className="text-slate-400 text-sm">Client : <strong className="text-slate-200">{campaign.client_name}</strong></p>
-          </div>
-          {['owner', 'manager'].includes(profile.role) && (
-            <Link href="/calls/upload" className="inline-flex items-center gap-2 bg-slate-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">
-              + Analyser un appel
-            </Link>
-          )}
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <div
+        style={{
+          height: 56,
+          flexShrink: 0,
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--header-bg)',
+          backdropFilter: 'blur(18px)',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px',
+        }}
+      >
+        <Link href="/campaigns" style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 650, textDecoration: 'none' }}>
+          ← Campagnes
+        </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <Card className="p-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Appels</p>
-          <p className="text-3xl font-bold mt-1">{calls?.length || 0}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">RDV posés</p>
-          <p className="text-3xl font-bold mt-1">{rdvBooked}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Qualité RDV moy.</p>
-          <div className="mt-1"><ScoreBadge score={avgQ} /></div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {campaign.offer_description && (
-          <Card>
-            <CardHeader><h3 className="text-sm font-semibold">Offre</h3></CardHeader>
-            <CardContent><p className="text-sm text-slate-400">{campaign.offer_description}</p></CardContent>
-          </Card>
-        )}
-        {campaign.target_persona && (
-          <Card>
-            <CardHeader><h3 className="text-sm font-semibold">Persona cible</h3></CardHeader>
-            <CardContent><p className="text-sm text-slate-400">{campaign.target_persona}</p></CardContent>
-          </Card>
-        )}
-        {campaign.script_notes && (
-          <Card className="lg:col-span-2">
-            <CardHeader><h3 className="text-sm font-semibold">Notes script</h3></CardHeader>
-            <CardContent><p className="text-sm text-slate-400">{campaign.script_notes}</p></CardContent>
-          </Card>
-        )}
-      </div>
-
-      <Card>
-        <CardHeader><h2 className="text-sm font-semibold">Appels de la campagne</h2></CardHeader>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">SDR</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Prospect</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Intérêt</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">RDV</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Score RDV</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/10">
-              {(calls || []).map((call: Call & { call_analyses: CallAnalysis, users: User }) => (
-                <tr key={call.id} className="hover:bg-white/5">
-                  <td className="px-6 py-3 text-slate-400">{formatDateShort(call.call_datetime)}</td>
-                  <td className="px-6 py-3 font-medium text-slate-200">{call.users?.name || '—'}</td>
-                  <td className="px-6 py-3 text-slate-400">{call.call_analyses?.prospect_company || '—'}</td>
-                  <td className="px-6 py-3">
-                    <Badge className={getInterestBg(call.call_analyses?.interest_level ?? null)}>
-                      {getInterestLabel(call.call_analyses?.interest_level ?? null)}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3">
-                    {call.call_analyses?.appointment_booked
-                      ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓</Badge>
-                      : <span className="text-slate-500">—</span>}
-                  </td>
-                  <td className="px-6 py-3">
-                    <Link href={`/calls/${call.id}`}>
-                      <ScoreBadge score={call.call_analyses?.appointment_quality_score ?? null} />
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {!calls?.length && (
-                <tr><td colSpan={6} className="px-6 py-10 text-center text-sm text-slate-500">Aucun appel pour cette campagne</td></tr>
+      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 36px' }}>
+        <style>{`
+          .h3a-data-row:hover {
+            background: rgba(255, 255, 255, .035);
+          }
+          .h3a-filter-link:hover {
+            border-color: rgba(125,211,252,.42);
+            color: var(--text);
+          }
+          @media (max-width: 820px) {
+            .h3a-kpi-grid,
+            .h3a-info-grid {
+              grid-template-columns: 1fr !important;
+            }
+          }
+        `}</style>
+        <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <section
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 20,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.12, fontWeight: 700, color: 'var(--text)' }}>
+                  {typedCampaign.campaign_name}
+                </h1>
+                <StatusBadge status={typedCampaign.status} />
+              </div>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14 }}>
+                Client : <strong style={{ color: 'var(--text)', fontWeight: 650 }}>{typedCampaign.client_name}</strong>
+              </p>
+              {typedCampaign.sector && (
+                <p style={{ margin: '6px 0 0', color: 'var(--muted-2)', fontSize: 13 }}>{typedCampaign.sector}</p>
               )}
-            </tbody>
-          </table>
+            </div>
+
+            {['owner', 'manager'].includes(profile.role) && (
+              <Link
+                href="/calls/upload"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  minHeight: 38,
+                  padding: '0 14px',
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)',
+                  border: '1px solid rgba(125,211,252,.42)',
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  boxShadow: '0 10px 24px rgba(37,99,235,.2)',
+                }}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 800 }}>+</span>
+                Analyser un appel
+              </Link>
+            )}
+          </section>
+
+          <section className="h3a-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14 }}>
+            <StatCard label="Appels" value={completedCalls.length} sub="Analyses completes valides" dot="var(--cyan)" />
+            <StatCard label="RDV posés" value={rdvBooked} sub="Sur appels termines" dot="#86efac" />
+            <StatCard label="Qualité RDV moy." value={avgQ ?? '—'} sub={avgQ === null ? 'Pas encore de score' : 'Score moyen'} dot="#fcd34d" />
+          </section>
+
+          <section className="h3a-info-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+            {typedCampaign.offer_description && <CopyBlock title="Offre">{typedCampaign.offer_description}</CopyBlock>}
+            {typedCampaign.target_persona && <CopyBlock title="Persona cible">{typedCampaign.target_persona}</CopyBlock>}
+            {typedCampaign.script_notes && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <CopyBlock title="Notes script">{typedCampaign.script_notes}</CopyBlock>
+              </div>
+            )}
+          </section>
+
+          <Card style={{ overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Appels de la campagne</h2>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted-2)' }}>
+                    {tableView === 'completed'
+                      ? 'Vue par défaut : appels terminés avec une analyse exploitable.'
+                      : tableView === 'failed'
+                        ? 'Vue diagnostic : appels échoués, invalides ou incomplets.'
+                        : 'Vue complète : tous les appels de la campagne.'}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  {([
+                    ['completed', 'Terminés'],
+                    ['failed', 'Invalides'],
+                    ['all', 'Tous'],
+                  ] as const).map(([view, label]) => {
+                    const active = tableView === view
+                    return (
+                      <Link
+                        className="h3a-filter-link"
+                        key={view}
+                        href={filterHref(id, view)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          minHeight: 28,
+                          padding: '0 10px',
+                          borderRadius: 999,
+                          border: active ? '1px solid rgba(125,211,252,.42)' : '1px solid var(--border)',
+                          background: active ? 'var(--cyan-soft)' : 'rgba(2,6,23,.24)',
+                          color: active ? 'var(--cyan)' : 'var(--muted)',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                        }}
+                      >
+                        {label}
+                      </Link>
+                    )
+                  })}
+                  <span style={{ color: 'var(--muted-2)', fontSize: 12, fontWeight: 650 }}>{displayedCalls.length} appels</span>
+                </div>
+              </div>
+            </div>
+
+            {displayedCalls.length ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 820 }}>
+                  <thead>
+                    <tr style={{ background: 'var(--thead)' }}>
+                      {['Date', 'SDR', 'Prospect', 'Intérêt', 'RDV', 'Score RDV'].map((label) => (
+                        <th
+                          key={label}
+                          style={{
+                            padding: '10px 18px',
+                            textAlign: 'left',
+                            color: 'var(--muted-2)',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            letterSpacing: '.04em',
+                            borderBottom: '1px solid var(--border)',
+                          }}
+                        >
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedCalls.map((call) => {
+                      const analysis = firstJoined(call.call_analyses)
+                      const sdr = firstJoined(call.users)
+                      const href = `/calls/${call.id}`
+                      return (
+                        <tr className="h3a-data-row" key={call.id} style={{ transition: 'background .15s ease' }}>
+                          <LinkedCell href={href}>{formatDateShort(call.call_datetime)}</LinkedCell>
+                          <LinkedCell href={href} strong>{sdr?.name ?? '—'}</LinkedCell>
+                          <LinkedCell href={href} strong>{analysis?.prospect_company ?? '—'}</LinkedCell>
+                          <td style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                            <Link href={href} style={{ textDecoration: 'none' }}>
+                              <InterestBadge level={analysis?.interest_level ?? null} />
+                            </Link>
+                          </td>
+                          <td style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                            <Link
+                              href={href}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '2px 8px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                background: analysis?.appointment_booked ? 'rgba(34,197,94,.10)' : 'rgba(2,6,23,.28)',
+                                color: analysis?.appointment_booked ? '#86efac' : 'var(--muted-2)',
+                                border: analysis?.appointment_booked ? '1px solid rgba(34,197,94,.35)' : '1px solid var(--border)',
+                                textDecoration: 'none',
+                              }}
+                            >
+                              {analysis?.appointment_booked ? 'Oui' : 'Non'}
+                            </Link>
+                          </td>
+                          <td style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                            <Link href={href} style={{ textDecoration: 'none' }}>
+                              <ScoreBadge score={analysis?.appointment_quality_score ?? null} />
+                            </Link>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <Empty
+                title={tableView === 'completed' ? 'Aucun appel terminé valide' : 'Aucun appel dans cette vue'}
+                description={tableView === 'completed'
+                  ? 'Les appels échoués, invalides ou sans analyse exploitable sont masqués dans cette vue.'
+                  : 'Changez de filtre pour consulter les autres appels de cette campagne.'}
+              />
+            )}
+          </Card>
         </div>
-      </Card>
+      </main>
     </div>
   )
 }

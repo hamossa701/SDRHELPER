@@ -102,7 +102,9 @@ create table public.call_analyses (
   
   -- Appointment
   appointment_booked boolean default false,
+  appointment_date_text text,
   appointment_datetime timestamptz,
+  appointment_date_confidence text check (appointment_date_confidence in ('high', 'medium', 'low')),
   appointment_quality_score integer check (appointment_quality_score between 0 and 100),
   appointment_quality_reason text,
   next_step text,

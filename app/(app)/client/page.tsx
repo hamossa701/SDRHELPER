@@ -6,9 +6,51 @@ import { Card, CardContent, CardHeader } from '@/components/ui'
 import { formatDateShort } from '@/lib/utils'
 import { PrintButton } from '@/components/client/PrintButton'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { hasQualifiedAppointmentDate } from '@/lib/appointment-date'
 import type { ClientKPIsRow, ClientValueReportRow, ClientCampaignStatsRow } from '@/types'
 
 type ReportPeriod = '7d' | '30d' | 'month'
+type ClientAnalysis = {
+  id: string
+  prospect_company: string | null
+  contact_name: string | null
+  contact_role: string | null
+  interest_level: string | null
+  appointment_booked: boolean | null
+  appointment_date_text: string | null
+  appointment_datetime: string | null
+  appointment_date_confidence: string | null
+  appointment_quality_score: number | null
+  pain_point_detected: boolean | null
+  pain_point_details: string | null
+  objection_detected: boolean | null
+  objection_type: string | null
+  decision_maker_detected: boolean | null
+}
+type ClientCallRow = {
+  id: string
+  campaign_id: string
+  organization_id?: string
+  sdr_id: string | null
+  call_datetime: string
+  call_analyses: ClientAnalysis | ClientAnalysis[] | null
+  analysis_jobs?: { status: string } | { status: string }[] | null
+}
+type ClientProfile = {
+  organization_id: string
+  client_id: string | null
+  role: string
+}
+type ClientCampaign = {
+  id: string
+  client_id: string
+  campaign_name: string
+  client_name: string
+  sector: string | null
+  status: string
+  created_at: string
+}
+type SdrUserRow = { id: string; name: string }
 
 const PERIOD_LABELS: Record<ReportPeriod, string> = {
   '7d':    '7 jours',
@@ -17,7 +59,24 @@ const PERIOD_LABELS: Record<ReportPeriod, string> = {
 }
 
 const AVG_CALL_MINUTES = 8
-const CAMPAIGN_SAFE_COLS = 'id, campaign_name, client_name, sector, status, created_at'
+const CAMPAIGN_SAFE_COLS = 'id, client_id, campaign_name, client_name, sector, status, created_at'
+const CLIENT_ANALYSIS_COLS = [
+  'id',
+  'prospect_company',
+  'contact_name',
+  'contact_role',
+  'interest_level',
+  'appointment_booked',
+  'appointment_date_text',
+  'appointment_datetime',
+  'appointment_date_confidence',
+  'appointment_quality_score',
+  'pain_point_detected',
+  'pain_point_details',
+  'objection_detected',
+  'objection_type',
+  'decision_maker_detected',
+].join(', ')
 
 // ─── Period utilities ────────────────────────────────────────────────────────
 
@@ -45,6 +104,102 @@ function previousPeriodBounds(period: ReportPeriod): { since: string; until: str
   const prevEnd = new Date(now.getTime() - days * 86_400_000)
   const prevStart = new Date(prevEnd.getTime() - days * 86_400_000)
   return { since: prevStart.toISOString(), until: prevEnd.toISOString() }
+}
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null
+  return value ?? null
+}
+
+function isQualifiedAnalysis(a: ClientAnalysis | null): boolean {
+  return !!a
+    && a.appointment_booked === true
+    && a.decision_maker_detected === true
+    && a.pain_point_detected === true
+    && !!a.pain_point_details?.trim()
+    && hasQualifiedAppointmentDate(a)
+    && a.appointment_quality_score !== null
+    && a.appointment_quality_score >= 60
+}
+
+function buildKpis(rows: ClientCallRow[]): ClientKPIsRow {
+  const analyses = rows.map(row => one(row.call_analyses)).filter((a): a is ClientAnalysis => !!a)
+  const total = analyses.length
+  const booked = analyses.filter(a => a.appointment_booked === true).length
+  const qualified = analyses.filter(isQualifiedAnalysis).length
+  const decisionMakers = analyses.filter(a => a.decision_maker_detected === true).length
+
+  return {
+    total_calls: total,
+    hot_warm_contacts: analyses.filter(a => a.interest_level === 'hot' || a.interest_level === 'warm').length,
+    appointments_booked: booked,
+    qualified_appointments: qualified,
+    qualification_rate: booked > 0 ? Math.round((qualified / booked) * 100) : null,
+    decision_maker_rate: total > 0 ? Math.round((decisionMakers / total) * 100) : null,
+    appointment_conversion_rate: total > 0 ? Math.round((booked / total) * 100) : null,
+  }
+}
+
+function buildValueRows(rows: ClientCallRow[]): ClientValueReportRow[] {
+  const pain = new Map<string, number>()
+  const objections = new Map<string, number>()
+
+  for (const row of rows) {
+    const a = one(row.call_analyses)
+    if (!a) continue
+    if (a.pain_point_detected === true && a.pain_point_details?.trim()) {
+      const label = a.pain_point_details.slice(0, 80)
+      pain.set(label, (pain.get(label) ?? 0) + 1)
+    }
+    if (a.objection_detected === true && a.objection_type?.trim()) {
+      objections.set(a.objection_type, (objections.get(a.objection_type) ?? 0) + 1)
+    }
+  }
+
+  const top = (source: Map<string, number>, kind: ClientValueReportRow['kind']) =>
+    [...source.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, cnt]) => ({ label, cnt, kind }))
+
+  return [...top(pain, 'pain_point'), ...top(objections, 'objection')]
+}
+
+function buildCampaignStats(rows: ClientCallRow[], campaignIds: string[]): ClientCampaignStatsRow[] {
+  return campaignIds.map(campaignId => {
+    const campaignRows = rows.filter(row => row.campaign_id === campaignId)
+    const kpis = buildKpis(campaignRows)
+    const scores = campaignRows
+      .map(row => one(row.call_analyses)?.appointment_quality_score)
+      .filter((score): score is number => score !== null && score !== undefined)
+    const avg = scores.length > 0 ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length) : null
+    const qualRate = kpis.qualification_rate ?? 0
+    const healthScore = 0.65 * (avg ?? 0) + 0.35 * qualRate
+
+    return {
+      campaign_id: campaignId,
+      total_calls: kpis.total_calls,
+      appointments_booked: kpis.appointments_booked,
+      qualified_appointments: kpis.qualified_appointments,
+      avg_appointment_quality: avg,
+      health_label:
+        kpis.total_calls === 0 ? 'En cours'
+        : healthScore >= 75 ? 'Saine'
+        : healthScore >= 55 ? 'En bonne voie'
+        : healthScore >= 40 ? 'À surveiller'
+        : 'Attention requise',
+      health_bg:
+        kpis.total_calls === 0 ? 'bg-gray-100 text-gray-500 border-gray-200'
+        : healthScore >= 75 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        : healthScore >= 55 ? 'bg-blue-50 text-blue-700 border-blue-200'
+        : healthScore >= 40 ? 'bg-amber-50 text-amber-700 border-amber-200'
+        : 'bg-red-50 text-red-700 border-red-200',
+    }
+  })
+}
+
+function logClientDashboardStep(step: string, payload: Record<string, unknown>) {
+  console.log(`[CLIENT DASHBOARD TRACE] ${step}`, JSON.stringify(payload))
 }
 
 // ─── Pure computations ───────────────────────────────────────────────────────
@@ -190,7 +345,7 @@ function computeHealth(kpis: ClientKPIsRow): HealthAssessment {
 
 interface NonQualReason { label: string; count: number; pct: number }
 
-function computeNonQualReasons(bookedCalls: any[]): NonQualReason[] {
+function computeNonQualReasons(bookedCalls: ClientCallRow[]): NonQualReason[] {
   if (bookedCalls.length === 0) return []
 
   const counts: Record<string, number> = {
@@ -201,12 +356,12 @@ function computeNonQualReasons(bookedCalls: any[]): NonQualReason[] {
   }
 
   for (const call of bookedCalls) {
-    const a = call.call_analyses
+    const a = one(call.call_analyses)
     if (!a) continue
     if (!a.decision_maker_detected) counts['Pas de décideur']++
     if (!a.pain_point_details || a.pain_point_details.trim() === '') counts['Besoin non identifié']++
     if (a.appointment_quality_score !== null && a.appointment_quality_score < 60) counts['Score qualité faible']++
-    if (!a.appointment_datetime) counts['Date non confirmée']++
+    if (!hasQualifiedAppointmentDate(a)) counts['Date non confirmée']++
   }
 
   return Object.entries(counts)
@@ -218,7 +373,7 @@ function computeNonQualReasons(bookedCalls: any[]): NonQualReason[] {
 interface SdrStat { name: string; total: number; booked: number; qualified: number; rate: number }
 
 function aggregateSdrStats(
-  calls: Array<{ sdr_id: string | null; call_analyses: any }>,
+  calls: ClientCallRow[],
   nameMap: Record<string, string>
 ): SdrStat[] {
   const acc: Record<string, { name: string; total: number; booked: number; qualified: number }> = {}
@@ -236,7 +391,7 @@ function aggregateSdrStats(
       if (
         a.decision_maker_detected === true &&
         a.pain_point_detected === true &&
-        a.appointment_datetime &&
+        hasQualifiedAppointmentDate(a) &&
         a.appointment_quality_score !== null &&
         a.appointment_quality_score >= 60
       ) {
@@ -384,7 +539,9 @@ export default async function ClientPage({
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(c: any) { try { c.forEach(({ name, value, options }: any) => cookieStore.set(name, value, options)) } catch {} },
+        setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof cookieStore.set>[2] }[]) {
+          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {}
+        },
       },
     }
   )
@@ -392,8 +549,27 @@ export default async function ClientPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
+  const { data: profile } = await supabase
+    .from('users')
+    .select('organization_id, client_id, role')
+    .eq('id', user.id)
+    .single<ClientProfile>()
   if (!profile || profile.role !== 'client') redirect('/login')
+  if (!profile.client_id) {
+    logClientDashboardStep('client_profile_missing_client_id', {
+      user_id: user.id,
+      email: user.email,
+      organization_id: profile.organization_id,
+    })
+    redirect('/login')
+  }
+  logClientDashboardStep('current_user', {
+    user_id: user.id,
+    email: user.email,
+    role: profile.role,
+    organization_id: profile.organization_id,
+    client_id: profile.client_id,
+  })
 
   const { period: periodParam } = await searchParams
   const period: ReportPeriod =
@@ -401,21 +577,30 @@ export default async function ClientPage({
       ? periodParam
       : 'month'
 
-  const { data: assignments } = await supabase
-    .from('campaign_clients').select('campaign_id').eq('user_id', user.id)
-  const rawIds = (assignments || []).map((a: any) => a.campaign_id)
-
   const adminSupabase = createAdminClient()
 
-  const { data: campaigns } = rawIds.length > 0
-    ? await adminSupabase
-        .from('campaigns')
-        .select(CAMPAIGN_SAFE_COLS)
-        .in('id', rawIds)
-        .eq('organization_id', profile.organization_id)
-    : { data: [] as any[] }
+  const { data: campaignsData } = await adminSupabase
+    .from('campaigns')
+    .select(CAMPAIGN_SAFE_COLS)
+    .eq('organization_id', profile.organization_id)
+    .eq('client_id', profile.client_id)
+    .order('campaign_name')
+  const campaigns = (campaignsData || []) as ClientCampaign[]
 
-  const campaignIds: string[] = (campaigns || []).map((c: any) => c.id)
+  const campaignIds: string[] = campaigns.map(c => c.id)
+  logClientDashboardStep('client_scope', {
+    user_id: user.id,
+    organization_id: profile.organization_id,
+    client_id: profile.client_id,
+    visible_campaign_ids: campaignIds,
+    visible_campaigns: campaigns.map(campaign => ({
+      id: campaign.id,
+      client_id: campaign.client_id,
+      client_name: campaign.client_name,
+      campaign_name: campaign.campaign_name,
+      status: campaign.status,
+    })),
+  })
 
   if (campaignIds.length === 0) {
     return (
@@ -440,108 +625,177 @@ export default async function ClientPage({
   const monthBounds = periodBounds('month')
 
   const [
-    { data: kpisData },
-    { data: prevKpisData },
-    { data: valueData },
-    { data: campaignStatsData },
-    { data: monthKpisData },
-    { data: bookedCalls },
-    { data: allCallsRaw },
+    { count: orgCompletedCount },
+    { data: visibleCompletedRows, error: visibleCompletedError },
+    { data: currentRows, error: currentRowsError },
+    { data: previousRows, error: previousRowsError },
+    { data: monthRows, error: monthRowsError },
     { data: sdrUsers },
+    { data: assignmentsRaw },
+    { data: legacySdrAssignments },
   ] = await Promise.all([
-    supabase.rpc('get_client_kpis', {
-      p_campaign_ids: campaignIds,
-      p_org_id: profile.organization_id,
-      p_since: since,
-      p_until: until,
-    }),
-    supabase.rpc('get_client_kpis', {
-      p_campaign_ids: campaignIds,
-      p_org_id: profile.organization_id,
-      p_since: prevBounds.since,
-      p_until: prevBounds.until,
-    }),
-    supabase.rpc('get_client_value_report', {
-      p_campaign_ids: campaignIds,
-      p_org_id: profile.organization_id,
-      p_since: since,
-      p_until: until,
-    }),
-    supabase.rpc('get_client_campaign_stats', {
-      p_campaign_ids: campaignIds,
-      p_org_id: profile.organization_id,
-    }),
-    supabase.rpc('get_client_kpis', {
-      p_campaign_ids: campaignIds,
-      p_org_id: profile.organization_id,
-      p_since: monthBounds.since,
-      p_until: monthBounds.until,
-    }),
-    // Booked calls — admin client bypasses RLS; security enforced via campaignIds + org_id filter.
-    // sdr_id included here so qualified appointments table can display SDR names.
     adminSupabase
       .from('calls')
-      .select('id, sdr_id, call_datetime, call_analyses!inner(prospect_company, contact_name, contact_role, appointment_booked, appointment_datetime, appointment_quality_score, pain_point_details, next_step, decision_maker_detected)')
+      .select('id, call_analyses!inner(id), analysis_jobs!inner(status)', { count: 'exact', head: true })
+      .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
+      .not('call_analyses.prospect_company', 'is', null),
+    adminSupabase
+      .from('calls')
+      .select(`id, campaign_id, sdr_id, call_datetime, call_analyses!inner(${CLIENT_ANALYSIS_COLS}), analysis_jobs!inner(status)`)
       .in('campaign_id', campaignIds)
       .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
+      .not('call_analyses.prospect_company', 'is', null)
+      .order('call_datetime', { ascending: false })
+      .returns<ClientCallRow[]>(),
+    adminSupabase
+      .from('calls')
+      .select(`id, campaign_id, sdr_id, call_datetime, call_analyses!inner(${CLIENT_ANALYSIS_COLS}), analysis_jobs!inner(status)`)
+      .in('campaign_id', campaignIds)
+      .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
+      .not('call_analyses.prospect_company', 'is', null)
       .gte('call_datetime', since)
       .lte('call_datetime', until)
-      .eq('call_analyses.appointment_booked', true)
       .order('call_datetime', { ascending: false })
-      .limit(50),
-    // All calls in period for SDR leaderboard aggregation.
+      .returns<ClientCallRow[]>(),
     adminSupabase
       .from('calls')
-      .select('sdr_id, call_analyses(appointment_booked, decision_maker_detected, pain_point_detected, appointment_datetime, appointment_quality_score)')
+      .select(`id, campaign_id, sdr_id, call_datetime, call_analyses!inner(${CLIENT_ANALYSIS_COLS}), analysis_jobs!inner(status)`)
       .in('campaign_id', campaignIds)
       .eq('organization_id', profile.organization_id)
-      .gte('call_datetime', since)
-      .lte('call_datetime', until),
+      .eq('analysis_jobs.status', 'completed')
+      .not('call_analyses.prospect_company', 'is', null)
+      .gte('call_datetime', prevBounds.since)
+      .lte('call_datetime', prevBounds.until)
+      .order('call_datetime', { ascending: false })
+      .returns<ClientCallRow[]>(),
+    adminSupabase
+      .from('calls')
+      .select(`id, campaign_id, sdr_id, call_datetime, call_analyses!inner(${CLIENT_ANALYSIS_COLS}), analysis_jobs!inner(status)`)
+      .in('campaign_id', campaignIds)
+      .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
+      .not('call_analyses.prospect_company', 'is', null)
+      .gte('call_datetime', monthBounds.since)
+      .lte('call_datetime', monthBounds.until)
+      .order('call_datetime', { ascending: false })
+      .returns<ClientCallRow[]>(),
     // SDR name lookup — org-scoped, no cross-org leak possible.
     adminSupabase
       .from('users')
       .select('id, name')
       .eq('organization_id', profile.organization_id),
+    // campaign_assignments (may not exist yet)
+    adminSupabase
+      .from('campaign_assignments')
+      .select('sdr_id, campaign_id, starts_at, ends_at, status')
+      .in('campaign_id', campaignIds)
+      .eq('status', 'active'),
+    // legacy fallback
+    adminSupabase
+      .from('campaign_sdrs')
+      .select('user_id, campaign_id')
+      .in('campaign_id', campaignIds),
   ])
 
-  const kpis: ClientKPIsRow = kpisData?.[0] ?? {
-    total_calls: 0, hot_warm_contacts: 0, appointments_booked: 0,
-    qualified_appointments: 0, qualification_rate: null,
-    decision_maker_rate: null, appointment_conversion_rate: null,
-  }
-  const prevKpis: ClientKPIsRow = prevKpisData?.[0] ?? {
-    total_calls: 0, hot_warm_contacts: 0, appointments_booked: 0,
-    qualified_appointments: 0, qualification_rate: null,
-    decision_maker_rate: null, appointment_conversion_rate: null,
-  }
-  const monthKpis: ClientKPIsRow = monthKpisData?.[0] ?? kpis
+  const allVisibleCompletedRows = visibleCompletedRows || []
+  const periodRows = currentRows || []
+  const kpis = buildKpis(periodRows)
+  const prevKpis = buildKpis(previousRows || [])
+  const monthKpis = buildKpis(monthRows || [])
 
-  const valueRows  = (valueData  || []) as ClientValueReportRow[]
-  const statsRows  = (campaignStatsData || []) as ClientCampaignStatsRow[]
+  const valueRows = buildValueRows(periodRows)
+  const statsRows = buildCampaignStats(allVisibleCompletedRows, campaignIds)
+  const bookedCalls = periodRows.filter(call => one(call.call_analyses)?.appointment_booked === true)
+  const allCallsRaw = periodRows
+
+  logClientDashboardStep('query_results', {
+    user_id: user.id,
+    organization_id: profile.organization_id,
+    client_id: profile.client_id,
+    campaign_ids: campaignIds,
+    period,
+    date_range: { since, until },
+    previous_date_range: prevBounds,
+    month_date_range: monthBounds,
+    completed_calls_before_client_filters: orgCompletedCount ?? 0,
+    completed_calls_after_campaign_filter: allVisibleCompletedRows.length,
+    completed_calls_after_period_filter: periodRows.length,
+    errors: {
+      visible_completed: visibleCompletedError?.message ?? null,
+      current_period: currentRowsError?.message ?? null,
+      previous_period: previousRowsError?.message ?? null,
+      month_period: monthRowsError?.message ?? null,
+    },
+    result_rows: periodRows.map(row => {
+      const analysis = one(row.call_analyses)
+      const job = one(row.analysis_jobs)
+      return {
+        call_id: row.id,
+        campaign_id: row.campaign_id,
+        sdr_id: row.sdr_id,
+        call_datetime: row.call_datetime,
+        job_status: job?.status ?? null,
+        analysis_id: analysis?.id ?? null,
+        prospect_company: analysis?.prospect_company ?? null,
+        appointment_booked: analysis?.appointment_booked ?? null,
+        appointment_date_text: analysis?.appointment_date_text ?? null,
+        appointment_datetime: analysis?.appointment_datetime ?? null,
+        appointment_date_confidence: analysis?.appointment_date_confidence ?? null,
+        appointment_quality_score: analysis?.appointment_quality_score ?? null,
+      }
+    }),
+    zero_reason:
+      periodRows.length > 0 ? null
+      : campaignIds.length === 0 ? 'no_visible_campaign_ids'
+      : allVisibleCompletedRows.length === 0 ? 'no_completed_analysis_rows_for_visible_campaigns'
+      : 'completed_analysis_rows_exist_but_outside_selected_date_range',
+  })
 
   const topPainPoints = valueRows.filter(r => r.kind === 'pain_point').map(r => ({ label: r.label, count: r.cnt }))
   const topObjections = valueRows.filter(r => r.kind === 'objection').map(r => ({ label: r.label, count: r.cnt }))
 
   const nameMap: Record<string, string> = Object.fromEntries(
-    (sdrUsers || []).map((u: any) => [u.id, u.name])
+    ((sdrUsers || []) as SdrUserRow[]).map(u => [u.id, u.name])
   )
 
   const aiSummary    = buildAISummary(monthKpis, statsRows)
   const health       = computeHealth(kpis)
-  const nonQualReasons = computeNonQualReasons(bookedCalls || [])
-  const sdrStats     = aggregateSdrStats(allCallsRaw || [], nameMap)
+  const nonQualReasons = computeNonQualReasons(bookedCalls)
+  const sdrStats     = aggregateSdrStats(allCallsRaw, nameMap)
 
-  const qualifiedAppointments = (bookedCalls || []).filter((call: any) => {
-    const a = call.call_analyses
-    if (!a) return false
-    return (
-      a.decision_maker_detected === true &&
-      a.pain_point_details && a.pain_point_details.trim() !== '' &&
-      a.appointment_datetime &&
-      a.appointment_quality_score !== null &&
-      a.appointment_quality_score >= 60
-    )
-  })
+  // Assigned SDRs for campaign context section
+  type AssignedSdrEntry = { sdr_id: string; name: string; starts_at?: string; ends_at?: string; assignmentStatus: 'active' | 'scheduled' }
+  const assignedSdrEntries: AssignedSdrEntry[] = []
+  const seenSdrIds = new Set<string>()
+  if (assignmentsRaw && assignmentsRaw.length > 0) {
+    for (const a of assignmentsRaw as { sdr_id: string; campaign_id: string; starts_at: string; ends_at: string; status: string }[]) {
+      if (seenSdrIds.has(a.sdr_id)) continue
+      seenSdrIds.add(a.sdr_id)
+      const todayStr = new Date().toISOString().split('T')[0]
+      assignedSdrEntries.push({
+        sdr_id: a.sdr_id,
+        name: nameMap[a.sdr_id] ?? '—',
+        starts_at: a.starts_at,
+        ends_at: a.ends_at,
+        assignmentStatus: a.starts_at > todayStr ? 'scheduled' : 'active',
+      })
+    }
+  } else if (legacySdrAssignments && legacySdrAssignments.length > 0) {
+    for (const a of legacySdrAssignments as { user_id: string; campaign_id: string }[]) {
+      if (seenSdrIds.has(a.user_id)) continue
+      seenSdrIds.add(a.user_id)
+      assignedSdrEntries.push({ sdr_id: a.user_id, name: nameMap[a.user_id] ?? '—', assignmentStatus: 'active' })
+    }
+  }
+
+  const recentCalls = allVisibleCompletedRows.slice(0, 10)
+
+  const qualifiedAppointments = bookedCalls.filter((call: ClientCallRow) =>
+    isQualifiedAnalysis(one(call.call_analyses))
+  )
 
   const scoreColor = (n: number | null) =>
     n === null   ? 'var(--muted)'
@@ -577,8 +831,8 @@ export default async function ClientPage({
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>Tableau de bord</h1>
             <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
-              {campaigns?.length === 1
-                ? (campaigns[0] as any).campaign_name
+              {campaigns.length === 1
+                ? campaigns[0].campaign_name
                 : `${campaigns?.length} campagnes`} · {PERIOD_LABELS[period]}
             </p>
           </div>
@@ -589,6 +843,50 @@ export default async function ClientPage({
               ))}
             </div>
             <PrintButton />
+          </div>
+        </div>
+
+        {/* ── CAMPAIGN CONTEXT BANNER ───────────────────────────────────── */}
+        <div style={{ background: 'rgba(125,211,252,.05)', border: '1px solid rgba(125,211,252,.18)', borderRadius: 12, padding: '14px 20px', marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Client</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{campaigns[0]?.client_name ?? '—'}</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>
+              {campaigns.length > 1 ? `${campaigns.length} campagnes` : 'Campagne'}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+              {campaigns.length === 1 ? campaigns[0].campaign_name : campaigns.map(c => c.campaign_name).join(', ')}
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Commerciaux assignés</div>
+            {assignedSdrEntries.length === 0
+              ? <div style={{ fontSize: 13, color: 'var(--muted)' }}>Non assignée</div>
+              : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {assignedSdrEntries.map(s => (
+                    <span key={s.sdr_id} style={{
+                      fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 20,
+                      background: s.assignmentStatus === 'active' ? 'rgba(34,197,94,.10)' : 'rgba(245,158,11,.10)',
+                      color: s.assignmentStatus === 'active' ? '#86efac' : '#fcd34d',
+                      border: `1px solid ${s.assignmentStatus === 'active' ? 'rgba(34,197,94,.30)' : 'rgba(245,158,11,.30)'}`,
+                    }}>{s.name}{s.assignmentStatus === 'scheduled' ? ' · planifié' : ''}</span>
+                  ))}
+                </div>
+            }
+          </div>
+          <div style={{ flex: 1, minWidth: 120 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4 }}>Statut</div>
+            {(() => {
+              const active = campaigns.filter(c => c.status === 'active').length
+              const paused = campaigns.filter(c => c.status === 'paused').length
+              const label = active > 0 ? 'Active' : paused > 0 ? 'En pause' : 'Terminée'
+              const color = active > 0 ? '#86efac' : paused > 0 ? '#fcd34d' : 'var(--muted)'
+              const bg = active > 0 ? 'rgba(34,197,94,.10)' : paused > 0 ? 'rgba(245,158,11,.10)' : 'rgba(148,163,184,.08)'
+              const border = active > 0 ? 'rgba(34,197,94,.30)' : paused > 0 ? 'rgba(245,158,11,.30)' : 'var(--border)'
+              return <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
+            })()}
           </div>
         </div>
 
@@ -644,8 +942,7 @@ export default async function ClientPage({
                   <EmptyGuide
                     message={aiSummary.headline}
                     steps={[
-                      "Importer un enregistrement d'appel",
-                      "Lancer l'analyse IA",
+                      "L'équipe analyse les appels de la campagne",
                       "Les recommandations apparaîtront automatiquement",
                     ]}
                   />
@@ -848,17 +1145,19 @@ export default async function ClientPage({
                 />
               ) : (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 48px', padding: '7px 20px', gap: 8, background: 'rgba(2,6,23,.4)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 48px 60px', padding: '7px 20px', gap: 8, background: 'rgba(2,6,23,.4)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
                     <span>Entreprise</span>
-                    <span>Date</span>
+                    <span>Date RDV</span>
                     <span style={{ textAlign: 'right' }}>Score</span>
+                    <span></span>
                   </div>
-                  {qualifiedAppointments.slice(0, 8).map((call: any, i: number) => {
-                    const a = call.call_analyses
+                  {qualifiedAppointments.slice(0, 8).map((call: ClientCallRow, i: number) => {
+                    const a = one(call.call_analyses)
+                    if (!a) return null
                     const sdrName = call.sdr_id ? nameMap[call.sdr_id] : null
-                    const dateStr = formatDateShort(a.appointment_datetime || call.call_datetime)
+                    const dateStr = a.appointment_datetime ? formatDateShort(a.appointment_datetime) : a.appointment_date_text || formatDateShort(call.call_datetime)
                     return (
-                      <div key={call.id} style={{ display: 'grid', gridTemplateColumns: '1fr 72px 48px', padding: '10px 20px', gap: 8, borderBottom: i < Math.min(qualifiedAppointments.length, 8) - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center' }}>
+                      <div key={call.id} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 48px 60px', padding: '10px 20px', gap: 8, borderBottom: i < Math.min(qualifiedAppointments.length, 8) - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center' }}>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {a.prospect_company || 'Entreprise non précisée'}
@@ -871,6 +1170,9 @@ export default async function ClientPage({
                         <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', color: scoreColor(a.appointment_quality_score) }}>
                           {a.appointment_quality_score ?? '—'}
                         </span>
+                        <Link href={`/calls/${call.id}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--cyan)', textDecoration: 'none', textAlign: 'right' }}>
+                          Voir →
+                        </Link>
                       </div>
                     )
                   })}
@@ -880,11 +1182,73 @@ export default async function ClientPage({
           </div>
         </div>
 
+        {/* ── SECTION: Recent call analyses ─────────────────────────────── */}
+        <SectionQ>Appels analysés par l&apos;équipe</SectionQ>
+        <Card style={{ marginBottom: 16 }}>
+          <CardHeader>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Analyses d&apos;appels récentes</span>
+              {allVisibleCompletedRows.length > 0 && (
+                <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{allVisibleCompletedRows.length} appel{allVisibleCompletedRows.length > 1 ? 's' : ''} analysé{allVisibleCompletedRows.length > 1 ? 's' : ''}</span>
+              )}
+            </div>
+          </CardHeader>
+          {recentCalls.length === 0 ? (
+            <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', marginBottom: 8 }}>
+                L&apos;équipe n&apos;a pas encore analysé d&apos;appel pour cette campagne.
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>
+                Les appels analysés, RDV obtenus et recommandations apparaîtront ici en temps réel.
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 100px 80px 80px 52px 80px', padding: '7px 20px', gap: 8, background: 'rgba(2,6,23,.4)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                <span>Date</span>
+                <span>Prospect / Entreprise</span>
+                <span>Commercial</span>
+                <span>Intérêt</span>
+                <span>RDV posé</span>
+                <span style={{ textAlign: 'right' }}>Score</span>
+                <span></span>
+              </div>
+              {recentCalls.map((call, i) => {
+                const a = one(call.call_analyses)
+                if (!a) return null
+                const sdrName = call.sdr_id ? (nameMap[call.sdr_id] ?? '—') : '—'
+                const interestColor = a.interest_level === 'hot' ? '#fca5a5' : a.interest_level === 'warm' ? '#fcd34d' : a.interest_level === 'cold' ? 'var(--cyan)' : 'var(--muted)'
+                const interestLabel = a.interest_level === 'hot' ? 'Chaud' : a.interest_level === 'warm' ? 'Tiède' : a.interest_level === 'cold' ? 'Froid' : '—'
+                return (
+                  <div key={call.id} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 100px 80px 80px 52px 80px', padding: '10px 20px', gap: 8, borderBottom: i < recentCalls.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{formatDateShort(call.call_datetime)}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.prospect_company || '—'}</div>
+                      {a.contact_name && <div style={{ fontSize: 10, color: 'var(--muted-2)' }}>{a.contact_name}</div>}
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>{sdrName}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: interestColor }}>{interestLabel}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: a.appointment_booked ? '#86efac' : 'var(--muted-2)' }}>
+                      {a.appointment_booked ? 'Oui' : 'Non'}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', color: scoreColor(a.appointment_quality_score) }}>
+                      {a.appointment_quality_score ?? '—'}
+                    </span>
+                    <Link href={`/calls/${call.id}`} style={{ fontSize: 11, fontWeight: 600, color: 'var(--cyan)', textDecoration: 'none', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      Voir →
+                    </Link>
+                  </div>
+                )
+              })}
+            </>
+          )}
+        </Card>
+
         {/* ── Pain points + Objections ───────────────────────────────────── */}
         <div className="insights-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 8 }}>
 
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <SectionQ>Qu'est-ce qui freine vos prospects ?</SectionQ>
+            <SectionQ>Qu&apos;est-ce qui freine vos prospects ?</SectionQ>
             <Card style={{ flex: 1 }}>
               <CardHeader>
                 <div>

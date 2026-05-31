@@ -51,21 +51,23 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
         <div style={{ color: 'var(--muted-2)', fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', marginTop: 2 }}>{orgName}</div>
       </div>
 
-      {/* Analyse button */}
-      <Link href="/calls/upload" style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        padding: '9px 12px', marginBottom: 16, borderRadius: 10, textDecoration: 'none',
-        fontSize: 13, fontWeight: 700, color: '#fff',
-        background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)',
-        border: '1px solid rgba(125,211,252,.42)',
-        boxShadow: '0 10px 24px rgba(37,99,235,.18)',
-      }}
-        onMouseOver={e => (e.currentTarget.style.opacity = '.88')}
-        onMouseOut={e => (e.currentTarget.style.opacity = '1')}
-      >
-        <span className="mat" style={{ fontSize: 16 }}>mic</span>
-        Analyser un appel
-      </Link>
+      {/* Analyse button — hidden for client role */}
+      {userRole !== 'client' && (
+        <Link href="/calls/upload" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          padding: '9px 12px', marginBottom: 16, borderRadius: 10, textDecoration: 'none',
+          fontSize: 13, fontWeight: 700, color: '#fff',
+          background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)',
+          border: '1px solid rgba(125,211,252,.42)',
+          boxShadow: '0 10px 24px rgba(37,99,235,.18)',
+        }}
+          onMouseOver={e => (e.currentTarget.style.opacity = '.88')}
+          onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+        >
+          <span className="mat" style={{ fontSize: 16 }}>mic</span>
+          Analyser un appel
+        </Link>
+      )}
 
       {/* Nav */}
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
