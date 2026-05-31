@@ -10,6 +10,17 @@ interface Props {
   currentUserId: string
 }
 
+const buttonStyle: React.CSSProperties = {
+  padding: '4px 10px',
+  borderRadius: 7,
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: 'pointer',
+  background: 'rgba(2,6,23,.32)',
+  border: '1px solid var(--border)',
+  color: 'var(--muted)',
+}
+
 export function ReviewQueueControls({
   callId,
   status,
@@ -17,8 +28,8 @@ export function ReviewQueueControls({
   assigneeName,
   currentUserId,
 }: Props) {
-  const [current,  setCurrent]  = useState<ReviewStatus>(status)
-  const [loading,  setLoading]  = useState(false)
+  const [current, setCurrent] = useState<ReviewStatus>(status)
+  const [loading, setLoading] = useState(false)
   const [assignee, setAssignee] = useState<string | null>(assigneeName)
 
   async function claim() {
@@ -46,21 +57,25 @@ export function ReviewQueueControls({
   }
 
   if (current === 'resolved') {
-    return <span className="text-xs text-emerald-600 font-medium shrink-0">✓ Résolu</span>
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 7, fontSize: 11, fontWeight: 700, color: '#86efac', background: 'rgba(34,197,94,.10)', border: '1px solid rgba(34,197,94,.35)', whiteSpace: 'nowrap' }}>
+        Résolu
+      </span>
+    )
   }
 
   if (current === 'in_review') {
     const isAssignedToMe = assignedToId === currentUserId
     return (
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-xs text-blue-600 font-medium whitespace-nowrap">
-          En cours {assignee ? `· ${assignee}` : ''}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <span style={{ fontSize: 11, color: 'var(--cyan)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+          En révision{assignee ? ` · ${assignee}` : ''}
         </span>
         {isAssignedToMe && (
           <button
             onClick={(e) => { e.preventDefault(); resolve() }}
             disabled={loading}
-            className="text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+            style={{ ...buttonStyle, color: '#86efac', background: 'rgba(34,197,94,.10)', border: '1px solid rgba(34,197,94,.35)', opacity: loading ? .6 : 1 }}
           >
             Résoudre
           </button>
@@ -73,9 +88,9 @@ export function ReviewQueueControls({
     <button
       onClick={(e) => { e.preventDefault(); claim() }}
       disabled={loading}
-      className="text-xs px-2 py-1 rounded bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 disabled:opacity-50 transition-colors shrink-0"
+      style={{ ...buttonStyle, opacity: loading ? .6 : 1 }}
     >
-      {loading ? '…' : 'Prendre en charge'}
+      {loading ? '...' : 'Prendre en charge'}
     </button>
   )
 }

@@ -10,6 +10,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
+  const demoPassword = 'Demo1234!'
+  const demoAccounts = [
+    { role: 'Propriétaire', email: 'karim@callforce.ma' },
+    { role: 'Manager', email: 'yasmine@callforce.ma' },
+    { role: 'SDR Sara', email: 'sara@callforce.ma' },
+    { role: 'Client Pierre', email: 'pierre@clientcorp.fr' },
+  ]
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
@@ -27,12 +35,11 @@ export default function LoginPage() {
   const inp: React.CSSProperties = {
     width: '100%', padding: '10px 12px', background: 'var(--input-bg)',
     border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)',
-    fontSize: 13, fontFamily: 'Geist, sans-serif', outline: 'none',
+    fontSize: 13, fontFamily: 'var(--font-geist), sans-serif', outline: 'none',
   }
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)', alignItems: 'stretch' }}>
-      {/* Left panel */}
       <div style={{
         width: 400, flexShrink: 0,
         background: 'var(--sidebar-bg)',
@@ -54,10 +61,10 @@ export default function LoginPage() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
-            { icon: 'bar_chart',   text: 'Scoring automatique RDV et SDR' },
-            { icon: 'search',      text: 'Détection objections et signaux achat' },
+            { icon: 'bar_chart', text: 'Scoring automatique RDV et SDR' },
+            { icon: 'search', text: 'Détection objections et signaux achat' },
             { icon: 'description', text: 'Reporting transparent clients français' },
-            { icon: 'school',      text: 'Recommandations coaching personnalisées' },
+            { icon: 'school', text: 'Recommandations coaching personnalisées' },
           ].map(item => (
             <div key={item.icon} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--muted)' }}>
               <span className="mat" style={{ fontSize: 16, color: 'var(--cyan)', flexShrink: 0 }}>{item.icon}</span>
@@ -67,9 +74,8 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-        <div style={{ width: '100%', maxWidth: 380 }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
           <div style={{ marginBottom: 28, textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Connexion</div>
             <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Accédez à votre espace SDRHelper</div>
@@ -78,15 +84,15 @@ export default function LoginPage() {
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 14, padding: 28, backdropFilter: 'blur(18px)', boxShadow: 'var(--shadow)' }}>
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>Adresse email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="vous@exemple.fr" required style={inp}
+                <label htmlFor="login-email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>Adresse email</label>
+                <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="vous@exemple.fr" required style={inp}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(125,211,252,.06)' }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>Mot de passe</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required style={inp}
+                <label htmlFor="login-password" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>Mot de passe</label>
+                <input id="login-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required style={inp}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(125,211,252,.06)' }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
                 />
@@ -101,7 +107,7 @@ export default function LoginPage() {
                 background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)',
                 border: '1px solid rgba(125,211,252,.42)',
                 boxShadow: '0 10px 24px rgba(37,99,235,.2)',
-                fontFamily: 'Geist, sans-serif',
+                fontFamily: 'var(--font-geist), sans-serif',
               }}>
                 {loading && <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
                 Se connecter
@@ -111,19 +117,16 @@ export default function LoginPage() {
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
               <div style={{ fontSize: 11, color: 'var(--muted-2)', textAlign: 'center', marginBottom: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em' }}>Comptes de démonstration</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {[
-                  { role: 'Propriétaire', email: 'salesagency@gmail.com' },
-                  { role: 'SDR',          email: 'amine@callforce.ma' },
-                ].map(item => (
-                  <div key={item.email} onClick={() => setEmail(item.email)} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
+                {demoAccounts.map(item => (
+                  <div key={item.email} onClick={() => { setEmail(item.email); setPassword(demoPassword) }} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
                     onMouseOver={e => (e.currentTarget.style.background = 'var(--row-h)')}
                     onMouseOut={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     <span style={{ color: 'var(--muted-2)' }}>{item.role}</span>
-                    <span style={{ color: 'var(--cyan)', fontFamily: 'monospace' }}>{item.email}</span>
+                    <span style={{ color: 'var(--cyan)', fontFamily: 'var(--font-jetbrains-mono), monospace', textAlign: 'right' }}>{item.email}</span>
                   </div>
                 ))}
-                <div style={{ fontSize: 11, color: 'var(--muted-2)', textAlign: 'center', marginTop: 4 }}>Mot de passe : Admin1234!</div>
+                <div style={{ fontSize: 11, color: 'var(--muted-2)', textAlign: 'center', marginTop: 4 }}>Mot de passe : {demoPassword}</div>
               </div>
             </div>
           </div>

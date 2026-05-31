@@ -24,6 +24,10 @@ function campaignHealthFromStats(s: DashboardCampaignStatsRow): CampaignHealthRe
   return { score, label: 'Critique', labelClass: 'text-red-400', labelBg: 'bg-red-500/10 text-red-400 border-red-500/30' }
 }
 
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
+
 export default async function DashboardPage() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -208,28 +212,32 @@ export default async function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {(recentCalls || []).map((call) => (
-                  <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '11px 18px', color: 'var(--muted-2)', whiteSpace: 'nowrap' }}>{formatDateShort(call.call_datetime)}</td>
-                    <td style={{ padding: '11px 18px', fontWeight: 600, color: 'var(--text)' }}>{call.users?.name || '—'}</td>
-                    <td style={{ padding: '11px 18px', color: 'var(--muted)' }}>{call.call_analyses?.prospect_company || '—'}</td>
-                    <td style={{ padding: '11px 18px' }}>
-                      {call.call_analyses?.appointment_booked ? (
-                        isQualifiedAppointment(call.call_analyses)
-                          ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Qualifié</Badge>
-                          : <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30">~ Posé</Badge>
-                      ) : (
-                        <span style={{ color: 'var(--muted-2)' }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '11px 18px' }}>
-                      <Link href={`/calls/${call.id}`}><ScoreBadge score={call.call_analyses?.appointment_quality_score ?? null} /></Link>
-                    </td>
-                    <td style={{ padding: '11px 18px' }}>
-                      <ScoreBadge score={call.call_analyses?.sdr_quality_score ?? null} />
-                    </td>
-                  </tr>
-                ))}
+                {(recentCalls || []).map((call) => {
+                  const analysis = one(call.call_analyses)
+                  const sdr = one(call.users)
+                  return (
+                    <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '11px 18px', color: 'var(--muted-2)', whiteSpace: 'nowrap' }}>{formatDateShort(call.call_datetime)}</td>
+                      <td style={{ padding: '11px 18px', fontWeight: 600, color: 'var(--text)' }}>{sdr?.name || '—'}</td>
+                      <td style={{ padding: '11px 18px', color: 'var(--muted)' }}>{analysis?.prospect_company || '—'}</td>
+                      <td style={{ padding: '11px 18px' }}>
+                        {analysis?.appointment_booked ? (
+                          isQualifiedAppointment(analysis as Parameters<typeof isQualifiedAppointment>[0])
+                            ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">Qualifié</Badge>
+                            : <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30">Posé</Badge>
+                        ) : (
+                          <span style={{ color: 'var(--muted-2)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '11px 18px' }}>
+                        <Link href={`/calls/${call.id}`}><ScoreBadge score={analysis?.appointment_quality_score ?? null} /></Link>
+                      </td>
+                      <td style={{ padding: '11px 18px' }}>
+                        <ScoreBadge score={analysis?.sdr_quality_score ?? null} />
+                      </td>
+                    </tr>
+                  )
+                })}
                 {!recentCalls?.length && (
                   <tr>
                     <td colSpan={6} style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)' }}>Aucun appel analysé pour l&apos;instant</td>

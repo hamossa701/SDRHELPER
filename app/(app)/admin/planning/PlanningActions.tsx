@@ -155,7 +155,7 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
     <>
       {/* Campaigns table */}
       <Card style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Campagnes</h2>
           <Link href="/campaigns/new" style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -168,7 +168,10 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
           </Link>
         </div>
         {campaigns.length === 0 ? (
-          <div style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Aucune campagne active</div>
+          <div style={{ padding: '34px 20px', textAlign: 'center' }}>
+            <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Aucune campagne active</div>
+            <p style={{ margin: 0, color: 'var(--muted-2)', fontSize: 12 }}>Créez ou réactivez une campagne pour planifier les SDRs.</p>
+          </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
@@ -235,8 +238,8 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
       <Card style={{ overflow: 'hidden' }}>
         <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Assignments en cours et à venir</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted-2)' }}>Qui travaille sur quoi, pour quel client, jusqu&apos;à quand</p>
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Affectations en cours et à venir</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted-2)' }}>Qui travaille sur quelle campagne, pour quel client, et jusqu&apos;à quand.</p>
           </div>
           <button onClick={() => openAssign()} style={{
             padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
@@ -246,7 +249,10 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
           </button>
         </div>
         {assignments.length === 0 ? (
-          <div style={{ padding: '32px 18px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Aucun assignment actif ou planifié</div>
+          <div style={{ padding: '34px 20px', textAlign: 'center' }}>
+            <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Aucune affectation planifiée</div>
+            <p style={{ margin: 0, color: 'var(--muted-2)', fontSize: 12 }}>Assignez un SDR pour rendre la campagne visible dans son espace.</p>
+          </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
@@ -365,7 +371,7 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
               )}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
                 <Button type="button" variant="secondary" onClick={() => setModal({ open: false })}>Annuler</Button>
-                <Button type="submit" loading={submitting}>Créer l&apos;assignment</Button>
+                <Button type="submit" loading={submitting}>Créer l&apos;affectation</Button>
               </div>
             </form>
           </Card>

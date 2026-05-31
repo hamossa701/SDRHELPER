@@ -29,9 +29,9 @@ export default async function PlanningPage() {
   const today = new Date().toISOString().split('T')[0]
 
   const [
-    { data: campaignsRaw, error: campaignsError },
+    { data: campaignsRaw },
     { data: sdrsRaw },
-    { data: assignmentsRaw, error: assignmentsError },
+    { data: assignmentsRaw },
   ] = await Promise.all([
     supabase.from('campaigns')
       .select('id, campaign_name, client_name, status')
@@ -50,11 +50,6 @@ export default async function PlanningPage() {
       .gte('ends_at', today)
       .order('starts_at', { ascending: true }),
   ])
-
-  console.log('[planning] user.id:', user.id, 'org_id:', profile.organization_id, 'role:', profile.role)
-  console.log('[planning] campaigns count:', campaignsRaw?.length ?? 0, 'error:', campaignsError?.message ?? 'none')
-  console.log('[planning] campaigns raw:', JSON.stringify(campaignsRaw?.map(c => ({ id: c.id, name: c.campaign_name, client: c.client_name, status: c.status }))))
-  if (assignmentsError) console.log('[planning] assignments error (migration may not be applied):', assignmentsError.message)
 
   const sdrs = (sdrsRaw ?? []) as { id: string; name: string }[]
   const rawAssignments = (assignmentsRaw ?? []) as {

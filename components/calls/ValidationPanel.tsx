@@ -50,7 +50,7 @@ export function ValidationPanel({ analysis, corrections, auditLog, canEdit }: Pr
   const [approvedAt,   setApprovedAt]   = useState<string | null>(analysis.validated_at || null)
   const [approving,    setApproving]    = useState(false)
   const [showAudit,    setShowAudit]    = useState(false)
-  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>(auditLog)
+  const [auditEntries] = useState<AuditEntry[]>(auditLog)
 
   const trust = computeTrustScore([{ ...analysis, field_validations: fieldStatuses } as CallAnalysis])
 
@@ -111,7 +111,38 @@ export function ValidationPanel({ analysis, corrections, auditLog, canEdit }: Pr
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 h3a-review-panel">
+      <style>{`
+        .h3a-review-panel .text-gray-900,
+        .h3a-review-panel .text-gray-800 { color: var(--text) !important; }
+        .h3a-review-panel .text-gray-600,
+        .h3a-review-panel .text-gray-500,
+        .h3a-review-panel .text-gray-400 { color: var(--muted) !important; }
+        .h3a-review-panel .bg-gray-100,
+        .h3a-review-panel .bg-emerald-50,
+        .h3a-review-panel .bg-blue-50 { background: rgba(2,6,23,.34) !important; }
+        .h3a-review-panel .text-emerald-700,
+        .h3a-review-panel .text-emerald-600 { color: #86efac !important; }
+        .h3a-review-panel .text-blue-700,
+        .h3a-review-panel .text-blue-600 { color: var(--cyan) !important; }
+        .h3a-review-panel .border-gray-300,
+        .h3a-review-panel .border-gray-200,
+        .h3a-review-panel .border-blue-200,
+        .h3a-review-panel .border-emerald-200,
+        .h3a-review-panel .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: var(--border) !important; }
+        .h3a-review-panel input,
+        .h3a-review-panel textarea {
+          background: var(--input-bg) !important;
+          border-color: var(--border) !important;
+          color: var(--text) !important;
+          font-family: Geist, system-ui, sans-serif;
+        }
+        .h3a-review-panel input:focus,
+        .h3a-review-panel textarea:focus {
+          border-color: var(--border-strong) !important;
+          box-shadow: 0 0 0 3px rgba(125,211,252,.10) !important;
+        }
+      `}</style>
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-4 flex-wrap">

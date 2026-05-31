@@ -1,13 +1,30 @@
 ﻿import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ScoreBadge, StatusBadge } from '@/components/ui'
+import { Empty, ScoreBadge, StatusBadge } from '@/components/ui'
 import Link from 'next/link'
+import type { CallAnalysis, Campaign } from '@/types'
+
+type CampaignRow = Campaign & {
+  totalCalls: number
+  rdvBooked: number
+  avgQuality: number | null
+}
+
+type CampaignCallMetric = {
+  campaign_id: string
+  call_analyses: Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score'> | Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score'>[] | null
+}
+type AnalysisMetric = Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score'>
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
 
 export default async function CampaignsPage() {
   const cookieStore = await cookies()
   const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } })
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof cookieStore.set>[2] }[]) { try { cookiesToSet.forEach(({name,value,options}) => cookieStore.set(name,value,options)) } catch {} } } })
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
@@ -15,11 +32,12 @@ export default async function CampaignsPage() {
   const { data: campaigns } = await supabase.from('campaigns').select('*').eq('organization_id', profile.organization_id).order('created_at', { ascending: false })
   const { data: calls } = await supabase.from('calls').select('campaign_id, call_analyses(appointment_booked, appointment_quality_score)').eq('organization_id', profile.organization_id)
 
-  const stats = (campaigns || []).map((c: any) => {
-    const cc = calls?.filter((x: any) => x.campaign_id === c.id) || []
-    const an = cc.map((x: any) => x.call_analyses).filter(Boolean)
-    const rdv = an.filter((a: any) => a?.appointment_booked).length
-    const avg = an.length > 0 ? Math.round(an.reduce((s: number, a: any) => s + (a?.appointment_quality_score || 0), 0) / an.length) : null
+  const callRows = (calls || []) as CampaignCallMetric[]
+  const stats: CampaignRow[] = ((campaigns || []) as Campaign[]).map((c) => {
+    const cc = callRows.filter((x) => x.campaign_id === c.id)
+    const an = cc.map((x) => one(x.call_analyses)).filter((a): a is AnalysisMetric => Boolean(a))
+    const rdv = an.filter((a) => a.appointment_booked).length
+    const avg = an.length > 0 ? Math.round(an.reduce((s, a) => s + (a.appointment_quality_score || 0), 0) / an.length) : null
     return { ...c, totalCalls: cc.length, rdvBooked: rdv, avgQuality: avg }
   })
 
@@ -27,10 +45,20 @@ export default async function CampaignsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
+      <style>{`
+        .campaign-row:hover {
+          border-color: rgba(125,211,252,.35) !important;
+          background: linear-gradient(180deg,rgba(15,23,42,.86),rgba(10,16,32,.76)) !important;
+        }
+        @media (max-width: 720px) {
+          .campaign-list-card { align-items: flex-start !important; flex-direction: column !important; }
+          .campaign-list-metrics { margin-left: 0 !important; }
+        }
+      `}</style>
+      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', minHeight: 56, padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, backdropFilter: 'blur(18px)', flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Campagnes</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{campaigns?.length || 0} campagne(s)</div>
+          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{stats.length} campagne{stats.length !== 1 ? 's' : ''} suivie{stats.length !== 1 ? 's' : ''}</div>
         </div>
         {canCreate && (
           <Link href="/campaigns/new" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', textDecoration: 'none', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.18)' }}>
@@ -39,26 +67,37 @@ export default async function CampaignsPage() {
         )}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 36px' }}>
+        <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {stats.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--muted)', fontSize: 13 }}>Aucune campagne créée.</div>
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)' }}>
+              <Empty
+                title="Aucune campagne créée"
+                description={canCreate ? 'Créez une campagne pour assigner les SDRs et suivre les appels analysés.' : 'Vos campagnes assignées apparaîtront ici dès leur activation.'}
+                action={canCreate ? (
+                  <Link href="/campaigns/new" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)' }}>
+                    <span className="mat" style={{ fontSize: 15 }}>add</span>
+                    Nouvelle campagne
+                  </Link>
+                ) : null}
+              />
+            </div>
           )}
-          {stats.map((c: any) => (
+          {stats.map((c) => (
             <Link key={c.id} href={`/campaigns/${c.id}`} style={{ textDecoration: 'none' }}>
-              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backdropFilter: 'blur(18px)', cursor: 'pointer', transition: 'border-color .15s' }}>
+              <div className="campaign-row campaign-list-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18, backdropFilter: 'blur(18px)', cursor: 'pointer', transition: 'border-color .15s, background .15s', boxShadow: 'var(--shadow)' }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{c.campaign_name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{c.campaign_name}</span>
                     <StatusBadge status={c.status} />
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-                    <span style={{ color: 'var(--muted-2)' }}>Client :</span> <span style={{ color: 'var(--text)', fontWeight: 600 }}>{c.client_name}</span>
-                    {c.sector && <> · {c.sector}</>}
-                    <span style={{ marginLeft: 12, color: 'var(--muted-2)' }}>{c.totalCalls} appel(s) · {c.rdvBooked} RDV</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--muted)' }}>
+                    <span><span style={{ color: 'var(--muted-2)' }}>Client</span> <span style={{ color: 'var(--text)', fontWeight: 650 }}>{c.client_name}</span></span>
+                    {c.sector && <span>{c.sector}</span>}
+                    <span style={{ color: 'var(--muted-2)' }}>{c.totalCalls} appel{c.totalCalls !== 1 ? 's' : ''} · {c.rdvBooked} RDV</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 20, flexShrink: 0 }}>
+                <div className="campaign-list-metrics" style={{ display: 'flex', alignItems: 'center', gap: 12, marginLeft: 20, flexShrink: 0 }}>
                   <ScoreBadge score={c.avgQuality} />
                   <span className="mat" style={{ fontSize: 16, color: 'var(--muted-2)' }}>arrow_forward</span>
                 </div>

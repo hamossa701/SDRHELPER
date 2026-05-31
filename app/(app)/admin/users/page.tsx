@@ -127,10 +127,9 @@ export default async function AdminUsersPage() {
                 i
               </div>
               <div>
-                <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700 }}>Création des accès</div>
+                <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700 }}>Gestion des accès</div>
                 <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.6 }}>
-                  Pour créer de nouveaux utilisateurs, ajoutez le compte dans Supabase Authentication puis insérez le profil
-                  correspondant dans la table <code style={{ color: 'var(--cyan)' }}>users</code>.
+                  Les comptes sont préparés par l&apos;administration SDRHELPER. Cette page sert à contrôler les rôles actifs dans votre organisation.
                 </p>
               </div>
             </div>

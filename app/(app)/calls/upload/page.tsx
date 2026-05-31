@@ -39,6 +39,7 @@ export default function UploadCallPage() {
       if (!user) { router.push('/login'); return }
       const { data: prof } = await supabase.from('users').select('*').eq('id', user.id).single()
       if (!prof) { router.push('/login'); return }
+      if (prof.role === 'client') { router.push('/client'); return }
       setProfile(prof)
       const { data: cams } = await supabase.from('campaigns').select('*').eq('organization_id', prof.organization_id).eq('status', 'active').order('campaign_name')
       setCampaigns(cams || [])

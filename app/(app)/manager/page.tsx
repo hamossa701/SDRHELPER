@@ -6,14 +6,35 @@ import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from 
 import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
 import { ReviewQueueControls } from '@/components/manager/ReviewQueueControls'
 import Link from 'next/link'
-import type { CallAnalysis, ManagerKPIs, SDRLeaderboardRow } from '@/types'
+import type { CallAnalysis, ManagerKPIs, ReviewStatus, SDRLeaderboardRow } from '@/types'
+
+type ManagerUser = { id: string; name: string }
+type ManagerReviewCall = {
+  id: string
+  call_datetime: string
+  review_status: ReviewStatus | null
+  assigned_to: string | null
+  call_analyses: CallAnalysis | CallAnalysis[] | null
+  users: { name: string | null } | { name: string | null }[] | null
+  campaigns: { campaign_name: string | null; client_name: string | null } | { campaign_name: string | null; client_name: string | null }[] | null
+}
+type ManagerRecentCall = {
+  id: string
+  call_datetime: string
+  call_analyses: CallAnalysis | CallAnalysis[] | null
+  users: { name: string | null } | { name: string | null }[] | null
+}
+
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
 
 export default async function ManagerPage() {
   const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll(c: any) { try { c.forEach(({name,value,options}: any) => cookieStore.set(name,value,options)) } catch {} } } }
+    { cookies: { getAll() { return cookieStore.getAll() }, setAll(cookiesToSet: { name: string; value: string; options?: Parameters<typeof cookieStore.set>[2] }[]) { try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } catch {} } } }
   )
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -55,7 +76,7 @@ export default async function ManagerPage() {
 
   const sdrStats = (leaderboardData || []) as SDRLeaderboardRow[]
   const managerMap: Record<string, string> = Object.fromEntries(
-    (orgManagers || []).map((u: any) => [u.id, u.name])
+    ((orgManagers || []) as ManagerUser[]).map((u) => [u.id, u.name])
   )
 
   const trustTotal = kpis.ai_trust_validated + kpis.ai_trust_corrected
@@ -66,14 +87,15 @@ export default async function ManagerPage() {
     : trustScore >= 60 ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
     : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
 
-  const callsWithFlags = (reviewQueue || [])
-    .filter((c: any) => {
-      if (!c.call_analyses) return false
-      return computeReviewFlags(c.call_analyses as CallAnalysis).review_required
+  const callsWithFlags = ((reviewQueue || []) as ManagerReviewCall[])
+    .filter((c) => {
+      const analysis = one(c.call_analyses)
+      if (!analysis) return false
+      return computeReviewFlags(analysis).review_required
     })
-    .sort((a: any, b: any) =>
-      reviewCriticalityRank(a.call_analyses as CallAnalysis) -
-      reviewCriticalityRank(b.call_analyses as CallAnalysis)
+    .sort((a, b) =>
+      reviewCriticalityRank(one(a.call_analyses) as CallAnalysis) -
+      reviewCriticalityRank(one(b.call_analyses) as CallAnalysis)
     )
 
   const coachingNeeded = sdrStats.filter(s => s.avg_sdr_quality === null || s.avg_sdr_quality < 55)
@@ -112,17 +134,20 @@ export default async function ManagerPage() {
               {callsWithFlags.length === 0 && (
                 <div className="px-6 py-8 text-center text-sm text-slate-500">Aucun appel en attente de révision ✓</div>
               )}
-              {callsWithFlags.slice(0, 10).map((call: any) => {
-                const { flags } = computeReviewFlags(call.call_analyses as CallAnalysis)
+              {callsWithFlags.slice(0, 10).map((call) => {
+                const analysis = one(call.call_analyses) as CallAnalysis
+                const sdr = one(call.users)
+                const campaign = one(call.campaigns)
+                const { flags } = computeReviewFlags(analysis)
                 return (
                   <div key={call.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
                     <div className="flex items-start justify-between gap-4">
                       <Link href={`/calls/${call.id}`} className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-slate-200">
-                          {call.call_analyses?.prospect_company || 'Prospect inconnu'}
+                          {analysis.prospect_company || 'Prospect inconnu'}
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {call.users?.name} · {call.campaigns?.campaign_name} · {formatDateShort(call.call_datetime)}
+                          {sdr?.name} · {campaign?.campaign_name} · {formatDateShort(call.call_datetime)}
                         </p>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {flags.map((flag: string, i: number) => (
@@ -131,7 +156,7 @@ export default async function ManagerPage() {
                         </div>
                       </Link>
                       <div className="flex items-center gap-2 shrink-0">
-                        <ScoreBadge score={call.call_analyses?.appointment_quality_score ?? null} />
+                        <ScoreBadge score={analysis.appointment_quality_score ?? null} />
                         <ReviewQueueControls
                           callId={call.id}
                           status={call.review_status || 'open'}
@@ -161,29 +186,33 @@ export default async function ManagerPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {(recentCalls || []).map((call: any) => (
+                  {((recentCalls || []) as ManagerRecentCall[]).map((call) => {
+                    const analysis = one(call.call_analyses)
+                    const sdr = one(call.users)
+                    return (
                     <tr key={call.id} className="hover:bg-white/5">
-                      <td className="px-6 py-3 font-medium text-slate-200">{call.users?.name || '—'}</td>
-                      <td className="px-6 py-3 text-slate-400">{call.call_analyses?.prospect_company || '—'}</td>
+                      <td className="px-6 py-3 font-medium text-slate-200">{sdr?.name || '—'}</td>
+                      <td className="px-6 py-3 text-slate-400">{analysis?.prospect_company || '—'}</td>
                       <td className="px-6 py-3">
-                        <Badge className={getInterestBg(call.call_analyses?.interest_level ?? null)}>
-                          {getInterestLabel(call.call_analyses?.interest_level ?? null)}
+                        <Badge className={getInterestBg(analysis?.interest_level ?? null)}>
+                          {getInterestLabel(analysis?.interest_level ?? null)}
                         </Badge>
                       </td>
                       <td className="px-6 py-3">
-                        {call.call_analyses?.appointment_booked ? (
-                          isQualifiedAppointment(call.call_analyses as CallAnalysis)
+                        {analysis?.appointment_booked ? (
+                          isQualifiedAppointment(analysis)
                             ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Qualifié</Badge>
                             : <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30">~ Posé</Badge>
                         ) : <span className="text-slate-500">—</span>}
                       </td>
                       <td className="px-6 py-3">
                         <Link href={`/calls/${call.id}`}>
-                          <ScoreBadge score={call.call_analyses?.sdr_quality_score ?? null} />
+                          <ScoreBadge score={analysis?.sdr_quality_score ?? null} />
                         </Link>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                   {!recentCalls?.length && (
                     <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Aucun appel</td></tr>
                   )}

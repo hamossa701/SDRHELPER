@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { processJobById } from '@/lib/job-processor'
 
+type ClaimedAnalysisJob = {
+  id: string
+  call_id: string
+  retry_count: number | null
+}
+
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-worker-secret')
   if (!process.env.WORKER_SECRET || secret !== process.env.WORKER_SECRET) {
@@ -21,14 +27,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: claimErr.message }, { status: 500 })
   }
 
-  if (!jobs?.length) {
+  const claimedJobs = (jobs ?? []) as ClaimedAnalysisJob[]
+
+  if (!claimedJobs.length) {
     console.log('[worker] no pending jobs')
     return NextResponse.json({ processed: 0, results: [] })
   }
-  console.log(`[worker] claimed ${jobs.length} job(s):`, jobs.map((j: any) => j.id))
+  console.log(`[worker] claimed ${claimedJobs.length} job(s):`, claimedJobs.map((job) => job.id))
 
   const results: Array<{ job_id: string; outcome: string }> = []
-  for (const job of jobs) {
+  for (const job of claimedJobs) {
     const outcome = await processJobById({ id: job.id, call_id: job.call_id, retry_count: job.retry_count ?? 0 })
     results.push({ job_id: job.id, outcome })
   }

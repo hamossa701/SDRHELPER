@@ -176,9 +176,9 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', borderRadius: 8, padding: 2 }}>
                   {([
-                    ['completed', 'Completed'],
-                    ['failed', 'Failed'],
-                    ['all', 'All'],
+                    ['completed', 'Analysés'],
+                    ['failed', 'À vérifier'],
+                    ['all', 'Tous'],
                   ] as const).map(([filter, label]) => (
                     <Link
                       key={filter}
@@ -203,10 +203,10 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
             {!calls.length ? (
               <div style={{ padding: '48px 24px', textAlign: 'center' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
-                  {activeFilter === 'failed' ? 'Aucun appel échoué' : 'Aucun appel analysé'}
+                  {activeFilter === 'failed' ? 'Aucun appel à vérifier' : 'Aucun appel analysé'}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--muted-2)', marginBottom: 16 }}>
-                  {activeFilter === 'failed' ? 'Les anciens appels bloqués n’apparaissent ici que pour diagnostic.' : 'Analysez votre premier appel pour voir vos performances.'}
+                  {activeFilter === 'failed' ? 'Les appels bloqués ou incomplets apparaîtront ici pour suivi.' : 'Analysez votre premier appel pour suivre vos performances et recommandations.'}
                 </div>
                 <Link href="/calls/upload" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, fontSize: 12, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)' }}>
                   <span className="mat" style={{ fontSize: 15 }}>mic</span>
