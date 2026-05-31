@@ -11,7 +11,7 @@ export function Badge({ children, className }: { children: React.ReactNode; clas
 }
 
 // ---- Card ----
-export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Card({ children, className, style: extraStyle }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
     <div className={cn('h3a-card', className)} style={{
       background: 'var(--card-bg)',
@@ -19,6 +19,7 @@ export function Card({ children, className }: { children: React.ReactNode; class
       borderRadius: '12px',
       boxShadow: 'var(--shadow)',
       backdropFilter: 'blur(18px)',
+      ...extraStyle,
     }}>
       {children}
     </div>
