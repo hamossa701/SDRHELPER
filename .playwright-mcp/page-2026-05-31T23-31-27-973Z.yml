@@ -1,0 +1,139 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: SDRHelper
+        - generic [ref=e6]: CallForce Maroc
+      - link "mic Analyser un appel" [ref=e7] [cursor=pointer]:
+        - /url: /calls/upload
+        - generic [ref=e8]: mic
+        - text: Analyser un appel
+      - navigation [ref=e9]:
+        - link "bar_chart Tableau de bord" [ref=e10] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e11]: bar_chart
+          - text: Tableau de bord
+        - link "school Coaching SDR" [ref=e12] [cursor=pointer]:
+          - /url: /coaching
+          - generic [ref=e13]: school
+          - text: Coaching SDR
+        - link "folder Campagnes" [ref=e14] [cursor=pointer]:
+          - /url: /campaigns
+          - generic [ref=e15]: folder
+          - text: Campagnes
+        - link "science Evaluation IA" [ref=e16] [cursor=pointer]:
+          - /url: /admin/evaluation
+          - generic [ref=e17]: science
+          - text: Evaluation IA
+        - link "calendar_month Planning" [ref=e18] [cursor=pointer]:
+          - /url: /admin/planning
+          - generic [ref=e19]: calendar_month
+          - text: Planning
+        - link "group Utilisateurs" [ref=e20] [cursor=pointer]:
+          - /url: /admin/users
+          - generic [ref=e21]: group
+          - text: Utilisateurs
+      - generic [ref=e23]:
+        - generic [ref=e24]: K
+        - generic [ref=e25]:
+          - generic [ref=e26]: Karim Benali
+          - generic [ref=e27]: owner
+        - button "logout" [ref=e28] [cursor=pointer]:
+          - generic [ref=e29]: logout
+    - main [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - generic [ref=e34]: Campagnes
+            - generic [ref=e35]: 6 campagnes suivies
+          - link "add Nouvelle campagne" [ref=e36] [cursor=pointer]:
+            - /url: /campaigns/new
+            - generic [ref=e37]: add
+            - text: Nouvelle campagne
+        - generic [ref=e39]:
+          - link "PIKA DEMO TEST Terminée Client PIKA 0 appels · 0 RDV — arrow_forward" [ref=e40] [cursor=pointer]:
+            - /url: /campaigns/504beb70-d2c2-48f7-b4f3-3aa88c42cc4c
+            - generic [ref=e41]:
+              - generic [ref=e42]:
+                - generic [ref=e43]:
+                  - generic [ref=e44]: PIKA DEMO TEST
+                  - generic [ref=e45]: Terminée
+                - generic [ref=e46]:
+                  - generic [ref=e47]: Client PIKA
+                  - generic [ref=e48]: 0 appels · 0 RDV
+              - generic [ref=e49]:
+                - generic [ref=e50]: —
+                - generic [ref=e51]: arrow_forward
+          - link "PIKA DEMO TEST Active Client PIKASUS TELECOM B2B 1 appel · 1 RDV 88 arrow_forward" [ref=e52] [cursor=pointer]:
+            - /url: /campaigns/a7279130-bd86-4f55-a0dc-1b4e716413b1
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - generic [ref=e55]:
+                  - generic [ref=e56]: PIKA DEMO TEST
+                  - generic [ref=e57]: Active
+                - generic [ref=e58]:
+                  - generic [ref=e59]: Client PIKASUS
+                  - generic [ref=e60]: TELECOM B2B
+                  - generic [ref=e61]: 1 appel · 1 RDV
+              - generic [ref=e62]:
+                - generic [ref=e63]: "88"
+                - generic [ref=e64]: arrow_forward
+          - link "PROSPECTION Active Client Praize B2B prospection externalisée 3 appels · 2 RDV 75 arrow_forward" [ref=e65] [cursor=pointer]:
+            - /url: /campaigns/d55b3aa4-c16f-4b40-bc05-8f924365aeb6
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - generic [ref=e68]:
+                  - generic [ref=e69]: PROSPECTION
+                  - generic [ref=e70]: Active
+                - generic [ref=e71]:
+                  - generic [ref=e72]: Client Praize
+                  - generic [ref=e73]: B2B prospection externalisée
+                  - generic [ref=e74]: 3 appels · 2 RDV
+              - generic [ref=e75]:
+                - generic [ref=e76]: "75"
+                - generic [ref=e77]: arrow_forward
+          - link "Gestion de flotte PME En pause Client FleetManager Pro Transport / Logistique 0 appels · 0 RDV — arrow_forward" [ref=e78] [cursor=pointer]:
+            - /url: /campaigns/22222222-0000-0000-0000-000000000003
+            - generic [ref=e79]:
+              - generic [ref=e80]:
+                - generic [ref=e81]:
+                  - generic [ref=e82]: Gestion de flotte PME
+                  - generic [ref=e83]: En pause
+                - generic [ref=e84]:
+                  - generic [ref=e85]: Client FleetManager Pro
+                  - generic [ref=e86]: Transport / Logistique
+                  - generic [ref=e87]: 0 appels · 0 RDV
+              - generic [ref=e88]:
+                - generic [ref=e89]: —
+                - generic [ref=e90]: arrow_forward
+          - link "Audit énergétique ETI Terminée Client EnergyPro SAS Industrie / Énergie 16 appels · 2 RDV 18 arrow_forward" [ref=e91] [cursor=pointer]:
+            - /url: /campaigns/22222222-0000-0000-0000-000000000002
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - generic [ref=e94]:
+                  - generic [ref=e95]: Audit énergétique ETI
+                  - generic [ref=e96]: Terminée
+                - generic [ref=e97]:
+                  - generic [ref=e98]: Client EnergyPro SAS
+                  - generic [ref=e99]: Industrie / Énergie
+                  - generic [ref=e100]: 16 appels · 2 RDV
+              - generic [ref=e101]:
+                - generic [ref=e102]: "18"
+                - generic [ref=e103]: arrow_forward
+          - link "Prospection DSI PME Île-de-France Active Client TechSolutions France Logiciels B2B / SaaS 1 appel · 0 RDV — arrow_forward" [ref=e104] [cursor=pointer]:
+            - /url: /campaigns/22222222-0000-0000-0000-000000000001
+            - generic [ref=e105]:
+              - generic [ref=e106]:
+                - generic [ref=e107]:
+                  - generic [ref=e108]: Prospection DSI PME Île-de-France
+                  - generic [ref=e109]: Active
+                - generic [ref=e110]:
+                  - generic [ref=e111]: Client TechSolutions France
+                  - generic [ref=e112]: Logiciels B2B / SaaS
+                  - generic [ref=e113]: 1 appel · 0 RDV
+              - generic [ref=e114]:
+                - generic [ref=e115]: —
+                - generic [ref=e116]: arrow_forward
+  - button "Open Next.js Dev Tools" [ref=e122] [cursor=pointer]:
+    - img [ref=e123]
+  - alert [ref=e126]
