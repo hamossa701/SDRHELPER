@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Button, Card } from '@/components/ui'
@@ -30,8 +30,11 @@ export default function NewCampaignPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [clients, setClients] = useState<{ id: string; name: string }[]>([])
+  const [clientId, setClientId] = useState('')
+  const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
+  const [newClientName, setNewClientName] = useState('')
   const [form, setForm] = useState({
-    client_name: '',
     campaign_name: '',
     sector: '',
     target_persona: '',
@@ -39,6 +42,21 @@ export default function NewCampaignPage() {
     script_notes: '',
     status: 'active' as const,
   })
+
+  useEffect(() => {
+    async function fetchClients() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase.from('users').select('organization_id').eq('id', user.id).single()
+      if (!profile) return
+      const { data } = await supabase.from('client_accounts').select('id, name').eq('organization_id', profile.organization_id).order('name')
+      const list = data ?? []
+      setClients(list)
+      if (list.length === 0) setClientMode('new')
+    }
+    fetchClients()
+  }, [])
 
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -56,9 +74,26 @@ export default function NewCampaignPage() {
     const { data: profile } = await supabase.from('users').select('organization_id').eq('id', user.id).single()
     if (!profile) { setError('Erreur de profil'); setLoading(false); return }
 
+    let resolvedClientId = clientId
+    let resolvedClientName = clients.find(c => c.id === clientId)?.name ?? ''
+
+    if (clientMode === 'new') {
+      if (!newClientName.trim()) { setError('Nom du client requis'); setLoading(false); return }
+      const { data: newClient, error: clientErr } = await supabase
+        .from('client_accounts')
+        .insert({ name: newClientName.trim(), organization_id: profile.organization_id })
+        .select()
+        .single()
+      if (clientErr || !newClient) { setError(clientErr?.message ?? 'Erreur création client'); setLoading(false); return }
+      resolvedClientId = newClient.id
+      resolvedClientName = newClientName.trim()
+    }
+
+    if (!resolvedClientId) { setError('Veuillez sélectionner ou créer un client'); setLoading(false); return }
+
     const { data, error: err } = await supabase
       .from('campaigns')
-      .insert({ ...form, organization_id: profile.organization_id })
+      .insert({ ...form, client_id: resolvedClientId, client_name: resolvedClientName, organization_id: profile.organization_id })
       .select()
       .single()
 
@@ -113,29 +148,40 @@ export default function NewCampaignPage() {
               </div>
               <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div>
-                    <label style={labelStyle}>Nom client *</label>
-                    <input
-                      required
-                      className="h3a-input"
-                      value={form.client_name}
-                      onChange={e => update('client_name', e.target.value)}
-                      placeholder="ex: TechSolutions France"
-                      style={inputStyle}
-                    />
+                <div>
+                  <label style={labelStyle}>Client donneur d&apos;ordre *</label>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                    {(['existing', 'new'] as const).map(mode => (
+                      <button key={mode} type="button" onClick={() => setClientMode(mode)} style={{
+                        padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        border: `1px solid ${clientMode === mode ? 'var(--border-strong)' : 'var(--border)'}`,
+                        background: clientMode === mode ? 'var(--cyan-soft)' : 'transparent',
+                        color: clientMode === mode ? 'var(--cyan)' : 'var(--muted)',
+                      }}>
+                        {mode === 'existing' ? 'Client existant' : 'Nouveau client'}
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <label style={labelStyle}>Nom de campagne *</label>
-                    <input
-                      required
-                      className="h3a-input"
-                      value={form.campaign_name}
-                      onChange={e => update('campaign_name', e.target.value)}
-                      placeholder="ex: Prospection DSI Île-de-France"
-                      style={inputStyle}
-                    />
-                  </div>
+                  {clientMode === 'existing' ? (
+                    <select required className="h3a-input" value={clientId} onChange={e => setClientId(e.target.value)} style={inputStyle}>
+                      <option value="">Sélectionner un client...</option>
+                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  ) : (
+                    <input className="h3a-input" value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder="ex: Praize" style={inputStyle} />
+                  )}
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Nom de campagne *</label>
+                  <input
+                    required
+                    className="h3a-input"
+                    value={form.campaign_name}
+                    onChange={e => update('campaign_name', e.target.value)}
+                    placeholder="ex: Prospection DSI Île-de-France"
+                    style={inputStyle}
+                  />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

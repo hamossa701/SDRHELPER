@@ -4,7 +4,9 @@
 
 export type UserRole = 'owner' | 'manager' | 'sdr' | 'client'
 export type FieldValidationStatus = 'pending' | 'validated' | 'corrected'
-export type CampaignStatus = 'active' | 'paused' | 'completed'
+export type CampaignStatus = 'active' | 'paused' | 'completed' | 'archived'
+export type AssignmentType = '1_day' | '2_days' | '3_days' | '4_days' | 'full_week' | 'custom'
+export type AssignmentStatus = 'active' | 'cancelled'
 export type InterestLevel = 'cold' | 'warm' | 'hot' | 'unclear'
 export type HallucinationRisk = 'low' | 'medium' | 'high'
 export type Plan = 'starter' | 'pro' | 'enterprise'
@@ -18,9 +20,17 @@ export interface Organization {
   created_at: string
 }
 
+export interface ClientAccount {
+  id: string
+  organization_id: string
+  name: string
+  created_at: string
+}
+
 export interface User {
   id: string
   organization_id: string
+  client_id: string | null
   name: string
   email: string
   role: UserRole
@@ -30,6 +40,7 @@ export interface User {
 export interface Campaign {
   id: string
   organization_id: string
+  client_id: string
   client_name: string
   campaign_name: string
   sector: string | null
@@ -105,7 +116,9 @@ export interface CallAnalysis {
   objection_details: string | null
 
   appointment_booked: boolean
+  appointment_date_text: string | null
   appointment_datetime: string | null
+  appointment_date_confidence: 'high' | 'medium' | 'low' | null
   appointment_quality_score: number | null
   appointment_quality_reason: string | null
   next_step: string | null
@@ -178,7 +191,9 @@ export interface AIAnalysisResponse {
   }
   appointment: {
     appointment_booked: boolean
+    appointment_date_text: string | null
     appointment_datetime: string | null
+    appointment_date_confidence: 'high' | 'medium' | 'low' | null
     appointment_quality_score: number
     quality_reason: string
     next_step: string | null
@@ -346,4 +361,17 @@ export interface SDRDashboardKPIs {
   avg_rdv_quality: number | null
   avg_sdr_quality: number | null
   conversion_rate: number
+}
+
+export interface CampaignAssignment {
+  id: string
+  organization_id: string
+  campaign_id: string
+  sdr_id: string
+  assigned_by: string
+  starts_at: string  // 'YYYY-MM-DD'
+  ends_at: string    // 'YYYY-MM-DD'
+  assignment_type: AssignmentType
+  status: AssignmentStatus
+  created_at: string
 }

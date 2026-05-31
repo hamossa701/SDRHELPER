@@ -77,6 +77,7 @@ export function getCampaignStatusLabel(status: CampaignStatus): string {
     active: 'Active',
     paused: 'En pause',
     completed: 'Terminée',
+    archived: 'Archivée',
   }
   return labels[status]
 }
@@ -86,6 +87,7 @@ export function getCampaignStatusBg(status: CampaignStatus): string {
     active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     paused: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
     completed: 'bg-slate-800 text-slate-400 border-slate-600',
+    archived: 'bg-slate-800 text-slate-500 border-slate-700',
   }
   return colors[status]
 }
