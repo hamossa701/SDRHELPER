@@ -56,8 +56,8 @@ export default function UploadCallPage() {
   useEffect(() => {
     if (!jobId || step === 'form' || step === 'completed' || step === 'failed') return
 
-    // 60-second timeout — show stuck message with last known status
-    timeoutRef.current = setTimeout(() => setTimedOut(true), 60_000)
+    // 120-second timeout — AI analysis can take 60-90s on a cold request
+    timeoutRef.current = setTimeout(() => setTimedOut(true), 120_000)
 
     pollRef.current = setInterval(async () => {
       try {

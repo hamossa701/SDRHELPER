@@ -94,28 +94,46 @@ export default async function SDRPage() {
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Date</th>
                       <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Prospect</th>
+                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Campagne</th>
                       <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Intérêt</th>
                       <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>RDV</th>
-                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Mon score</th>
+                      <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em', whiteSpace: 'nowrap' }}>Score</th>
                     </tr>
                   </thead>
                   <tbody>
                     {calls.map((call) => (
-                      <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '11px 18px', color: 'var(--muted-2)', whiteSpace: 'nowrap' }}>{formatDateShort(call.call_datetime)}</td>
-                        <td style={{ padding: '11px 18px', fontWeight: 600, color: 'var(--text)' }}>{call.call_analyses?.prospect_company || '—'}</td>
-                        <td style={{ padding: '11px 18px' }}>
-                          <Badge className={getInterestBg(call.call_analyses?.interest_level ?? null)}>
-                            {getInterestLabel(call.call_analyses?.interest_level ?? null)}
-                          </Badge>
+                      <tr key={call.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>
+                        <td style={{ padding: 0, color: 'var(--muted-2)', whiteSpace: 'nowrap' }}>
+                          <Link href={`/calls/${call.id}`} style={{ display: 'block', padding: '11px 18px', color: 'inherit', textDecoration: 'none' }}>{formatDateShort(call.call_datetime)}</Link>
                         </td>
-                        <td style={{ padding: '11px 18px' }}>
-                          {call.call_analyses?.appointment_booked
-                            ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Posé</Badge>
-                            : <span style={{ color: 'var(--muted-2)' }}>—</span>}
+                        <td style={{ padding: 0, fontWeight: 600, color: 'var(--text)' }}>
+                          <Link href={`/calls/${call.id}`} style={{ display: 'block', padding: '11px 18px', color: 'inherit', textDecoration: 'none' }}>
+                            {call.call_analyses?.prospect_company || <span style={{ color: 'var(--muted-2)', fontWeight: 400 }}>En attente…</span>}
+                          </Link>
                         </td>
-                        <td style={{ padding: '11px 18px' }}>
-                          <Link href={`/calls/${call.id}`}><ScoreBadge score={call.call_analyses?.sdr_quality_score ?? null} /></Link>
+                        <td style={{ padding: 0, color: 'var(--muted)' }}>
+                          <Link href={`/calls/${call.id}`} style={{ display: 'block', padding: '11px 18px', color: 'inherit', textDecoration: 'none' }}>
+                            {(call as any).campaigns?.campaign_name || '—'}
+                          </Link>
+                        </td>
+                        <td style={{ padding: 0 }}>
+                          <Link href={`/calls/${call.id}`} style={{ display: 'block', padding: '11px 18px', textDecoration: 'none' }}>
+                            <Badge className={getInterestBg(call.call_analyses?.interest_level ?? null)}>
+                              {getInterestLabel(call.call_analyses?.interest_level ?? null)}
+                            </Badge>
+                          </Link>
+                        </td>
+                        <td style={{ padding: 0 }}>
+                          <Link href={`/calls/${call.id}`} style={{ display: 'block', padding: '11px 18px', textDecoration: 'none' }}>
+                            {call.call_analyses?.appointment_booked
+                              ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Posé</Badge>
+                              : <span style={{ color: 'var(--muted-2)' }}>—</span>}
+                          </Link>
+                        </td>
+                        <td style={{ padding: 0 }}>
+                          <Link href={`/calls/${call.id}`} style={{ display: 'block', padding: '11px 18px', textDecoration: 'none' }}>
+                            <ScoreBadge score={call.call_analyses?.sdr_quality_score ?? null} />
+                          </Link>
                         </td>
                       </tr>
                     ))}

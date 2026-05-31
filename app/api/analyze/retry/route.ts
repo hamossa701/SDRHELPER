@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { processJobById } from '@/lib/job-processor'
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     // Verify job belongs to this org and is in a retriable state
     const { data: job } = await supabase
-      .from('analysis_jobs').select('id, status, retry_count')
+      .from('analysis_jobs').select('id, call_id, status, retry_count')
       .eq('id', jobId).eq('organization_id', profile.organization_id).single()
 
     if (!job) return NextResponse.json({ error: 'Job introuvable' }, { status: 404 })
@@ -54,12 +55,9 @@ export async function POST(request: NextRequest) {
 
     if (resetErr) throw resetErr
 
-    // Trigger worker (server-side only — WORKER_SECRET never reaches the browser)
-    const origin = new URL(request.url).origin
-    fetch(`${origin}/api/analysis-worker/process`, {
-      method: 'POST',
-      headers: { 'x-worker-secret': process.env.WORKER_SECRET ?? '' },
-    }).catch(() => {})
+    // Re-process directly — no HTTP hop, no RPC dependency
+    processJobById({ id: jobId, call_id: job.call_id ?? '', retry_count: 0 })
+      .catch(e => console.error('[retry] background job error:', e instanceof Error ? e.message : e, '| job:', jobId))
 
     return NextResponse.json({ ok: true })
   } catch (err) {
