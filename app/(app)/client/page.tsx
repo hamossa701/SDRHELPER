@@ -80,16 +80,6 @@ const CLIENT_ANALYSIS_COLS = [
 
 // ─── Period utilities ────────────────────────────────────────────────────────
 
-function periodBounds(period: ReportPeriod): { since: string; until: string } {
-  const now = new Date()
-  const until = now.toISOString()
-  if (period === 'month') {
-    return { since: new Date(now.getFullYear(), now.getMonth(), 1).toISOString(), until }
-  }
-  const days = period === '7d' ? 7 : 30
-  return { since: new Date(now.getTime() - days * 86_400_000).toISOString(), until }
-}
-
 function previousPeriodBounds(period: ReportPeriod): { since: string; until: string } {
   const now = new Date()
   if (period === 'month') {
@@ -620,16 +610,12 @@ export default async function ClientPage({
     )
   }
 
-  const { since, until } = periodBounds(period)
   const prevBounds = previousPeriodBounds(period)
-  const monthBounds = periodBounds('month')
 
   const [
     { count: orgCompletedCount },
     { data: visibleCompletedRows, error: visibleCompletedError },
-    { data: currentRows, error: currentRowsError },
     { data: previousRows, error: previousRowsError },
-    { data: monthRows, error: monthRowsError },
     { data: sdrUsers },
     { data: assignmentsRaw },
     { data: legacySdrAssignments },
@@ -656,30 +642,8 @@ export default async function ClientPage({
       .eq('organization_id', profile.organization_id)
       .eq('analysis_jobs.status', 'completed')
       .not('call_analyses.prospect_company', 'is', null)
-      .gte('call_datetime', since)
-      .lte('call_datetime', until)
-      .order('call_datetime', { ascending: false })
-      .returns<ClientCallRow[]>(),
-    adminSupabase
-      .from('calls')
-      .select(`id, campaign_id, sdr_id, call_datetime, call_analyses!inner(${CLIENT_ANALYSIS_COLS}), analysis_jobs!inner(status)`)
-      .in('campaign_id', campaignIds)
-      .eq('organization_id', profile.organization_id)
-      .eq('analysis_jobs.status', 'completed')
-      .not('call_analyses.prospect_company', 'is', null)
       .gte('call_datetime', prevBounds.since)
       .lte('call_datetime', prevBounds.until)
-      .order('call_datetime', { ascending: false })
-      .returns<ClientCallRow[]>(),
-    adminSupabase
-      .from('calls')
-      .select(`id, campaign_id, sdr_id, call_datetime, call_analyses!inner(${CLIENT_ANALYSIS_COLS}), analysis_jobs!inner(status)`)
-      .in('campaign_id', campaignIds)
-      .eq('organization_id', profile.organization_id)
-      .eq('analysis_jobs.status', 'completed')
-      .not('call_analyses.prospect_company', 'is', null)
-      .gte('call_datetime', monthBounds.since)
-      .lte('call_datetime', monthBounds.until)
       .order('call_datetime', { ascending: false })
       .returns<ClientCallRow[]>(),
     // SDR name lookup — org-scoped, no cross-org leak possible.
@@ -701,15 +665,14 @@ export default async function ClientPage({
   ])
 
   const allVisibleCompletedRows = visibleCompletedRows || []
-  const periodRows = currentRows || []
-  const kpis = buildKpis(periodRows)
+  const dashboardRows = allVisibleCompletedRows
+  const kpis = buildKpis(dashboardRows)
   const prevKpis = buildKpis(previousRows || [])
-  const monthKpis = buildKpis(monthRows || [])
 
-  const valueRows = buildValueRows(periodRows)
-  const statsRows = buildCampaignStats(allVisibleCompletedRows, campaignIds)
-  const bookedCalls = periodRows.filter(call => one(call.call_analyses)?.appointment_booked === true)
-  const allCallsRaw = periodRows
+  const valueRows = buildValueRows(dashboardRows)
+  const statsRows = buildCampaignStats(dashboardRows, campaignIds)
+  const bookedCalls = dashboardRows.filter(call => one(call.call_analyses)?.appointment_booked === true)
+  const allCallsRaw = dashboardRows
 
   logClientDashboardStep('query_results', {
     user_id: user.id,
@@ -717,19 +680,15 @@ export default async function ClientPage({
     client_id: profile.client_id,
     campaign_ids: campaignIds,
     period,
-    date_range: { since, until },
     previous_date_range: prevBounds,
-    month_date_range: monthBounds,
     completed_calls_before_client_filters: orgCompletedCount ?? 0,
     completed_calls_after_campaign_filter: allVisibleCompletedRows.length,
-    completed_calls_after_period_filter: periodRows.length,
+    dashboard_rows_from_visible_completed_calls: dashboardRows.length,
     errors: {
       visible_completed: visibleCompletedError?.message ?? null,
-      current_period: currentRowsError?.message ?? null,
       previous_period: previousRowsError?.message ?? null,
-      month_period: monthRowsError?.message ?? null,
     },
-    result_rows: periodRows.map(row => {
+    result_rows: dashboardRows.map(row => {
       const analysis = one(row.call_analyses)
       const job = one(row.analysis_jobs)
       return {
@@ -748,10 +707,10 @@ export default async function ClientPage({
       }
     }),
     zero_reason:
-      periodRows.length > 0 ? null
+      dashboardRows.length > 0 ? null
       : campaignIds.length === 0 ? 'no_visible_campaign_ids'
       : allVisibleCompletedRows.length === 0 ? 'no_completed_analysis_rows_for_visible_campaigns'
-      : 'completed_analysis_rows_exist_but_outside_selected_date_range',
+      : 'no_visible_completed_rows',
   })
 
   const topPainPoints = valueRows.filter(r => r.kind === 'pain_point').map(r => ({ label: r.label, count: r.cnt }))
@@ -761,7 +720,7 @@ export default async function ClientPage({
     ((sdrUsers || []) as SdrUserRow[]).map(u => [u.id, u.name])
   )
 
-  const aiSummary    = buildAISummary(monthKpis, statsRows)
+  const aiSummary    = buildAISummary(kpis, statsRows)
   const health       = computeHealth(kpis)
   const nonQualReasons = computeNonQualReasons(bookedCalls)
   const sdrStats     = aggregateSdrStats(allCallsRaw, nameMap)
@@ -791,7 +750,7 @@ export default async function ClientPage({
     }
   }
 
-  const recentCalls = allVisibleCompletedRows.slice(0, 10)
+  const recentCalls = dashboardRows.slice(0, 10)
 
   const qualifiedAppointments = bookedCalls.filter((call: ClientCallRow) =>
     isQualifiedAnalysis(one(call.call_analyses))
