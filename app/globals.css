@@ -1,5 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 @import "tailwindcss";
+
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('/fonts/material-symbols-outlined-400.ttf') format('truetype');
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -68,6 +75,7 @@ body::before {
   word-wrap: normal;
   direction: ltr;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'liga';
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
   user-select: none;
 }
