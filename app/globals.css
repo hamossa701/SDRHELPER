@@ -61,6 +61,37 @@ body::before {
   z-index: -1;
 }
 
+.app-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 22px 28px 36px;
+}
+
+.app-content {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.app-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .app-scroll {
+    padding: 16px 18px 28px;
+  }
+}
+
 /* Material icons */
 .mat {
   font-family: 'Material Symbols Outlined';

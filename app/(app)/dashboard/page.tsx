@@ -109,9 +109,9 @@ export default async function DashboardPage() {
         <span style={{ fontSize: 12, fontWeight: 600, color: teamTrendColor }}>{teamTrendLabel}</span>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+        <div className="app-kpi-grid">
           <StatCard label="Appels analysés"  value={kpis.total_calls} />
           <StatCard label="RDV posés"         value={kpis.appointments_booked} />
           <StatCard label="RDV qualifiés"     value={kpis.qualified_appointments} sub="décideur + besoin + date + score ≥60" />

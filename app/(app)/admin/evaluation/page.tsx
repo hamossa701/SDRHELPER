@@ -113,8 +113,8 @@ export default async function EvaluationPage() {
         <RunEvaluationButton />
       </div>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 36px' }}>
-        <div style={{ maxWidth: 1360, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <main className="app-scroll">
+        <div className="app-content">
           <section>
             <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.12, fontWeight: 700, color: 'var(--text)' }}>
               Gold Dataset Evaluation
@@ -124,7 +124,7 @@ export default async function EvaluationPage() {
             </p>
           </section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(150px, 1fr))', gap: 12 }}>
+          <div className="app-kpi-grid">
             <StatCard label="Accuracy" value={summary.avgScore} sub={`${summary.total}/${cases.length} cas executes`} dot="var(--cyan)" />
             <StatCard label="Decision Maker" value={summary.decisionMaker} sub="Expected vs Actual" dot="#93c5fd" />
             <StatCard label="RDV Pose" value={summary.rdvPose} sub="Expected vs Actual" dot="#86efac" />

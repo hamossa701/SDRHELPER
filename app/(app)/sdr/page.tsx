@@ -154,9 +154,9 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
         </Link>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        <div className="app-kpi-grid">
           <StatCard label="Appels analysés" value={kpis.total_calls} />
           <StatCard label="RDV posés"        value={kpis.rdv_booked} />
           <StatCard label="Qualité RDV"      value={kpis.avg_rdv_quality ?? '—'} sub="/100" />

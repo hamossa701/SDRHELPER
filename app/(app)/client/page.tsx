@@ -783,7 +783,7 @@ export default async function ClientPage({
         }
       `}</style>
 
-      <div style={{ padding: '22px 28px', maxWidth: 1200, margin: '0 auto' }}>
+      <div className="app-scroll">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22, flexWrap: 'wrap', gap: 12 }}>

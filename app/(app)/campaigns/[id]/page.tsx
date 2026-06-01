@@ -157,7 +157,7 @@ export default async function CampaignDetailPage({
         </Link>
       </div>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 36px' }}>
+      <main className="app-scroll">
         <style>{`
           .h3a-data-row:hover {
             background: rgba(255, 255, 255, .035);
@@ -173,7 +173,7 @@ export default async function CampaignDetailPage({
             }
           }
         `}</style>
-        <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="app-content">
           <section
             style={{
               display: 'flex',

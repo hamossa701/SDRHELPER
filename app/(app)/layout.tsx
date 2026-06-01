@@ -3,8 +3,6 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/layout/Sidebar'
 
-const SIDEBAR_WIDTH = 260
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
@@ -22,9 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <Sidebar userRole={profile.role} userName={profile.name} orgName={orgName} />
       <main style={{
-        flex: `0 1 calc(100vw - ${SIDEBAR_WIDTH}px)`,
-        width: `calc(100vw - ${SIDEBAR_WIDTH}px)`,
-        maxWidth: `calc(100vw - ${SIDEBAR_WIDTH}px)`,
+        flex: 1,
+        width: '100%',
+        maxWidth: 'none',
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',

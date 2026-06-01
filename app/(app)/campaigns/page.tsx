@@ -67,8 +67,8 @@ export default async function CampaignsPage() {
         )}
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 36px' }}>
-        <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="app-scroll">
+        <div className="app-content" style={{ gap: 12 }}>
           {stats.length === 0 && (
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)' }}>
               <Empty

@@ -90,13 +90,13 @@ export default async function AdminUsersPage() {
         <div style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 650 }}>Administration</div>
       </div>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 36px' }}>
+      <main className="app-scroll">
         <style>{`
           .h3a-user-row:hover {
             background: rgba(255, 255, 255, .035) !important;
           }
         `}</style>
-        <div style={{ maxWidth: 1120, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="app-content">
           <section>
             <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.12, fontWeight: 700, color: 'var(--text)' }}>
               Utilisateurs

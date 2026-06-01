@@ -103,8 +103,8 @@ export default async function PlanningPage() {
         <div style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 650 }}>Planning</div>
       </div>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 40px' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <main className="app-scroll">
+        <div className="app-content">
           <section>
             <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.12, fontWeight: 700, color: 'var(--text)' }}>
               Planning

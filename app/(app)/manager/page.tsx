@@ -109,9 +109,9 @@ export default async function ManagerPage() {
   const coachingNeeded = sdrStats.filter(s => s.avg_sdr_quality === null || s.avg_sdr_quality < 55)
 
   return (
-    <div style={{ padding: '24px 28px', width: '100%', minWidth: 0, overflowX: 'hidden' }}>
+    <div className="app-scroll">
       <style>{`.mgr-row:hover { background: var(--row-h); }`}</style>
-      <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="app-content" style={{ gap: 20 }}>
 
         {/* ── Page header — plain, no card border ── */}
         <div style={{ paddingBottom: 4 }}>
@@ -122,7 +122,7 @@ export default async function ManagerPage() {
         {/* ── KPI block — two rows, unified visual group ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {/* Row 1 — operational */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, minWidth: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
             <StatCard label="Appels aujourd'hui"  value={kpis.today_calls} />
             <StatCard label="À réviser"            value={kpis.calls_requiring_review} sub="flags détectés" />
             <StatCard label="RDV posés"            value={kpis.appointments_booked} />
@@ -130,7 +130,7 @@ export default async function ManagerPage() {
             <StatCard label="Taux qualification"   value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" />
           </div>
           {/* Row 2 — quality */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, minWidth: 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
             <StatCard label="Appels révisés"       value={kpis.calls_reviewed}      sub="human_validated = true" />
             <StatCard label="En attente révision"  value={kpis.calls_pending}       sub="analyses non approuvées" />
             <StatCard label="Champs corrigés"      value={kpis.ai_trust_corrected}  sub="corrections enregistrées" />
