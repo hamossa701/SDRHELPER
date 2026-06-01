@@ -19,6 +19,7 @@ RÈGLES ABSOLUES :
 5. Signaler clairement les incertitudes dans uncertain_fields
 6. Si le call est trop court ou incomplet, signaler via hallucination_risk: "high"
 7. decision_maker_detected = true UNIQUEMENT si la personne qui a répondu et parlé dans ce call EST elle-même décisionnaire. Si le SDR cherche à atteindre un décisionnaire mais parle à une secrétaire ou un intermédiaire, decision_maker_detected = false.
+8. decision_maker_detected doit toujours être true ou false, jamais null. Si aucun décideur n'a été confirmé ou si le call est trop court pour le déterminer, retourner false.
 
 RÈGLES DE SCORING :
 

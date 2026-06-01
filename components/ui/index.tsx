@@ -76,18 +76,15 @@ export function Button({ variant = 'primary', size = 'md', loading, children, cl
 // ---- Score Badge ----
 export function ScoreBadge({ score }: { score: number | null }) {
   const color = score === null ? 'var(--muted-2)'
-    : score >= 80 ? '#86efac'
-    : score >= 60 ? 'var(--cyan)'
+    : score >= 70 ? '#86efac'
     : score >= 40 ? '#fcd34d'
     : '#fca5a5'
   const bg = score === null ? 'rgba(2,6,23,.28)'
-    : score >= 80 ? 'rgba(34,197,94,.10)'
-    : score >= 60 ? 'var(--cyan-soft)'
+    : score >= 70 ? 'rgba(34,197,94,.10)'
     : score >= 40 ? 'rgba(245,158,11,.12)'
     : 'rgba(239,68,68,.12)'
   const border = score === null ? 'var(--border)'
-    : score >= 80 ? 'rgba(34,197,94,.35)'
-    : score >= 60 ? 'rgba(125,211,252,.28)'
+    : score >= 70 ? 'rgba(34,197,94,.35)'
     : score >= 40 ? 'rgba(245,158,11,.32)'
     : 'rgba(239,68,68,.32)'
   return (

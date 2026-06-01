@@ -78,6 +78,9 @@ export async function POST(request: Request) {
       })
       const actual = mapAIAnalysisToEvaluationJudgment(ai.analysis)
       const comparison = scoreEvaluationComparison(expectedJudgment(testCase), actual)
+      const hallucinationRisk = ai.analysis.risk_control?.hallucination_risk
+      const scoreCap = hallucinationRisk === 'high' ? 30 : hallucinationRisk === 'medium' ? 65 : 100
+      const finalScore = Math.min(comparison.score, scoreCap)
 
       const row = {
         case_id: testCase.id,
@@ -87,7 +90,7 @@ export async function POST(request: Request) {
         actual_rdv_pose: actual.rdv_pose,
         actual_rdv_qualifie: actual.rdv_qualifie,
         actual_temperature: actual.temperature,
-        score: comparison.score,
+        score: finalScore,
         passed: comparison.passed,
         mismatches: comparison.mismatches,
         ai_summary: ai.analysis.call_summary,
