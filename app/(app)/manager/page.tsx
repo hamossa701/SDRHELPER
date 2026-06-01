@@ -108,6 +108,7 @@ export default async function ManagerPage() {
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-7">
         <div className="rounded-xl border border-cyan-300/20 bg-slate-950/45 px-6 py-5 shadow-[0_20px_54px_rgba(0,0,0,.28)] backdrop-blur">
           <h1 className="text-[26px] font-bold text-slate-50">Supervision</h1>
+          <div className="mt-2 text-xs font-bold text-cyan-300">LAYOUT_FIX_D0778FE</div>
           <p className="mt-1 text-sm text-slate-400">Vue opérationnelle du jour</p>
         </div>
 
