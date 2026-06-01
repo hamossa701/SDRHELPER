@@ -17,9 +17,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const orgName = (profile.organizations as { name: string } | null)?.name || ''
 
   return (
-    <div style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div className="app-shell" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
       <Sidebar userRole={profile.role} userName={profile.name} orgName={orgName} />
-      <main style={{
+      <main className="app-main" style={{
         flex: 1,
         width: '100%',
         maxWidth: 'none',

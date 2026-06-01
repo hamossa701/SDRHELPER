@@ -76,6 +76,7 @@ export default async function AdminUsersPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <div
+        className="app-page-header"
         style={{
           height: 56,
           flexShrink: 0,

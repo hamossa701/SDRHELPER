@@ -143,7 +143,7 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
-      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
+      <div className="app-page-header" style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Mon tableau de bord</div>
           <div style={{ fontSize: 11, color: 'var(--muted)' }}>Bonjour {profile.name} — vos performances en temps réel</div>
@@ -163,7 +163,7 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
           <StatCard label="Score SDR"        value={kpis.avg_sdr_quality ?? '—'} sub="/100" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
+        <div className="sdr-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
 
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
             <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

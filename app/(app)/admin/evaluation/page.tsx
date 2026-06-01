@@ -97,7 +97,7 @@ export default async function EvaluationPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <div style={{
+      <div className="app-page-header" style={{
         height: 56,
         flexShrink: 0,
         borderBottom: '1px solid var(--border)',

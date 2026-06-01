@@ -7,7 +7,7 @@ export default function PlanningLoading() {
       <main className="app-scroll">
         <div className="app-content">
           <SkeletonSectionTitle titleWidth={130} subtitleWidth={300} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="app-responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <SkeletonCard style={{ minHeight: 220 }}>
               <SkeletonLine width={170} height={13} />
               {Array.from({ length: 5 }).map((_, index) => <SkeletonLine key={index} height={32} />)}

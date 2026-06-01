@@ -8,7 +8,7 @@ export default function CampaignDetailLoading() {
         <div className="app-content">
           <SkeletonSectionTitle titleWidth={320} subtitleWidth={420} />
           <SkeletonKpiGrid count={4} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="app-responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <SkeletonCard style={{ minHeight: 170 }}>
               <SkeletonLine width={180} height={13} />
               <SkeletonLine width="100%" height={72} />

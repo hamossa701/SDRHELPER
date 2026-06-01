@@ -47,6 +47,18 @@ body {
   height: 100vh;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
+table {
+  max-width: 100%;
+}
+
 body::before {
   content: "";
   position: fixed;
@@ -81,9 +93,15 @@ body::before {
 
 .app-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   min-width: 0;
+}
+
+.mobile-topbar,
+.mobile-sidebar-drawer,
+.mobile-sidebar-backdrop {
+  display: none !important;
 }
 
 .h3a-skeleton {
@@ -115,9 +133,153 @@ body::before {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 767px) {
+  .desktop-sidebar,
+  aside.desktop-sidebar,
+  [data-sidebar="desktop"] {
+    display: none !important;
+  }
+
+  .mobile-topbar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 60;
+    height: 56px;
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-menu-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(2,6,23,.38);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .mobile-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: block !important;
+    border: 0;
+    background: rgba(0,0,0,.56);
+    cursor: pointer;
+  }
+
+  .mobile-sidebar-drawer {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 80;
+    display: flex !important;
+    transform: translateX(0);
+    transition: transform .18s ease;
+  }
+
+  .app-main {
+    padding-top: 56px;
+  }
+
+  .app-shell,
+  .app-layout,
+  .main-layout {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  main,
+  .app-main {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    overflow-x: hidden !important;
+  }
+
   .app-scroll {
-    padding: 16px 18px 28px;
+    padding: 20px 20px 32px;
+  }
+
+  .app-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-responsive-grid,
+  .dashboard-main-grid,
+  .dashboard-highlight-grid,
+  .coaching-profile-grid,
+  .upload-meta-grid,
+  .campaign-form-grid,
+  .sdr-main-grid,
+  .manager-main-grid,
+  .client-summary-grid,
+  .client-tables-grid,
+  .client-insights-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-page-header {
+    min-height: 56px !important;
+    height: auto !important;
+    padding: 10px 16px !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-scroll {
+    padding: 14px 16px 28px;
+  }
+
+  .app-content {
+    gap: 14px;
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+  }
+
+  .h3a-card,
+  .h3a-skeleton-card {
+    border-radius: 10px;
+  }
+
+  th,
+  td {
+    overflow-wrap: anywhere;
+  }
+
+  [style*="overflow-x: auto"],
+  [style*="overflowX: auto"] {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-full-actions {
+    width: 100%;
+    justify-content: stretch !important;
+  }
+
+  .mobile-full-actions > * {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-sidebar-drawer {
+    transition: none;
   }
 }
 

@@ -12,7 +12,7 @@ export default function CoachingLoading() {
               <SkeletonLine width={220} height={18} />
               <SkeletonLine width={170} height={18} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr' }}>
+            <div className="coaching-profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr' }}>
               {Array.from({ length: 3 }).map((__, col) => (
                 <div key={col} style={{ padding: 18, borderRight: col < 2 ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', gap: 13 }}>
                   <SkeletonLine width={130} height={11} />

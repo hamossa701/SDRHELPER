@@ -6,7 +6,7 @@ export default function DashboardLoading() {
       <SkeletonHeader titleWidth={150} subtitleWidth={260} />
       <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <SkeletonKpiGrid count={6} />
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        <div className="dashboard-main-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
           <SkeletonCard style={{ minHeight: 320 }}>
             <SkeletonLine width={170} height={13} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 22 }}>

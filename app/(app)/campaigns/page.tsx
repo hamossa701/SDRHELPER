@@ -55,7 +55,7 @@ export default async function CampaignsPage() {
           .campaign-list-metrics { margin-left: 0 !important; }
         }
       `}</style>
-      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', minHeight: 56, padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, backdropFilter: 'blur(18px)', flexWrap: 'wrap' }}>
+      <div className="app-page-header" style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', minHeight: 56, padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0, backdropFilter: 'blur(18px)', flexWrap: 'wrap' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Campagnes</div>
           <div style={{ fontSize: 11, color: 'var(--muted)' }}>{stats.length} campagne{stats.length !== 1 ? 's' : ''} suivie{stats.length !== 1 ? 's' : ''}</div>

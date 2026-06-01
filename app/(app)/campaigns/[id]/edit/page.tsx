@@ -116,7 +116,7 @@ export default function EditCampaignPage() {
         .h3a-input option { background: #0f172a; color: var(--text); }
       `}</style>
 
-      <div style={{
+      <div className="app-page-header" style={{
         height: 56, flexShrink: 0, borderBottom: '1px solid var(--border)',
         background: 'var(--header-bg)', backdropFilter: 'blur(18px)',
         display: 'flex', alignItems: 'center', padding: '0 24px',
@@ -124,7 +124,7 @@ export default function EditCampaignPage() {
         <div style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 650 }}>Campagnes</div>
       </div>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 40px' }}>
+      <main className="app-scroll">
         <div style={{ maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <section>
             <button onClick={() => router.push(`/campaigns/${id}`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 14, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
@@ -157,7 +157,7 @@ export default function EditCampaignPage() {
                   <input required className="h3a-input" value={form.campaign_name} onChange={e => update('campaign_name', e.target.value)} placeholder="ex: Prospection DSI Île-de-France" style={inputStyle} />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="campaign-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>
                     <label style={labelStyle}>Secteur</label>
                     <input className="h3a-input" value={form.sector} onChange={e => update('sector', e.target.value)} placeholder="ex: Logiciels B2B / SaaS" style={inputStyle} />

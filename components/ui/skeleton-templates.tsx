@@ -4,7 +4,7 @@ export function CampaignFormSkeleton() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <SkeletonHeader titleWidth={100} subtitleWidth={0} />
-      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 40px' }}>
+      <main className="app-scroll">
         <div style={{ maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <SkeletonSectionTitle titleWidth={260} subtitleWidth={340} />
           {Array.from({ length: 2 }).map((_, card) => (
@@ -15,7 +15,7 @@ export function CampaignFormSkeleton() {
               <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <SkeletonLine height={38} />
                 <SkeletonLine height={38} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="campaign-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <SkeletonLine height={38} />
                   <SkeletonLine height={38} />
                 </div>
@@ -45,7 +45,7 @@ export function AnalysisProgressSkeleton({ title = 'Analyse en cours' }: { title
             </div>
           </div>
           <SkeletonLine height={8} />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          <div className="upload-meta-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
             <SkeletonLine height={54} />
             <SkeletonLine height={54} />
             <SkeletonLine height={54} />

@@ -7,7 +7,7 @@ export default function ManagerLoading() {
         <SkeletonSectionTitle titleWidth={170} subtitleWidth={230} />
         <SkeletonKpiGrid count={5} />
         <SkeletonKpiGrid count={4} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.9fr) minmax(280px, .8fr)', gap: 16 }}>
+        <div className="manager-main-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.9fr) minmax(280px, .8fr)', gap: 16 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <SkeletonTable columns={5} rows={6} minWidth={720} />
             <SkeletonTable columns={5} rows={6} minWidth={640} />

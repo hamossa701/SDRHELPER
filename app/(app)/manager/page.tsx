@@ -139,7 +139,7 @@ export default async function ManagerPage() {
         </div>
 
         {/* ── Main 2-col layout ── */}
-        <div style={{
+        <div className="manager-main-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 1.9fr) minmax(280px, 0.8fr)',
           gap: 16,

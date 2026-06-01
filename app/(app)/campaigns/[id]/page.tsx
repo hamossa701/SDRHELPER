@@ -141,6 +141,7 @@ export default async function CampaignDetailPage({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <div
+        className="app-page-header"
         style={{
           height: 56,
           flexShrink: 0,
@@ -172,6 +173,12 @@ export default async function CampaignDetailPage({
               grid-template-columns: 1fr !important;
             }
           }
+          @media (max-width: 760px) {
+            .campaign-detail-actions {
+              width: 100%;
+              justify-content: center;
+            }
+          }
         `}</style>
         <div className="app-content">
           <section
@@ -200,6 +207,7 @@ export default async function CampaignDetailPage({
 
             {['owner', 'manager'].includes(profile.role) && (
               <Link
+                className="campaign-detail-actions"
                 href="/calls/upload"
                 style={{
                   display: 'inline-flex',

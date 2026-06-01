@@ -6,7 +6,7 @@ export default function SdrLoading() {
       <SkeletonHeader titleWidth={190} subtitleWidth={310} />
       <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <SkeletonKpiGrid count={4} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }}>
+        <div className="sdr-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }}>
           <SkeletonTable columns={6} rows={7} minWidth={760} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {Array.from({ length: 3 }).map((_, index) => (

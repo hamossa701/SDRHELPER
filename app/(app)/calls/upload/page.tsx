@@ -213,13 +213,13 @@ export default function UploadCallPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         <SkeletonHeader titleWidth={160} subtitleWidth={300} />
-        <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+        <main className="app-scroll">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 800, margin: '0 auto' }}>
             <SkeletonCard style={{ padding: 0 }}>
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--thead)' }}>
                 <SkeletonLine width={180} height={11} />
               </div>
-              <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div className="upload-meta-grid" style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <SkeletonLine height={38} />
                 <SkeletonLine height={38} />
                 <SkeletonLine height={38} />
@@ -234,25 +234,25 @@ export default function UploadCallPage() {
               </div>
             </SkeletonCard>
           </div>
-        </div>
+        </main>
       </div>
     )
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <div style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
+      <div className="app-page-header" style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Analyser un appel</div>
           <div style={{ fontSize: 11, color: 'var(--muted)' }}>Collez la transcription et lancez l&apos;analyse IA</div>
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+      <main className="app-scroll">
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 800, margin: '0 auto' }}>
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>Informations de l&apos;appel</div>
-            <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div className="upload-meta-grid" style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>CAMPAGNE</label>
                 <select required value={form.campaign_id} onChange={e => update('campaign_id', e.target.value)} style={sel}>
@@ -304,7 +304,7 @@ export default function UploadCallPage() {
 
           {error && <div style={{ background: 'rgba(239,68,68,.10)', border: '1px solid rgba(239,68,68,.32)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#fca5a5' }}>{error}</div>}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <div className="mobile-full-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <button type="button" onClick={() => router.back()} style={{ padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)', cursor: 'pointer', fontFamily: 'Geist, sans-serif' }}>Annuler</button>
             <button type="submit" disabled={loading || transcriptLen > 30_000} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: (loading || transcriptLen > 30_000) ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)', fontFamily: 'Geist, sans-serif', opacity: (loading || transcriptLen > 30_000) ? .7 : 1 }}>
               {loading && <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
@@ -313,7 +313,7 @@ export default function UploadCallPage() {
             </button>
           </div>
         </form>
-      </div>
+      </main>
     </div>
   )
 }

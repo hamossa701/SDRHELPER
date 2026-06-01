@@ -114,7 +114,7 @@ export default function NewCampaignPage() {
         .h3a-input option { background: #0f172a; color: var(--text); }
       `}</style>
 
-      <div style={{
+      <div className="app-page-header" style={{
         height: 56,
         flexShrink: 0,
         borderBottom: '1px solid var(--border)',
@@ -127,7 +127,7 @@ export default function NewCampaignPage() {
         <div style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 650 }}>Campagnes</div>
       </div>
 
-      <main style={{ flex: 1, overflowY: 'auto', padding: '22px 24px 40px' }}>
+      <main className="app-scroll">
         <div style={{ maxWidth: 820, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           <section>
@@ -189,7 +189,7 @@ export default function NewCampaignPage() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="campaign-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <div>
                     <label style={labelStyle}>Secteur</label>
                     <input
