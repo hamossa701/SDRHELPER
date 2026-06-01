@@ -85,10 +85,15 @@ export default async function ManagerPage() {
   const trustTotal = kpis.ai_trust_validated + kpis.ai_trust_corrected
   const trustScore = trustTotal > 0 ? Math.round((kpis.ai_trust_validated / trustTotal) * 100) : null
   const trustLabel = trustScore === null ? 'Pas de données' : trustScore >= 80 ? 'Excellent' : trustScore >= 60 ? 'Bon' : 'À améliorer'
-  const trustBg    = trustScore === null ? 'bg-slate-800 text-slate-400 border-slate-600'
-    : trustScore >= 80 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-    : trustScore >= 60 ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-    : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+
+  // Inline style objects for trust badge (safe — no dynamic Tailwind class generation)
+  const trustStyle: React.CSSProperties = trustScore === null
+    ? { background: 'rgba(2,6,23,.28)', color: 'var(--muted)', border: '1px solid var(--border)' }
+    : trustScore >= 80
+    ? { background: 'rgba(34,197,94,.10)', color: '#86efac', border: '1px solid rgba(34,197,94,.35)' }
+    : trustScore >= 60
+    ? { background: 'var(--cyan-soft)', color: 'var(--cyan)', border: '1px solid rgba(125,211,252,.28)' }
+    : { background: 'rgba(245,158,11,.12)', color: '#fcd34d', border: '1px solid rgba(245,158,11,.32)' }
 
   const callsWithFlags = ((reviewQueue || []) as ManagerReviewCall[])
     .filter((c) => {
@@ -104,194 +109,240 @@ export default async function ManagerPage() {
   const coachingNeeded = sdrStats.filter(s => s.avg_sdr_quality === null || s.avg_sdr_quality < 55)
 
   return (
-    <div className="w-full min-w-0 overflow-x-hidden" style={{ padding: 24 }}>
-      <div className="mx-auto flex w-full max-w-[1440px] min-w-0 flex-col gap-7">
-        <div className="rounded-xl border border-cyan-300/20 bg-slate-950/45 px-6 py-5 shadow-[0_20px_54px_rgba(0,0,0,.28)] backdrop-blur">
-          <h1 className="text-[26px] font-bold text-slate-50">Supervision</h1>
-          <p className="mt-1 text-sm text-slate-400">Vue opérationnelle du jour</p>
+    <div style={{ padding: '24px 28px', width: '100%', minWidth: 0, overflowX: 'hidden' }}>
+      <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* ── Page header — plain, no card border ── */}
+        <div style={{ paddingBottom: 4 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>Supervision</h1>
+          <p style={{ marginTop: 4, fontSize: 13, color: 'var(--muted)' }}>Vue opérationnelle du jour</p>
         </div>
 
-      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Appels aujourd'hui" value={kpis.today_calls} />
-        <StatCard label="À réviser"           value={kpis.calls_requiring_review} sub="flags détectés" />
-        <StatCard label="RDV posés"           value={kpis.appointments_booked} />
-        <StatCard label="RDV qualifiés"       value={kpis.qualified_appointments} sub="décideur + besoin + date + score ≥60" />
-        <StatCard label="Taux qualification"  value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" />
-      </div>
-      <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Appels révisés"      value={kpis.calls_reviewed}     sub="human_validated = true" />
-        <StatCard label="En attente révision" value={kpis.calls_pending}      sub="analyses non approuvées" />
-        <StatCard label="Champs corrigés"     value={kpis.ai_trust_corrected} sub="corrections enregistrées" />
-        <StatCard label="Fiabilité IA"        value={trustScore !== null ? `${trustScore}%` : '—'} sub={trustLabel} />
-      </div>
-
-      <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.85fr)_minmax(340px,0.85fr)] lg:items-start">
-        <div className="min-w-0 space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-sm font-semibold text-slate-100">Appels nécessitant une révision</h2>
-                <span className="text-xs font-medium text-slate-500">{kpis.calls_requiring_review} appel(s)</span>
-              </div>
-            </CardHeader>
-            <div className="divide-y divide-white/10">
-              {callsWithFlags.length === 0 && (
-                <div className="px-6 py-8 text-center text-sm text-slate-500">Aucun appel en attente de révision ✓</div>
-              )}
-              {callsWithFlags.slice(0, 10).map((call) => {
-                const analysis = one(call.call_analyses) as CallAnalysis
-                const sdr = one(call.users)
-                const campaign = one(call.campaigns)
-                const { flags } = computeReviewFlags(analysis)
-                return (
-                  <div key={call.id} className="px-5 py-5 transition-colors hover:bg-white/5 sm:px-6">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <Link href={`/calls/${call.id}`} className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-100">
-                          {formatProspectDisplay(analysis)}
-                        </p>
-                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-                          <span>{sdr?.name || '—'}</span>
-                          <span aria-hidden="true">·</span>
-                          <span className="max-w-full truncate">{campaign?.campaign_name || campaign?.client_name || 'Campagne non renseignée'}</span>
-                          <span aria-hidden="true">·</span>
-                          <span>{formatDateShort(call.call_datetime)}</span>
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {flags.map((flag: string, i: number) => (
-                            <Badge key={i} className="max-w-full bg-red-500/10 text-xs text-red-400 border-red-500/30">{flag}</Badge>
-                          ))}
-                        </div>
-                      </Link>
-                      <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
-                        <ScoreBadge score={analysis.appointment_quality_score ?? null} />
-                        <ReviewQueueControls
-                          callId={call.id}
-                          status={call.review_status || 'open'}
-                          assignedToId={call.assigned_to}
-                          assigneeName={call.assigned_to ? (managerMap[call.assigned_to] ?? null) : null}
-                          currentUserId={user.id}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
-
-          <Card className="overflow-hidden">
-            <CardHeader><h2 className="text-sm font-semibold text-slate-100">Appels récents</h2></CardHeader>
-            <div className="overflow-x-auto">
-              <table className="min-w-[760px] w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">SDR</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">Prospect</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">Intérêt</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">RDV</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold uppercase text-slate-500">Score</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/10">
-                  {((recentCalls || []) as ManagerRecentCall[]).map((call) => {
-                    const analysis = one(call.call_analyses)
-                    const sdr = one(call.users)
-                    return (
-                    <tr key={call.id} className="h-16 hover:bg-white/5">
-                      <td className="px-6 py-4 font-medium text-slate-200">{sdr?.name || '—'}</td>
-                      <td className="max-w-[280px] px-6 py-4 text-slate-400"><span className="block truncate">{formatProspectDisplay(analysis)}</span></td>
-                      <td className="px-6 py-4">
-                        <Badge className={getInterestBg(analysis?.interest_level ?? null)}>
-                          {getInterestLabel(analysis?.interest_level ?? null)}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        {analysis?.appointment_booked ? (
-                          isQualifiedAppointment(analysis as Parameters<typeof isQualifiedAppointment>[0])
-                            ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Qualifié</Badge>
-                            : <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30">~ Posé</Badge>
-                        ) : <span className="text-slate-500">—</span>}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Link href={`/calls/${call.id}`}>
-                          <ScoreBadge score={analysis?.sdr_quality_score ?? null} />
-                        </Link>
-                      </td>
-                    </tr>
-                    )
-                  })}
-                  {!recentCalls?.length && (
-                    <tr><td colSpan={5} className="px-6 py-10 text-center text-sm text-slate-500">Aucun appel</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+        {/* ── KPI block — two rows, unified visual group ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Row 1 — operational */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, minWidth: 0 }}>
+            <StatCard label="Appels aujourd'hui"  value={kpis.today_calls} />
+            <StatCard label="À réviser"            value={kpis.calls_requiring_review} sub="flags détectés" />
+            <StatCard label="RDV posés"            value={kpis.appointments_booked} />
+            <StatCard label="RDV qualifiés"        value={kpis.qualified_appointments} sub="décideur + besoin + date + score ≥60" />
+            <StatCard label="Taux qualification"   value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" />
+          </div>
+          {/* Row 2 — quality */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, minWidth: 0 }}>
+            <StatCard label="Appels révisés"       value={kpis.calls_reviewed}      sub="human_validated = true" />
+            <StatCard label="En attente révision"  value={kpis.calls_pending}       sub="analyses non approuvées" />
+            <StatCard label="Champs corrigés"      value={kpis.ai_trust_corrected}  sub="corrections enregistrées" />
+            <StatCard label="Fiabilité IA"         value={trustScore !== null ? `${trustScore}%` : '—'} sub={trustLabel} />
+          </div>
         </div>
 
-        <div className="min-w-0 space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader><h2 className="text-sm font-semibold text-slate-100">Classement SDR</h2></CardHeader>
-            <CardContent className="px-0 pb-0">
-              {sdrStats.map((sdr, i) => (
-                <div key={sdr.sdr_id} className="flex min-h-16 items-center gap-3 border-b border-white/10 px-5 py-4 last:border-0 sm:px-6">
-                  <span className={`w-5 shrink-0 text-sm font-bold ${i === 0 ? 'text-amber-500' : 'text-slate-500'}`}>{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-200">{sdr.sdr_name}</p>
-                    <p className="mt-1 text-xs text-slate-500">{sdr.total_calls} appels · {sdr.rdv_booked} RDV</p>
-                  </div>
-                  <span className={`shrink-0 text-sm font-semibold ${getScoreColor(sdr.avg_sdr_quality)}`}>{sdr.avg_sdr_quality ?? '—'}</span>
-                </div>
-              ))}
-              {sdrStats.length === 0 && <div className="px-6 py-6 text-center text-sm text-slate-500">Aucun SDR</div>}
-            </CardContent>
-          </Card>
+        {/* ── Main 2-col layout ── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.9fr) minmax(280px, 0.8fr)',
+          gap: 16,
+          alignItems: 'start',
+          minWidth: 0,
+        }}>
 
-          {coachingNeeded.length > 0 && (
-            <Card className="overflow-hidden">
+          {/* ── Left column ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+
+            {/* Review queue */}
+            <Card style={{ overflow: 'hidden' }}>
               <CardHeader>
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-slate-100">Coaching requis</h2>
-                  <Link href="/coaching" className="shrink-0 text-xs text-slate-400 hover:underline">Voir tout →</Link>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Appels nécessitant une révision</h2>
+                  <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{kpis.calls_requiring_review} appel(s)</span>
                 </div>
               </CardHeader>
-              <CardContent className="px-0 pb-0">
-                {coachingNeeded.map(s => (
-                  <div key={s.sdr_id} className="border-b border-white/10 px-5 py-4 last:border-0 sm:px-6">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="min-w-0 truncate text-sm font-medium text-slate-200">{s.sdr_name}</p>
-                      <ScoreBadge score={s.avg_sdr_quality} />
+              <div style={{ borderTop: '1px solid var(--border)' }}>
+                {callsWithFlags.length === 0 && (
+                  <div style={{ padding: '24px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)' }}>
+                    Aucun appel en attente de révision ✓
+                  </div>
+                )}
+                {callsWithFlags.slice(0, 10).map((call) => {
+                  const analysis = one(call.call_analyses) as CallAnalysis
+                  const sdr = one(call.users)
+                  const campaign = one(call.campaigns)
+                  const { flags } = computeReviewFlags(analysis)
+                  return (
+                    <div key={call.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                        <Link href={`/calls/${call.id}`} style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {formatProspectDisplay(analysis)}
+                          </p>
+                          <p style={{ marginTop: 3, fontSize: 11, color: 'var(--muted-2)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <span>{sdr?.name || '—'}</span>
+                            <span>·</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200 }}>
+                              {campaign?.campaign_name || campaign?.client_name || 'Campagne non renseignée'}
+                            </span>
+                            <span>·</span>
+                            <span>{formatDateShort(call.call_datetime)}</span>
+                          </p>
+                          <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {flags.map((flag: string, i: number) => (
+                              <span key={i} style={{
+                                display: 'inline-flex', alignItems: 'center',
+                                padding: '2px 7px', borderRadius: 5, fontSize: 11, fontWeight: 600,
+                                background: 'rgba(239,68,68,.10)', color: '#fca5a5',
+                                border: '1px solid rgba(239,68,68,.28)',
+                              }}>{flag}</span>
+                            ))}
+                          </div>
+                        </Link>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                          <ScoreBadge score={analysis.appointment_quality_score ?? null} />
+                          <ReviewQueueControls
+                            callId={call.id}
+                            status={call.review_status || 'open'}
+                            assignedToId={call.assigned_to}
+                            assigneeName={call.assigned_to ? (managerMap[call.assigned_to] ?? null) : null}
+                            currentUserId={user.id}
+                          />
+                        </div>
+                      </div>
                     </div>
+                  )
+                })}
+              </div>
+            </Card>
+
+            {/* Recent calls table */}
+            <Card style={{ overflow: 'hidden' }}>
+              <CardHeader>
+                <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Appels récents</h2>
+              </CardHeader>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 640, fontSize: 13, borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--thead)', borderBottom: '1px solid var(--border)' }}>
+                      {['SDR', 'PROSPECT', 'INTÉRÊT', 'RDV', 'SCORE'].map(h => (
+                        <th key={h} style={{ padding: '9px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--muted-2)', textTransform: 'uppercase' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {((recentCalls || []) as ManagerRecentCall[]).map((call) => {
+                      const analysis = one(call.call_analyses)
+                      const sdr = one(call.users)
+                      return (
+                        <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}
+                          onMouseOver={e => (e.currentTarget.style.background = 'var(--row-h)')}
+                          onMouseOut={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <td style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text)' }}>{sdr?.name || '—'}</td>
+                          <td style={{ padding: '10px 16px', color: 'var(--muted)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {formatProspectDisplay(analysis)}
+                          </td>
+                          <td style={{ padding: '10px 16px' }}>
+                            <Badge className={getInterestBg(analysis?.interest_level ?? null)}>
+                              {getInterestLabel(analysis?.interest_level ?? null)}
+                            </Badge>
+                          </td>
+                          <td style={{ padding: '10px 16px' }}>
+                            {analysis?.appointment_booked ? (
+                              isQualifiedAppointment(analysis as Parameters<typeof isQualifiedAppointment>[0])
+                                ? <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700, background: 'rgba(34,197,94,.10)', color: '#86efac', border: '1px solid rgba(34,197,94,.30)' }}>✓ Qualifié</span>
+                                : <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 5, fontSize: 11, fontWeight: 700, background: 'rgba(245,158,11,.12)', color: '#fcd34d', border: '1px solid rgba(245,158,11,.30)' }}>~ Posé</span>
+                            ) : <span style={{ color: 'var(--muted-2)' }}>—</span>}
+                          </td>
+                          <td style={{ padding: '10px 16px' }}>
+                            <Link href={`/calls/${call.id}`}>
+                              <ScoreBadge score={analysis?.sdr_quality_score ?? null} />
+                            </Link>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {!recentCalls?.length && (
+                      <tr><td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)' }}>Aucun appel</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+
+          {/* ── Right column ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+
+            {/* SDR leaderboard */}
+            <Card style={{ overflow: 'hidden' }}>
+              <CardHeader>
+                <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Classement SDR</h2>
+              </CardHeader>
+              <div>
+                {sdrStats.map((sdr, i) => (
+                  <div key={sdr.sdr_id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 16px', borderBottom: '1px solid var(--border)',
+                  }}>
+                    <span style={{ width: 18, flexShrink: 0, fontSize: 13, fontWeight: 700, color: i === 0 ? '#f59e0b' : 'var(--muted-2)' }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sdr.sdr_name}</p>
+                      <p style={{ marginTop: 2, fontSize: 11, color: 'var(--muted-2)' }}>{sdr.total_calls} appels · {sdr.rdv_booked} RDV</p>
+                    </div>
+                    <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 700, color: getScoreColor(sdr.avg_sdr_quality) }}>{sdr.avg_sdr_quality ?? '—'}</span>
                   </div>
                 ))}
+                {sdrStats.length === 0 && (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)' }}>Aucun SDR</div>
+                )}
+              </div>
+            </Card>
+
+            {/* Coaching required */}
+            {coachingNeeded.length > 0 && (
+              <Card style={{ overflow: 'hidden' }}>
+                <CardHeader>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Coaching requis</h2>
+                    <Link href="/coaching" style={{ fontSize: 11, color: 'var(--muted-2)' }}>Voir tout →</Link>
+                  </div>
+                </CardHeader>
+                <div>
+                  {coachingNeeded.map(s => (
+                    <div key={s.sdr_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.sdr_name}</p>
+                      <ScoreBadge score={s.avg_sdr_quality} />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* AI reliability */}
+            <Card style={{ overflow: 'hidden' }}>
+              <CardHeader>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <h2 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Fiabilité IA</h2>
+                  <span style={{ ...trustStyle, display: 'inline-flex', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                    {trustScore !== null ? `${trustScore}%` : '—'} · {trustLabel}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ color: 'var(--muted)' }}>Champs validés</span>
+                    <span style={{ fontWeight: 600, color: '#86efac' }}>{kpis.ai_trust_validated}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ color: 'var(--muted)' }}>Champs corrigés</span>
+                    <span style={{ fontWeight: 600, color: 'var(--cyan)' }}>{kpis.ai_trust_corrected}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-sm font-semibold text-slate-100">Fiabilité IA</h2>
-                <Badge className={`${trustBg} w-fit max-w-full`}>{trustScore !== null ? `${trustScore}%` : '—'} · {trustLabel}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-500">Champs validés</span>
-                  <span className="shrink-0 font-medium text-emerald-400">{kpis.ai_trust_validated}</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-500">Champs corrigés</span>
-                  <span className="shrink-0 font-medium text-blue-400">{kpis.ai_trust_corrected}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         </div>
       </div>
-    </div>
     </div>
   )
 }
