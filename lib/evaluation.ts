@@ -58,6 +58,8 @@ export function scoreEvaluationComparison(
   }
 }
 
+const VALID_TEMPERATURES = new Set<string>(['cold', 'warm', 'hot', 'unclear'])
+
 export function mapAIAnalysisToEvaluationJudgment(analysis: EvaluationAIShape): EvaluationJudgment {
   const appointmentBooked = analysis.appointment?.appointment_booked === true
   const decisionMaker = analysis.prospect?.decision_maker_detected ?? null
@@ -66,6 +68,8 @@ export function mapAIAnalysisToEvaluationJudgment(analysis: EvaluationAIShape): 
     analysis.appointment?.appointment_datetime || analysis.appointment?.appointment_date_text?.trim(),
   )
   const appointmentQuality = analysis.appointment?.appointment_quality_score ?? null
+  const rawTemp = analysis.qualification?.interest_level
+  const temperature: EvaluationTemperature = rawTemp && VALID_TEMPERATURES.has(rawTemp) ? rawTemp as EvaluationTemperature : 'unclear'
 
   return {
     decision_maker: decisionMaker,
@@ -76,7 +80,7 @@ export function mapAIAnalysisToEvaluationJudgment(analysis: EvaluationAIShape): 
       && hasAppointmentDate
       && appointmentQuality !== null
       && appointmentQuality >= 60,
-    temperature: analysis.qualification?.interest_level ?? 'unclear',
+    temperature,
   }
 }
 

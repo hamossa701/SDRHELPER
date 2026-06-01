@@ -106,7 +106,14 @@ export async function POST(request: Request) {
       if (insertErr) throw insertErr
       results.push(inserted)
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erreur inconnue'
+      console.error(`[EvalRun] case ${testCase.id} failed:`, error)
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && typeof (error as { message?: unknown }).message === 'string'
+          ? (error as { message: string }).message
+          : typeof error === 'string'
+            ? error
+            : `Erreur inconnue: ${JSON.stringify(error)}`
       const { data: inserted } = await admin
         .from('evaluation_results')
         .insert({
