@@ -33,8 +33,8 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
     <aside style={{
       background: 'var(--sidebar-bg)',
       borderRight: '1px solid var(--border)',
-      width: 240,
-      minWidth: 240,
+      width: 260,
+      minWidth: 260,
       flexShrink: 0,
       display: 'flex',
       flexDirection: 'column',
