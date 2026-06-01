@@ -1,7 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-admin'
-import { analyzeCallTranscript } from '@/lib/ai-analysis'
+import { AIAnalysisValidationError, analyzeCallTranscript, validateAIAnalysisShape } from '@/lib/ai-analysis'
 import { cleanMissingInformationForAppointmentDate, resolveAppointmentDate } from '@/lib/appointment-date'
-import type { AIAnalysisResponse } from '@/types'
 import type { PostgrestError } from '@supabase/supabase-js'
 
 const COST_PER_INPUT_TOKEN  = 3  / 1_000_000
@@ -53,22 +52,6 @@ function summarizeSupabaseError(error: PostgrestError | null) {
 function logStep(tag: string, step: string, payload?: Record<string, unknown>) {
   const suffix = payload ? ` ${JSON.stringify(payload)}` : ''
   console.log(`[JOB TRACE] ${tag} ${step}${suffix}`)
-}
-
-function hasObjectSection(value: unknown, key: string) {
-  return typeof value === 'object'
-    && value !== null
-    && key in value
-    && typeof (value as Record<string, unknown>)[key] === 'object'
-    && (value as Record<string, unknown>)[key] !== null
-}
-
-function validateAnalysisShape(analysis: AIAnalysisResponse): string[] {
-  const missing: string[] = []
-  for (const key of ['prospect', 'qualification', 'appointment', 'sdr_performance', 'risk_control']) {
-    if (!hasObjectSection(analysis, key)) missing.push(key)
-  }
-  return missing
 }
 
 // ── Main export ──────────────────────────────────────────────────────────────
@@ -133,14 +116,14 @@ export async function processJobById(job: JobInput): Promise<string> {
       topLevelKeys: Object.keys(analysis ?? {}),
     })
 
-    const missingSections = validateAnalysisShape(analysis)
+    const missingSections = validateAIAnalysisShape(analysis)
     logStep(tag, 'validation_result', {
       job_id: job.id,
       call_id: job.call_id,
       ok: missingSections.length === 0,
       missingSections,
     })
-    if (missingSections.length) throw new Error(`Reponse IA invalide: sections manquantes ${missingSections.join(', ')}`)
+    if (missingSections.length) throw new AIAnalysisValidationError(`Reponse IA invalide: sections manquantes ${missingSections.join(', ')}`)
 
     // ── Sanitize AI response ─────────────────────────────────────────────────
     const appointmentDate = resolveAppointmentDate({
@@ -157,20 +140,7 @@ export async function processJobById(job: JobInput): Promise<string> {
       analysis.qualification.missing_information,
       appointmentDate
     )
-    const sanitizedPreview = {
-      prospect_company: analysis.prospect.company ?? null,
-      interest_level: safeInterestLevel(analysis.qualification.interest_level),
-      hallucination_risk: safeHallucinationRisk(analysis.risk_control.hallucination_risk),
-      appointment_date_text: appointmentDate.text,
-      appointment_datetime: appointmentDate.datetime,
-      appointment_date_confidence: appointmentDate.confidence,
-      appointment_quality_score: safeScore(analysis.appointment.appointment_quality_score),
-      sdr_quality_score: safeScore(analysis.sdr_performance.sdr_quality_score),
-      qualification_completeness_score: safeScore(analysis.sdr_performance.qualification_completeness_score),
-      ai_confidence: safeScore(analysis.risk_control.ai_confidence),
-    }
-    logStep(tag, 'sanitization_result', { job_id: job.id, call_id: job.call_id, ok: true, sanitizedPreview })
-    logStep(tag, 'extracted_json', { job_id: job.id, call_id: job.call_id, analysis })
+    logStep(tag, 'sanitization_result', { job_id: job.id, call_id: job.call_id, ok: true })
 
     // ── Persist to call_analyses (linked by call_id, not job_id) ────────────
     const t3 = Date.now()
@@ -218,7 +188,7 @@ export async function processJobById(job: JobInput): Promise<string> {
     logStep(tag, 'database_insert_result', {
       job_id: job.id,
       call_id: job.call_id,
-      data: savedAnalysis,
+      analysis_id: savedAnalysis?.id ?? null,
       error: summarizeSupabaseError(insertErr),
     })
 
@@ -270,8 +240,13 @@ export async function processJobById(job: JobInput): Promise<string> {
   } catch (err) {
     const message   = err instanceof Error ? err.message : String(err)
     const newCount  = (job.retry_count ?? 0) + 1
-    const permanent = newCount >= MAX_RETRIES
-    console.error(`[JOB FAILED] job_id:${job.id} attempt:${newCount}/${MAX_RETRIES} permanent:${permanent} total:${Date.now() - t0}ms — ${message}`)
+    const validationFailure = err instanceof AIAnalysisValidationError
+    const permanent = validationFailure || newCount >= MAX_RETRIES
+    if (validationFailure) {
+      console.error(`[AI VALIDATION FAILED] job_id:${job.id} call_id:${job.call_id} reason:${message}`)
+    } else {
+      console.error(`[JOB FAILED] job_id:${job.id} call_id:${job.call_id} attempt:${newCount}/${MAX_RETRIES} permanent:${permanent} total:${Date.now() - t0}ms`)
+    }
 
     const backoffIdx = Math.min(newCount - 1, BACKOFF_SECONDS.length - 1)
     const retryAfter = permanent ? null : new Date(Date.now() + BACKOFF_SECONDS[backoffIdx] * 1000).toISOString()
@@ -290,11 +265,11 @@ export async function processJobById(job: JobInput): Promise<string> {
     logStep(tag, 'database_update_result', {
       job_id: job.id,
       call_id: job.call_id,
-      data: failedJob,
+      status: failedJob?.status ?? null,
       error: summarizeSupabaseError(failedErr),
     })
     if (failedErr) console.error(`[JOB FAILED STATUS UPDATE ERROR] job_id:${job.id} call_id:${job.call_id}`, summarizeSupabaseError(failedErr))
-    logStep(tag, 'final_status', { job_id: job.id, call_id: job.call_id, status: permanent ? 'failed' : 'pending', error: message })
+    logStep(tag, 'final_status', { job_id: job.id, call_id: job.call_id, status: permanent ? 'failed' : 'pending' })
 
     return permanent ? 'failed' : 'pending_retry'
   }

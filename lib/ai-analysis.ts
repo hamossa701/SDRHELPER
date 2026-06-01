@@ -83,6 +83,46 @@ export interface AIAnalysisResult {
   outputTokens: number
 }
 
+const REQUIRED_ANALYSIS_SECTIONS = ['prospect', 'qualification', 'appointment', 'sdr_performance', 'risk_control'] as const
+
+export class AIAnalysisValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AIAnalysisValidationError'
+    Object.setPrototypeOf(this, AIAnalysisValidationError.prototype)
+  }
+}
+
+function hasObjectSection(value: unknown, key: string) {
+  return typeof value === 'object'
+    && value !== null
+    && key in value
+    && typeof (value as Record<string, unknown>)[key] === 'object'
+    && (value as Record<string, unknown>)[key] !== null
+}
+
+export function validateAIAnalysisShape(value: unknown): string[] {
+  return REQUIRED_ANALYSIS_SECTIONS.filter(key => !hasObjectSection(value, key))
+}
+
+export function parseAIAnalysisResponse(rawText: string): AIAnalysisResponse {
+  const clean = rawText.replace(/```json|```/g, '').trim()
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(clean)
+  } catch {
+    throw new AIAnalysisValidationError('Reponse IA invalide: JSON malforme')
+  }
+
+  const missingSections = validateAIAnalysisShape(parsed)
+  if (missingSections.length) {
+    throw new AIAnalysisValidationError(`Reponse IA invalide: sections manquantes ${missingSections.join(', ')}`)
+  }
+
+  return parsed as AIAnalysisResponse
+}
+
 export async function analyzeCallTranscript(
   transcript: string,
   campaignContext?: {
@@ -122,8 +162,7 @@ ${transcript}`
   const content = message.content[0]
   if (content.type !== 'text') throw new Error('Pas de réponse de l\'IA')
 
-  const clean = content.text.replace(/```json|```/g, '').trim()
-  const parsed = JSON.parse(clean) as AIAnalysisResponse
+  const parsed = parseAIAnalysisResponse(content.text)
 
   return {
     analysis: parsed,
