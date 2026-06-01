@@ -35,6 +35,12 @@ sdr_quality_score (0-100) :
 qualification_completeness_score (0-100) :
 - Critères : décideur (+20), besoin (+20), urgence (+20), solution actuelle (+20), prochaine étape (+20)
 
+interest_level (cold / warm / hot / unclear) :
+- hot : décideur confirmé + douleur concrète identifiée + RDV ferme posé. Budget et urgence financière ne sont PAS obligatoires.
+- warm : intérêt exprimé mais RDV non posé, ou décideur non confirmé
+- cold : aucun intérêt ou refus clair
+- unclear : appel trop court ou interlocuteur non identifié
+
 RETOURNER UNIQUEMENT CE JSON VALIDE, SANS COMMENTAIRE, SANS MARKDOWN :
 
 {

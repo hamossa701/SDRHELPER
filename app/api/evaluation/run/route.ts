@@ -79,7 +79,9 @@ export async function POST(request: Request) {
       const actual = mapAIAnalysisToEvaluationJudgment(ai.analysis)
       const comparison = scoreEvaluationComparison(expectedJudgment(testCase), actual)
       const hallucinationRisk = ai.analysis.risk_control?.hallucination_risk
-      const scoreCap = hallucinationRisk === 'high' ? 30 : hallucinationRisk === 'medium' ? 65 : 100
+      const aiConfidence = ai.analysis.risk_control?.ai_confidence ?? 100
+      const hardCap = hallucinationRisk === 'high' || testCase.category === 'wrong_contact' || aiConfidence < 40
+      const scoreCap = hardCap ? 30 : hallucinationRisk === 'medium' ? 65 : 100
       const finalScore = Math.min(comparison.score, scoreCap)
 
       const row = {
