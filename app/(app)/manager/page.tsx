@@ -110,6 +110,7 @@ export default async function ManagerPage() {
 
   return (
     <div style={{ padding: '24px 28px', width: '100%', minWidth: 0, overflowX: 'hidden' }}>
+      <style>{`.mgr-row:hover { background: var(--row-h); }`}</style>
       <div style={{ maxWidth: 1440, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* ── Page header — plain, no card border ── */}
@@ -231,10 +232,7 @@ export default async function ManagerPage() {
                       const analysis = one(call.call_analyses)
                       const sdr = one(call.users)
                       return (
-                        <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}
-                          onMouseOver={e => (e.currentTarget.style.background = 'var(--row-h)')}
-                          onMouseOut={e => (e.currentTarget.style.background = 'transparent')}
-                        >
+                        <tr key={call.id} className="mgr-row" style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text)' }}>{sdr?.name || '—'}</td>
                           <td style={{ padding: '10px 16px', color: 'var(--muted)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {formatProspectDisplay(analysis)}
