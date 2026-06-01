@@ -18,7 +18,7 @@ export default function UploadCallPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [sdrs, setSdrs] = useState<User[]>([])
   const [profile, setProfile] = useState<User | null>(null)
-  const [form, setForm] = useState({ campaign_id: '', sdr_id: '', transcript: '', call_datetime: new Date().toISOString().slice(0, 16) })
+  const [form, setForm] = useState({ campaign_id: '', sdr_id: '', transcript: '', call_datetime: new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [step, setStep] = useState<UploadStep>('form')
@@ -80,7 +80,12 @@ export default function UploadCallPage() {
           setJobError(data.error_message ?? null)
           setRetryCount(data.retry_count ?? 0)
         }
-      } catch { /* network blip */ }
+      } catch {
+        clearInterval(pollRef.current!)
+        clearTimeout(timeoutRef.current!)
+        setStep('failed')
+        setJobError('Erreur de connexion. Vérifiez votre connexion et réessayez.')
+      }
     }, 3000)
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
@@ -101,7 +106,12 @@ export default function UploadCallPage() {
     if (!form.sdr_id) { setError('Sélectionnez un SDR.'); return }
     setLoading(true); setError('')
     try {
-      const res = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const tzOffset = new Date().getTimezoneOffset()
+      const sign = tzOffset <= 0 ? '+' : '-'
+      const absOff = Math.abs(tzOffset)
+      const tzSuffix = `${sign}${String(Math.floor(absOff / 60)).padStart(2, '0')}:${String(absOff % 60).padStart(2, '0')}`
+      const callDatetimeTz = `${form.call_datetime}:00${tzSuffix}`
+      const res = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, call_datetime: callDatetimeTz }) })
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Erreur lors de la soumission') }
       const { call_id, job_id } = await res.json()
       setCallId(call_id); setJobId(job_id); setStep('queued')
@@ -128,7 +138,7 @@ export default function UploadCallPage() {
           <div style={{ background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.32)', borderRadius: 12, padding: 24, maxWidth: 480, width: '100%', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: '#fcd34d' }}>Analyse bloquée</div>
             <div style={{ fontSize: 13, color: 'var(--muted)' }}>
-              Le traitement dure plus de 60 secondes.{lastKnownStatus ? ` Dernier statut : ${lastKnownStatus}.` : ''}
+              L&apos;analyse prend plus de temps que prévu. Veuillez réessayer.{lastKnownStatus ? ` Dernier statut : ${lastKnownStatus}.` : ''}
             </div>
             <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>
               Le job est peut-être toujours en cours. Vérifiez vos appels dans quelques instants ou relancez.

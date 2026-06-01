@@ -123,6 +123,7 @@ export function formatDate(dateString: string | null): string {
 export function formatDateShort(dateString: string | null): string {
   if (!dateString) return '—'
   return new Date(dateString).toLocaleDateString('fr-FR', {
+    timeZone: DEFAULT_APPOINTMENT_TIME_ZONE,
     day: '2-digit',
     month: 'short',
   })
