@@ -91,9 +91,12 @@ export default function UploadCallPage() {
 
   function update(field: string, value: string) { setForm(prev => ({ ...prev, [field]: value })) }
 
+  const transcriptLen = form.transcript.trim().length
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.transcript.trim()) { setError('Transcription obligatoire.'); return }
+    if (transcriptLen > 30_000) { setError('Transcript too long. Maximum is 30,000 characters.'); return }
     if (!form.campaign_id) { setError('Sélectionnez une campagne.'); return }
     if (!form.sdr_id) { setError('Sélectionnez un SDR.'); return }
     setLoading(true); setError('')
@@ -229,7 +232,9 @@ export default function UploadCallPage() {
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>Transcription</span>
-              <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{form.transcript.length} caractères</span>
+              <span style={{ fontSize: 11, color: transcriptLen > 30_000 ? '#f87171' : transcriptLen > 25_000 ? '#fcd34d' : 'var(--muted-2)' }}>
+                {transcriptLen.toLocaleString()} / 30 000 caractères
+              </span>
             </div>
             <div style={{ padding: 16 }}>
               <textarea rows={18} value={form.transcript} onChange={e => update('transcript', e.target.value)}
@@ -241,11 +246,22 @@ export default function UploadCallPage() {
             </div>
           </div>
 
+          {transcriptLen > 25_000 && transcriptLen <= 30_000 && (
+            <div style={{ background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.32)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#fcd34d' }}>
+              Attention : {(30_000 - transcriptLen).toLocaleString()} caractères restants avant la limite.
+            </div>
+          )}
+          {transcriptLen > 30_000 && (
+            <div style={{ background: 'rgba(239,68,68,.10)', border: '1px solid rgba(239,68,68,.32)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#fca5a5' }}>
+              Transcript too long. Maximum is 30,000 characters.
+            </div>
+          )}
+
           {error && <div style={{ background: 'rgba(239,68,68,.10)', border: '1px solid rgba(239,68,68,.32)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#fca5a5' }}>{error}</div>}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
             <button type="button" onClick={() => router.back()} style={{ padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)', cursor: 'pointer', fontFamily: 'Geist, sans-serif' }}>Annuler</button>
-            <button type="submit" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)', fontFamily: 'Geist, sans-serif', opacity: loading ? .7 : 1 }}>
+            <button type="submit" disabled={loading || transcriptLen > 30_000} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: (loading || transcriptLen > 30_000) ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)', fontFamily: 'Geist, sans-serif', opacity: (loading || transcriptLen > 30_000) ? .7 : 1 }}>
               {loading && <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
               <span className="mat" style={{ fontSize: 16 }}>mic</span>
               Analyser l&apos;appel
