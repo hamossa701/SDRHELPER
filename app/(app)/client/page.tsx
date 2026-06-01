@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui'
-import { formatDateShort } from '@/lib/utils'
+import { formatAppointmentDate, formatDateShort } from '@/lib/utils'
 import { PrintButton } from '@/components/client/PrintButton'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { hasQualifiedAppointmentDate } from '@/lib/appointment-date'
@@ -1114,7 +1114,7 @@ export default async function ClientPage({
                     const a = one(call.call_analyses)
                     if (!a) return null
                     const sdrName = call.sdr_id ? nameMap[call.sdr_id] : null
-                    const dateStr = a.appointment_datetime ? formatDateShort(a.appointment_datetime) : a.appointment_date_text || formatDateShort(call.call_datetime)
+                    const dateStr = a.appointment_datetime ? formatAppointmentDate(a.appointment_datetime) : a.appointment_date_text || formatDateShort(call.call_datetime)
                     return (
                       <div key={call.id} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 48px 60px', padding: '10px 20px', gap: 8, borderBottom: i < Math.min(qualifiedAppointments.length, 8) - 1 ? '1px solid var(--border)' : 'none', alignItems: 'center' }}>
                         <div style={{ minWidth: 0 }}>

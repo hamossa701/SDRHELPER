@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { InterestBadge, RiskBadge } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { formatAppointmentDate, formatDate } from '@/lib/utils'
 import { ValidationPanel } from '@/components/calls/ValidationPanel'
 import { JobStatusBanner } from '@/components/calls/JobStatusBanner'
 import type { AnalysisExplainability, ExplainabilityItem, ScoreBreakdownItem } from '@/lib/analysis-explainability'
@@ -227,7 +227,7 @@ export function CallDetailView({
                     </Pill>
                     {(a.appointment_datetime || a.appointment_date_text) && (
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--cyan)' }}>
-                        {a.appointment_datetime ? formatDate(a.appointment_datetime) : a.appointment_date_text}
+                        {a.appointment_datetime ? formatAppointmentDate(a.appointment_datetime) : a.appointment_date_text}
                       </span>
                     )}
                     {a.next_step && (
@@ -358,7 +358,7 @@ export function CallDetailView({
                   </Pill>
                   {(a.appointment_datetime || a.appointment_date_text) && (
                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--cyan)' }}>
-                      {a.appointment_datetime ? formatDate(a.appointment_datetime) : a.appointment_date_text}
+                      {a.appointment_datetime ? formatAppointmentDate(a.appointment_datetime) : a.appointment_date_text}
                     </span>
                   )}
                   {a.appointment_date_confidence && (

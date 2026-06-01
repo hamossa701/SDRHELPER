@@ -6,6 +6,8 @@ export interface AppointmentDateExtraction {
   confidence: AppointmentDateConfidence | null
 }
 
+export const DEFAULT_APPOINTMENT_TIME_ZONE = 'Europe/Paris'
+
 const WEEKDAYS: Record<string, number> = {
   dimanche: 0,
   lundi: 1,
@@ -41,9 +43,71 @@ export function extractAppointmentDateText(text: string): string | null {
   return match?.[0]?.trim() ?? null
 }
 
+function getZonedDateParts(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+
+  const values = Object.fromEntries(
+    parts
+      .filter(part => part.type !== 'literal')
+      .map(part => [part.type, Number(part.value)])
+  )
+
+  return {
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
+  }
+}
+
+function getTimeZoneOffsetMs(date: Date, timeZone: string): number {
+  const parts = getZonedDateParts(date, timeZone)
+  const zonedAsUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  )
+
+  return zonedAsUtc - date.getTime()
+}
+
+function zonedWallTimeToIso(params: {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+  timeZone: string
+}): string {
+  const wallTimeUtc = Date.UTC(params.year, params.month - 1, params.day, params.hour, params.minute, 0, 0)
+  let utcTime = wallTimeUtc
+
+  for (let i = 0; i < 3; i++) {
+    const offset = getTimeZoneOffsetMs(new Date(utcTime), params.timeZone)
+    utcTime = wallTimeUtc - offset
+  }
+
+  return new Date(utcTime).toISOString()
+}
+
 export function normalizeFrenchAppointmentDate(
   text: string | null,
-  referenceDatetime: string | null
+  referenceDatetime: string | null,
+  timeZone = DEFAULT_APPOINTMENT_TIME_ZONE
 ): string | null {
   if (!text || !referenceDatetime) return null
   const match = text.match(DATE_TEXT_PATTERN)
@@ -57,11 +121,20 @@ export function normalizeFrenchAppointmentDate(
   const ref = new Date(referenceDatetime)
   if (Number.isNaN(ref.getTime())) return null
 
-  const daysUntil = (weekday - ref.getUTCDay() + 7) % 7 || 7
-  const normalized = new Date(ref)
-  normalized.setUTCDate(ref.getUTCDate() + daysUntil)
-  normalized.setUTCHours(hour, minute, 0, 0)
-  return normalized.toISOString()
+  const refParts = getZonedDateParts(ref, timeZone)
+  const refLocalDate = new Date(Date.UTC(refParts.year, refParts.month - 1, refParts.day))
+  const daysUntil = (weekday - refLocalDate.getUTCDay() + 7) % 7 || 7
+  const appointmentLocalDate = new Date(refLocalDate)
+  appointmentLocalDate.setUTCDate(refLocalDate.getUTCDate() + daysUntil)
+
+  return zonedWallTimeToIso({
+    year: appointmentLocalDate.getUTCFullYear(),
+    month: appointmentLocalDate.getUTCMonth() + 1,
+    day: appointmentLocalDate.getUTCDate(),
+    hour,
+    minute,
+    timeZone,
+  })
 }
 
 export function resolveAppointmentDate(params: {
@@ -82,7 +155,7 @@ export function resolveAppointmentDate(params: {
 
   return {
     text,
-    datetime: parsedIso ?? normalizedFromText,
+    datetime: normalizedFromText ?? parsedIso,
     confidence,
   }
 }

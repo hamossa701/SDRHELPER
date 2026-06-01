@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Badge, Button } from '@/components/ui'
 import type { CallAnalysis, FieldCorrection, FieldValidationStatus, AuditEntry } from '@/types'
-import { formatDate } from '@/lib/utils'
+import { formatAppointmentDate, formatDate } from '@/lib/utils'
 import { computeTrustScore } from '@/lib/trust-score'
 
 const REVIEW_FIELDS: { key: keyof CallAnalysis; label: string; multiline?: boolean }[] = [
@@ -75,6 +75,7 @@ export function ValidationPanel({ analysis, corrections, auditLog, canEdit }: Pr
     const corr = corrMap[key as string]
     if (corr) return corr.corrected_value || ''
     const v = analysis[key]
+    if (key === 'appointment_datetime') return formatAppointmentDate(v as string | null)
     return v !== null && v !== undefined ? String(v) : ''
   }
 

@@ -1,9 +1,26 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { DEFAULT_APPOINTMENT_TIME_ZONE } from '@/lib/appointment-date'
 import type { InterestLevel, HallucinationRisk, UserRole, CampaignStatus } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+export function formatAppointmentDate(dateString: string | null): string {
+  if (!dateString) return 'â€”'
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return 'â€”'
+
+  return date.toLocaleDateString('fr-FR', {
+    timeZone: DEFAULT_APPOINTMENT_TIME_ZONE,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).replace(',', '')
 }
 
 export function getScoreColor(score: number | null): string {

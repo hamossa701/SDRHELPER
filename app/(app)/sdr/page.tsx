@@ -82,9 +82,6 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
     .select(`id, call_datetime, call_analyses!inner(${ANALYSIS_SELECT}), campaigns(campaign_name, client_name), analysis_jobs!inner(status)`)
     .eq('sdr_id', user.id)
     .eq('analysis_jobs.status', 'completed')
-    .not('call_analyses.prospect_company', 'is', null)
-    .neq('call_analyses.prospect_company', 'En attente...')
-    .neq('call_analyses.prospect_company', 'En attente…')
     .order('call_datetime', { ascending: false })
     .limit(50)
 
@@ -93,9 +90,6 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
     .select(`id, call_analyses!inner(${KPI_ANALYSIS_SELECT}), analysis_jobs!inner(status)`)
     .eq('sdr_id', user.id)
     .eq('analysis_jobs.status', 'completed')
-    .not('call_analyses.prospect_company', 'is', null)
-    .neq('call_analyses.prospect_company', 'En attente...')
-    .neq('call_analyses.prospect_company', 'En attente…')
 
   const failedQuery = supabase
     .from('calls')
