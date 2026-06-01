@@ -172,7 +172,16 @@ export function CallDetailView({
       </div>
 
       {/* Body */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+      <main className="app-scroll">
+        <style>{`
+          @media (max-width: 820px) {
+            .call-detail-grid,
+            .call-detail-expanded-grid {
+              grid-template-columns: 1fr !important;
+            }
+          }
+        `}</style>
+        <div className="app-content" style={{ gap: 14 }}>
         {!a ? (
           <Card>
             {isClient
@@ -181,7 +190,7 @@ export function CallDetailView({
             }
           </Card>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 900, margin: '0 auto' }}>
+          <>
 
             {/* 1 — Hero */}
             <Card>
@@ -270,7 +279,7 @@ export function CallDetailView({
                   </div>
 
                   {explainExpanded && (
-                    <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="call-detail-expanded-grid" style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
                           Température : <span style={{ color: 'var(--text)', textTransform: 'none' }}>{temperatureLabel(explanation.temperature.level)}</span>
@@ -299,7 +308,7 @@ export function CallDetailView({
             )}
 
             {/* 3 — Business Details */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="call-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <Card>
                 <SectionHeader title="Prospect" />
                 <div style={{ padding: '4px 16px 12px' }}>
@@ -376,7 +385,7 @@ export function CallDetailView({
             {/* 5 — Coaching (collapsed, non-client) */}
             {hasCoaching && (
               <Accordion title="Coaching SDR" icon="school">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div className="call-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   {(a.strengths?.length ?? 0) > 0 && (
                     <div>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Points forts</div>
@@ -445,9 +454,10 @@ export function CallDetailView({
               </Accordion>
             )}
 
-          </div>
+          </>
         )}
-      </div>
+        </div>
+      </main>
     </div>
   )
 }
