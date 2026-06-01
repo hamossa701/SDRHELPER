@@ -104,28 +104,28 @@ export default async function ManagerPage() {
   const coachingNeeded = sdrStats.filter(s => s.avg_sdr_quality === null || s.avg_sdr_quality < 55)
 
   return (
-    <div className="w-full px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
-      <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-7">
-        <div className="rounded-xl border border-white/10 bg-slate-950/35 px-5 py-4 shadow-[0_18px_42px_rgba(0,0,0,.22)] backdrop-blur">
-          <h1 className="text-2xl font-bold text-slate-50">Supervision</h1>
+    <div className="w-full" style={{ padding: '32px clamp(24px, 4vw, 56px) 48px' }}>
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-7">
+        <div className="rounded-xl border border-cyan-300/20 bg-slate-950/45 px-6 py-5 shadow-[0_20px_54px_rgba(0,0,0,.28)] backdrop-blur">
+          <h1 className="text-[26px] font-bold text-slate-50">Supervision</h1>
           <p className="mt-1 text-sm text-slate-400">Vue opérationnelle du jour</p>
         </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Appels aujourd'hui" value={kpis.today_calls} />
         <StatCard label="À réviser"           value={kpis.calls_requiring_review} sub="flags détectés" />
         <StatCard label="RDV posés"           value={kpis.appointments_booked} />
         <StatCard label="RDV qualifiés"       value={kpis.qualified_appointments} sub="décideur + besoin + date + score ≥60" />
         <StatCard label="Taux qualification"  value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Appels révisés"      value={kpis.calls_reviewed}     sub="human_validated = true" />
         <StatCard label="En attente révision" value={kpis.calls_pending}      sub="analyses non approuvées" />
         <StatCard label="Champs corrigés"     value={kpis.ai_trust_corrected} sub="corrections enregistrées" />
         <StatCard label="Fiabilité IA"        value={trustScore !== null ? `${trustScore}%` : '—'} sub={trustLabel} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,0.9fr)] xl:items-start">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.85fr)_minmax(340px,0.85fr)] lg:items-start">
         <div className="min-w-0 space-y-6">
           <Card className="overflow-hidden">
             <CardHeader>
