@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Button, Card } from '@/components/ui'
+import { CampaignFormSkeleton } from '@/components/ui/skeleton-templates'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -28,6 +29,7 @@ const labelStyle: React.CSSProperties = {
 
 export default function NewCampaignPage() {
   const router = useRouter()
+  const [initializing, setInitializing] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [clients, setClients] = useState<{ id: string; name: string }[]>([])
@@ -54,6 +56,7 @@ export default function NewCampaignPage() {
       const list = data ?? []
       setClients(list)
       if (list.length === 0) setClientMode('new')
+      setInitializing(false)
     }
     fetchClients()
   }, [])
@@ -100,6 +103,8 @@ export default function NewCampaignPage() {
     if (err) { setError(err.message); setLoading(false); return }
     router.push(`/campaigns/${data.id}`)
   }
+
+  if (initializing) return <CampaignFormSkeleton />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>

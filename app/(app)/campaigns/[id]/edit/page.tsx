@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Button, Card } from '@/components/ui'
+import { CampaignFormSkeleton } from '@/components/ui/skeleton-templates'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -105,14 +106,7 @@ export default function EditCampaignPage() {
     router.push(`/campaigns/${id}`)
   }
 
-  if (fetching) return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <div style={{ height: 56, flexShrink: 0, borderBottom: '1px solid var(--border)', background: 'var(--header-bg)', backdropFilter: 'blur(18px)' }} />
-      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Chargement...</div>
-      </main>
-    </div>
-  )
+  if (fetching) return <CampaignFormSkeleton />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
