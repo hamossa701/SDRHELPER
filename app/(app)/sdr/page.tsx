@@ -3,11 +3,12 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
+import { formatProspectDisplay } from '@/lib/dashboard-visibility'
 import Link from 'next/link'
 import type { CallAnalysis, SDRDashboardKPIs } from '@/types'
 
 type SDRCallFilter = 'completed' | 'failed' | 'all'
-type AnalysisPreview = Pick<CallAnalysis, 'appointment_booked' | 'sdr_quality_score' | 'prospect_company' | 'interest_level' | 'strengths' | 'weaknesses' | 'coaching_recommendations'>
+type AnalysisPreview = Pick<CallAnalysis, 'appointment_booked' | 'sdr_quality_score' | 'prospect_company' | 'contact_name' | 'interest_level' | 'strengths' | 'weaknesses' | 'coaching_recommendations'>
 type KPIAnalysis = Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score' | 'sdr_quality_score'>
 type CampaignPreview = { campaign_name: string | null; client_name: string | null }
 type JobPreview = { status: string; error_message: string | null }
@@ -26,7 +27,7 @@ type CallRow = {
   failedJob: JobPreview | null
 }
 
-const ANALYSIS_SELECT = 'appointment_booked, sdr_quality_score, prospect_company, interest_level, strengths, weaknesses, coaching_recommendations'
+const ANALYSIS_SELECT = 'appointment_booked, sdr_quality_score, prospect_company, contact_name, interest_level, strengths, weaknesses, coaching_recommendations'
 const KPI_ANALYSIS_SELECT = 'appointment_booked, appointment_quality_score, sdr_quality_score'
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -228,7 +229,7 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
                         </td>
                         <td style={{ padding: 0, fontWeight: 600, color: 'var(--text)' }}>
                           <Link href={`/calls/${call.id}`} style={{ display: 'block', padding: '11px 18px', color: 'inherit', textDecoration: 'none' }}>
-                            {call.call_analyses?.prospect_company || <span style={{ color: 'var(--muted-2)', fontWeight: 400 }}>En attente…</span>}
+                            {formatProspectDisplay(call.call_analyses)}
                           </Link>
                         </td>
                         <td style={{ padding: 0, color: 'var(--muted)' }}>

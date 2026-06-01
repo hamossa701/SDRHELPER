@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getCampaignStatusBg, getCampaignStatusLabel, formatDateShort } from '@/lib/utils'
 import { isQualifiedAppointment } from '@/lib/review-flags'
+import { formatProspectDisplay } from '@/lib/dashboard-visibility'
 import Link from 'next/link'
 import type { Campaign, DashboardKPIs, SDRLeaderboardRow, DashboardCampaignStatsRow, CampaignHealthResult } from '@/types'
 
@@ -61,8 +62,9 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: [] as DashboardCampaignStatsRow[] }),
     supabase
       .from('calls')
-      .select('id, call_datetime, call_analyses(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, decision_maker_detected, pain_point_detected), users!calls_sdr_id_fkey(name)')
+      .select('id, call_datetime, call_analyses!inner(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, contact_name, decision_maker_detected, pain_point_detected), analysis_jobs!inner(status), users!calls_sdr_id_fkey(name)')
       .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
       .order('call_datetime', { ascending: false })
       .limit(10),
   ])
@@ -219,7 +221,7 @@ export default async function DashboardPage() {
                     <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '11px 18px', color: 'var(--muted-2)', whiteSpace: 'nowrap' }}>{formatDateShort(call.call_datetime)}</td>
                       <td style={{ padding: '11px 18px', fontWeight: 600, color: 'var(--text)' }}>{sdr?.name || '—'}</td>
-                      <td style={{ padding: '11px 18px', color: 'var(--muted)' }}>{analysis?.prospect_company || '—'}</td>
+                      <td style={{ padding: '11px 18px', color: 'var(--muted)' }}>{formatProspectDisplay(analysis)}</td>
                       <td style={{ padding: '11px 18px' }}>
                         {analysis?.appointment_booked ? (
                           isQualifiedAppointment(analysis as Parameters<typeof isQualifiedAppointment>[0])

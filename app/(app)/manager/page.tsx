@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/co
 import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
 import { ReviewQueueControls } from '@/components/manager/ReviewQueueControls'
+import { formatProspectDisplay } from '@/lib/dashboard-visibility'
 import Link from 'next/link'
 import type { CallAnalysis, ManagerKPIs, ReviewStatus, SDRLeaderboardRow } from '@/types'
 
@@ -18,10 +19,11 @@ type ManagerReviewCall = {
   users: { name: string | null } | { name: string | null }[] | null
   campaigns: { campaign_name: string | null; client_name: string | null } | { campaign_name: string | null; client_name: string | null }[] | null
 }
+type ManagerRecentAnalysis = Pick<CallAnalysis, 'appointment_booked' | 'appointment_date_text' | 'appointment_datetime' | 'appointment_date_confidence' | 'appointment_quality_score' | 'sdr_quality_score' | 'prospect_company' | 'contact_name' | 'interest_level' | 'decision_maker_detected' | 'pain_point_detected'>
 type ManagerRecentCall = {
   id: string
   call_datetime: string
-  call_analyses: CallAnalysis | CallAnalysis[] | null
+  call_analyses: ManagerRecentAnalysis | ManagerRecentAnalysis[] | null
   users: { name: string | null } | { name: string | null }[] | null
 }
 
@@ -54,15 +56,16 @@ export default async function ManagerPage() {
     supabase.rpc('get_sdr_leaderboard', { p_org_id: profile.organization_id }),
     supabase
       .from('calls')
-      .select('id, call_datetime, review_status, assigned_to, call_analyses(id, appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, prospect_company, decision_maker_detected, pain_point_detected, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step), users!calls_sdr_id_fkey(name), campaigns(campaign_name, client_name)')
+      .select('id, call_datetime, review_status, assigned_to, call_analyses(id, appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, prospect_company, contact_name, decision_maker_detected, pain_point_detected, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step), users!calls_sdr_id_fkey(name), campaigns(campaign_name, client_name)')
       .eq('organization_id', profile.organization_id)
       .neq('review_status', 'resolved')
       .order('call_datetime', { ascending: false })
       .limit(30),
     supabase
       .from('calls')
-      .select('id, call_datetime, call_analyses(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, sdr_quality_score, prospect_company, interest_level, decision_maker_detected, pain_point_detected), users!calls_sdr_id_fkey(name)')
+      .select('id, call_datetime, call_analyses!inner(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, contact_name, interest_level, decision_maker_detected, pain_point_detected), analysis_jobs!inner(status), users!calls_sdr_id_fkey(name)')
       .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
       .order('call_datetime', { ascending: false })
       .limit(10),
     supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).in('role', ['owner', 'manager']),
@@ -144,7 +147,7 @@ export default async function ManagerPage() {
                     <div className="flex items-start justify-between gap-4">
                       <Link href={`/calls/${call.id}`} className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-slate-200">
-                          {analysis.prospect_company || 'Prospect inconnu'}
+                          {formatProspectDisplay(analysis)}
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">
                           {sdr?.name} · {campaign?.campaign_name} · {formatDateShort(call.call_datetime)}
@@ -192,7 +195,7 @@ export default async function ManagerPage() {
                     return (
                     <tr key={call.id} className="hover:bg-white/5">
                       <td className="px-6 py-3 font-medium text-slate-200">{sdr?.name || '—'}</td>
-                      <td className="px-6 py-3 text-slate-400">{analysis?.prospect_company || '—'}</td>
+                      <td className="px-6 py-3 text-slate-400">{formatProspectDisplay(analysis)}</td>
                       <td className="px-6 py-3">
                         <Badge className={getInterestBg(analysis?.interest_level ?? null)}>
                           {getInterestLabel(analysis?.interest_level ?? null)}
@@ -200,7 +203,7 @@ export default async function ManagerPage() {
                       </td>
                       <td className="px-6 py-3">
                         {analysis?.appointment_booked ? (
-                          isQualifiedAppointment(analysis)
+                          isQualifiedAppointment(analysis as Parameters<typeof isQualifiedAppointment>[0])
                             ? <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/30">✓ Qualifié</Badge>
                             : <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/30">~ Posé</Badge>
                         ) : <span className="text-slate-500">—</span>}
