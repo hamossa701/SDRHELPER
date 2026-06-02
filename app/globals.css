@@ -194,6 +194,10 @@ body::before {
   display: none !important;
 }
 
+.owner-history-mobile-list {
+  display: none;
+}
+
 .h3a-skeleton {
   position: relative;
   overflow: hidden;
@@ -309,6 +313,7 @@ body::before {
   .app-responsive-grid,
   .dashboard-main-grid,
   .dashboard-highlight-grid,
+  .owner-dashboard-grid,
   .coaching-profile-grid,
   .upload-meta-grid,
   .campaign-form-grid,
@@ -365,6 +370,32 @@ body::before {
   .mobile-full-actions > * {
     flex: 1;
   }
+
+  .owner-history-table {
+    display: none;
+  }
+
+  .owner-history-table-wrap {
+    overflow-x: visible !important;
+  }
+
+  .owner-history-mobile-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .owner-history-mobile-row {
+    display: block;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .owner-history-empty {
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--muted-2);
+    font-size: 13px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -385,6 +416,23 @@ input, select, textarea {
 .h3a-kpi-card:hover {
   transform: translateY(-1px);
   box-shadow: 0 16px 40px rgba(0,0,0,.44), 0 0 0 1px rgba(125,211,252,.13);
+}
+
+.h3a-kpi-button {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.h3a-kpi-card.is-active {
+  border-color: rgba(125,211,252,.46);
+  box-shadow: 0 16px 40px rgba(0,0,0,.44), 0 0 0 1px rgba(125,211,252,.22), inset 0 0 0 1px rgba(125,211,252,.12);
 }
 
 /* ── KPI grid breathing room ── */
