@@ -399,7 +399,7 @@ function aggregateSdrStats(
 
 function SectionQ({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8 }}>
+    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8, borderLeft: '2px solid var(--cyan)', paddingLeft: 8 }}>
       {children}
     </div>
   )
@@ -830,27 +830,32 @@ export default async function ClientPage({
             label="Appels analysés"
             value={kpis.total_calls}
             trend={<KpiTrend current={kpis.total_calls} previous={prevKpis.total_calls} />}
+            accent="var(--cyan)" style={{ borderLeftWidth: 3 }}
           />
           <StatCard
             label="RDV posés"
             value={kpis.appointments_booked}
             trend={<KpiTrend current={kpis.appointments_booked} previous={prevKpis.appointments_booked} />}
+            accent="rgba(134,239,172,.7)" style={{ borderLeftWidth: 3 }}
           />
           <StatCard
             label="RDV qualifiés"
             value={kpis.qualified_appointments}
             sub="décideur + besoin + date"
             trend={<KpiTrend current={kpis.qualified_appointments} previous={prevKpis.qualified_appointments} />}
+            accent="rgba(252,211,77,.7)" style={{ borderLeftWidth: 3 }}
           />
           <StatCard
             label="Taux de qualification"
             value={kpis.qualification_rate !== null ? `${kpis.qualification_rate}%` : '—'}
             sub="RDV qualifiés / RDV posés"
+            accent="rgba(196,181,253,.7)" style={{ borderLeftWidth: 3 }}
           />
           <StatCard
             label="Temps économisé"
             value={kpis.total_calls > 0 ? `~${formatTimeSaved(kpis.total_calls)}` : '—'}
             sub={kpis.total_calls > 0 ? `${kpis.total_calls} appels × ~${AVG_CALL_MINUTES}min` : undefined}
+            accent="var(--muted)" style={{ borderLeftWidth: 3 }}
           />
         </div>
 
@@ -933,9 +938,9 @@ export default async function ClientPage({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div style={{
                     display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start',
-                    padding: '6px 16px', borderRadius: 20,
+                    padding: '6px 18px', borderRadius: 20,
                     background: health.bg, border: `1px solid ${health.border}`,
-                    fontSize: 13, fontWeight: 700, color: health.color,
+                    fontSize: 14, fontWeight: 700, color: health.color,
                   }}>
                     {health.label}
                   </div>

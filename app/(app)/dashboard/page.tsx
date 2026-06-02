@@ -131,7 +131,7 @@ export default async function DashboardPage() {
             </div>
             <div>
               {campaignStats.length === 0 && (
-                <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)' }}>Aucune campagne</div>
+                <div style={{ margin: 16, padding: '32px 20px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)', background: 'rgba(125,211,252,.03)', border: '1px dashed rgba(125,211,252,.15)', borderRadius: 10 }}>Créez votre première campagne pour commencer l&apos;analyse</div>
               )}
               {campaignStats.map((c, i) => (
                 <Link key={c.id} href={`/campaigns/${c.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: i < campaignStats.length - 1 ? '1px solid var(--border)' : 'none' }}>
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
             </div>
             <div>
               {sdrStats.length === 0 && (
-                <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)' }}>Aucun SDR</div>
+                <div style={{ margin: 16, padding: '32px 20px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)', background: 'rgba(125,211,252,.03)', border: '1px dashed rgba(125,211,252,.15)', borderRadius: 10 }}>Aucun commercial assigné à cette campagne</div>
               )}
               {sdrStats.map((sdr, i) => (
                 <div key={sdr.sdr_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px', borderBottom: i < sdrStats.length - 1 ? '1px solid var(--border)' : 'none' }}>
@@ -217,8 +217,11 @@ export default async function DashboardPage() {
                 {(recentCalls || []).map((call) => {
                   const analysis = one(call.call_analyses)
                   const sdr = one(call.users)
+                  const qs = analysis?.appointment_quality_score ?? analysis?.sdr_quality_score ?? null
+                  const qualified = analysis?.appointment_booked && isQualifiedAppointment(analysis as Parameters<typeof isQualifiedAppointment>[0])
+                  const rowBorder = qs !== null && qs < 50 ? '2px solid rgba(239,68,68,.5)' : ((qs !== null && qs >= 75) || qualified) ? '2px solid rgba(34,197,94,.35)' : '2px solid transparent'
                   return (
-                    <tr key={call.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <tr key={call.id} style={{ borderBottom: '1px solid var(--border)', borderLeft: rowBorder }}>
                       <td style={{ padding: '11px 18px', color: 'var(--muted-2)', whiteSpace: 'nowrap' }}>{formatDateShort(call.call_datetime)}</td>
                       <td style={{ padding: '11px 18px', fontWeight: 600, color: 'var(--text)' }}>{sdr?.name || '—'}</td>
                       <td style={{ padding: '11px 18px', color: 'var(--muted)' }}>{formatProspectDisplay(analysis)}</td>

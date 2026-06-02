@@ -89,8 +89,13 @@ export function ScoreBadge({ score }: { score: number | null }) {
     : score >= 40 ? 'rgba(245,158,11,.32)'
     : 'rgba(239,68,68,.32)'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700, color, background: bg, border: `1px solid ${border}`, whiteSpace: 'nowrap', transition: 'opacity .12s', boxShadow: score !== null ? `inset 0 0 0 1px ${color}1a` : 'none' }}>
-      {score !== null ? score : '—'}
+    <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', padding: '3px 8px 4px', borderRadius: 6, fontSize: 12, fontWeight: 700, color, background: bg, border: `1px solid ${border}`, whiteSpace: 'nowrap', transition: 'opacity .12s', boxShadow: score !== null ? `inset 0 0 0 1px ${color}1a` : 'none', minWidth: 34 }}>
+      <span style={{ textAlign: 'center' }}>{score !== null ? score : '—'}</span>
+      {score !== null && (
+        <span style={{ display: 'block', marginTop: 3, height: 2, borderRadius: 1, background: 'rgba(148,163,184,.15)', overflow: 'hidden' }}>
+          <span style={{ display: 'block', height: '100%', borderRadius: 1, background: color, width: `${score}%` }} />
+        </span>
+      )}
     </span>
   )
 }
@@ -133,7 +138,7 @@ export function StatCard({
       </div>
       <div className="h3a-kpi-value" style={{ color: valueColor, minWidth: 0 }}>{value}</div>
       <div className="h3a-kpi-footer">
-        {sub && <div className="h3a-kpi-sub">{sub}</div>}
+        {sub && <div className="h3a-kpi-sub" style={{ fontSize: 12, color: 'var(--muted)', fontStyle: (value === 0 || value === '—') ? 'italic' : 'normal' }}>{sub}</div>}
         {trend && <div className="h3a-kpi-trend">{trend}</div>}
       </div>
     </div>
@@ -143,7 +148,7 @@ export function StatCard({
 // ---- Empty ----
 export function Empty({ title, description, action, icon = 'inbox' }: { title: string; description?: string; action?: React.ReactNode; icon?: string }) {
   return (
-    <div style={{ padding: '40px 24px', textAlign: 'center', border: '1px dashed rgba(148,163,184,.2)', borderRadius: 12 }}>
+    <div style={{ padding: '48px 32px', textAlign: 'center', background: 'rgba(125,211,252,.03)', border: '1px dashed rgba(125,211,252,.15)', borderRadius: 12 }}>
       <span className="mat" style={{ fontSize: 32, color: 'var(--muted-2)', display: 'block', marginBottom: 12 }}>{icon}</span>
       <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 6, fontSize: 14 }}>{title}</div>
       {description && <div style={{ fontSize: 13, color: 'var(--muted-2)', lineHeight: 1.6 }}>{description}</div>}

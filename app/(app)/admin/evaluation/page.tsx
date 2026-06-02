@@ -46,6 +46,15 @@ function computeSummary(cases: EvaluationCase[], latest: Map<string, EvaluationR
   }
 }
 
+function pctColor(val: string): string {
+  const n = parseInt(val, 10)
+  if (isNaN(n)) return 'var(--text)'
+  if (n >= 80) return '#86efac'
+  if (n >= 70) return 'var(--text)'
+  if (n >= 50) return '#fcd34d'
+  return '#fca5a5'
+}
+
 function SmallBadge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'neutral' | 'pass' | 'fail' }) {
   const style = {
     pass: { bg: 'rgba(34,197,94,.10)', color: '#86efac', border: 'rgba(34,197,94,.35)' },
@@ -53,8 +62,9 @@ function SmallBadge({ children, tone = 'neutral' }: { children: React.ReactNode;
     neutral: { bg: 'rgba(2,6,23,.28)', color: 'var(--muted)', border: 'var(--border)' },
   }[tone]
 
+  const prominent = tone !== 'neutral'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 750, background: style.bg, color: style.color, border: `1px solid ${style.border}`, whiteSpace: 'nowrap' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: prominent ? '3px 10px' : '2px 8px', borderRadius: 6, fontSize: prominent ? 12 : 11, fontWeight: 750, background: style.bg, color: style.color, border: `1px solid ${style.border}`, whiteSpace: 'nowrap' }}>
       {children}
     </span>
   )
@@ -125,11 +135,11 @@ export default async function EvaluationPage() {
           </section>
 
           <div className="app-kpi-grid">
-            <StatCard label="Accuracy" value={summary.avgScore} sub={`${summary.total}/${cases.length} cas executes`} dot="var(--cyan)" />
-            <StatCard label="Decision Maker" value={summary.decisionMaker} sub="Expected vs Actual" dot="#93c5fd" />
-            <StatCard label="RDV Pose" value={summary.rdvPose} sub="Expected vs Actual" dot="#86efac" />
-            <StatCard label="RDV Qualifie" value={summary.rdvQualifie} sub="Expected vs Actual" dot="#fcd34d" />
-            <StatCard label="Temperature" value={summary.temperature} sub="Expected vs Actual" dot="#fca5a5" />
+            <StatCard label="Accuracy" value={summary.avgScore} sub={`${summary.total}/${cases.length} cas executes`} dot="var(--cyan)" valueColor={pctColor(summary.avgScore)} />
+            <StatCard label="Decision Maker" value={summary.decisionMaker} sub="Expected vs Actual" dot="#93c5fd" valueColor={pctColor(summary.decisionMaker)} />
+            <StatCard label="RDV Pose" value={summary.rdvPose} sub="Expected vs Actual" dot="#86efac" valueColor={pctColor(summary.rdvPose)} />
+            <StatCard label="RDV Qualifie" value={summary.rdvQualifie} sub="Expected vs Actual" dot="#fcd34d" valueColor={pctColor(summary.rdvQualifie)} />
+            <StatCard label="Temperature" value={summary.temperature} sub="Expected vs Actual" dot="#fca5a5" valueColor={pctColor(summary.temperature)} />
           </div>
 
           <Card style={{ overflow: 'hidden' }}>
@@ -160,8 +170,10 @@ export default async function EvaluationPage() {
                       ? result.mismatches.map(field => field === 'analysis_error' ? 'Erreur analyse' : formatEvaluationField(field as Parameters<typeof formatEvaluationField>[0])).join(', ')
                       : '-'
 
+                    const rowBg = result?.passed === true ? 'rgba(34,197,94,.03)' : result?.passed === false ? 'rgba(239,68,68,.04)' : 'transparent'
+                    const rowBorderLeft = result?.passed === true ? '2px solid rgba(34,197,94,.35)' : result?.passed === false ? '2px solid rgba(239,68,68,.5)' : '2px solid transparent'
                     return (
-                      <tr key={testCase.id}>
+                      <tr key={testCase.id} style={{ background: rowBg, borderLeft: rowBorderLeft }}>
                         <td style={{ padding: '14px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', maxWidth: 320 }}>
                           <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 750, lineHeight: 1.35 }}>{testCase.title}</div>
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>

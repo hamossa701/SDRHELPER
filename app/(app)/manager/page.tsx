@@ -118,6 +118,7 @@ export default async function ManagerPage() {
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>Supervision</h1>
           <p style={{ marginTop: 4, fontSize: 13, color: 'var(--muted)' }}>Vue opérationnelle du jour</p>
         </div>
+        <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(125,211,252,.2), transparent)', marginBottom: -4 }} />
 
         {/* ── KPI block — two rows, unified visual group ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -160,7 +161,7 @@ export default async function ManagerPage() {
               </CardHeader>
               <div style={{ borderTop: '1px solid var(--border)' }}>
                 {callsWithFlags.length === 0 && (
-                  <div style={{ padding: '24px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)' }}>
+                  <div style={{ margin: 16, padding: '32px 20px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)', background: 'rgba(125,211,252,.03)', border: '1px dashed rgba(125,211,252,.15)', borderRadius: 10 }}>
                     Aucun appel en attente de révision ✓
                   </div>
                 )}
@@ -170,7 +171,7 @@ export default async function ManagerPage() {
                   const campaign = one(call.campaigns)
                   const { flags } = computeReviewFlags(analysis)
                   return (
-                    <div key={call.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <div key={call.id} style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', borderLeft: '2px solid rgba(239,68,68,.5)' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                         <Link href={`/calls/${call.id}`} style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -231,8 +232,11 @@ export default async function ManagerPage() {
                     {((recentCalls || []) as ManagerRecentCall[]).map((call) => {
                       const analysis = one(call.call_analyses)
                       const sdr = one(call.users)
+                      const sc = analysis?.sdr_quality_score ?? null
+                      const isQual = analysis?.appointment_booked && isQualifiedAppointment(analysis as Parameters<typeof isQualifiedAppointment>[0])
+                      const rBorder = sc !== null && sc < 50 ? '2px solid rgba(239,68,68,.5)' : ((sc !== null && sc >= 75) || isQual) ? '2px solid rgba(34,197,94,.35)' : '2px solid transparent'
                       return (
-                        <tr key={call.id} className="mgr-row" style={{ borderBottom: '1px solid var(--border)' }}>
+                        <tr key={call.id} className="mgr-row" style={{ borderBottom: '1px solid var(--border)', borderLeft: rBorder }}>
                           <td style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--text)' }}>{sdr?.name || '—'}</td>
                           <td style={{ padding: '10px 16px', color: 'var(--muted)', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {formatProspectDisplay(analysis)}

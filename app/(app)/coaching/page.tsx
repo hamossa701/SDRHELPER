@@ -54,8 +54,13 @@ function SkillBar({ label, score }: { label: string; score: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 9 }}>
       <span style={{ fontSize: 12, color: 'var(--muted)', width: 140, flexShrink: 0, lineHeight: 1.3 }}>{label}</span>
-      <div style={{ flex: 1, height: 6, background: 'rgba(148,163,184,.14)', borderRadius: 4, overflow: 'hidden' }}>
-        <div style={{ height: 6, borderRadius: 4, background: barColor, width: `${score}%` }} />
+      <div style={{ flex: 1, height: 6, position: 'relative' }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(148,163,184,.14)', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ height: '100%', borderRadius: 4, background: barColor, width: `${score}%` }} />
+        </div>
+        <div style={{ position: 'absolute', left: '70%', top: -8, width: 1, height: 22, background: 'rgba(255,255,255,.22)', pointerEvents: 'none' }}>
+          <span style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', display: 'block', marginBottom: 2, fontSize: 9, color: 'var(--muted-2)', fontWeight: 600, whiteSpace: 'nowrap', lineHeight: 1 }}>70</span>
+        </div>
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, width: 28, textAlign: 'right', color: barColor, flexShrink: 0 }}>{score}</span>
     </div>
