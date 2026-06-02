@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { DarkSelect } from '@/components/ui'
 import { AnalysisProgressSkeleton } from '@/components/ui/skeleton-templates'
 import { SkeletonHeader, SkeletonCard, SkeletonLine } from '@/components/ui/skeleton'
 import type { Campaign, User } from '@/types'
@@ -13,7 +14,6 @@ const inp: React.CSSProperties = {
   border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)',
   fontSize: 13, fontFamily: 'Geist, sans-serif', outline: 'none',
 }
-const sel: React.CSSProperties = { ...inp, appearance: 'none', cursor: 'pointer' }
 
 export default function UploadCallPage() {
   const router = useRouter()
@@ -255,17 +255,24 @@ export default function UploadCallPage() {
             <div className="upload-meta-grid" style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>CAMPAGNE</label>
-                <select required value={form.campaign_id} onChange={e => update('campaign_id', e.target.value)} style={sel}>
-                  <option value="">Sélectionner...</option>
-                  {campaigns.map(c => <option key={c.id} value={c.id}>{c.campaign_name}</option>)}
-                </select>
+                <DarkSelect
+                  required
+                  value={form.campaign_id}
+                  onChange={value => update('campaign_id', value)}
+                  ariaLabel="Campagne"
+                  options={[{ value: '', label: 'Sélectionner...' }, ...campaigns.map(c => ({ value: c.id, label: c.campaign_name }))]}
+                />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>SDR</label>
-                <select required value={form.sdr_id} onChange={e => update('sdr_id', e.target.value)} disabled={profile?.role === 'sdr'} style={{ ...sel, opacity: profile?.role === 'sdr' ? .6 : 1 }}>
-                  <option value="">Sélectionner...</option>
-                  {sdrs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <DarkSelect
+                  required
+                  value={form.sdr_id}
+                  onChange={value => update('sdr_id', value)}
+                  disabled={profile?.role === 'sdr'}
+                  ariaLabel="SDR"
+                  options={[{ value: '', label: 'Sélectionner...' }, ...sdrs.map(s => ({ value: s.id, label: s.name }))]}
+                />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>DATE / HEURE</label>

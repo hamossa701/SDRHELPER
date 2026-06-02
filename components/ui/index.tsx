@@ -1,4 +1,6 @@
 'use client'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 
 // ---- Badge ----
@@ -71,6 +73,206 @@ export function Button({ variant = 'primary', size = 'md', loading, children, cl
       )}
       {children}
     </button>
+  )
+}
+
+// ---- Dark Select ----
+export type DarkSelectOption = {
+  value: string
+  label: React.ReactNode
+  disabled?: boolean
+}
+
+interface DarkSelectProps {
+  value: string
+  options: DarkSelectOption[]
+  onChange: (value: string) => void
+  placeholder?: string
+  ariaLabel?: string
+  disabled?: boolean
+  required?: boolean
+  className?: string
+  style?: React.CSSProperties
+}
+
+export function DarkSelect({
+  value,
+  options,
+  onChange,
+  placeholder = 'Sélectionner...',
+  ariaLabel,
+  disabled = false,
+  required = false,
+  className,
+  style,
+}: DarkSelectProps) {
+  const id = useId()
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [menuRect, setMenuRect] = useState<React.CSSProperties | null>(null)
+
+  const selectedIndex = useMemo(() => options.findIndex(option => option.value === value), [options, value])
+const selectedOption = selectedIndex >= 0 ? options[selectedIndex] : null
+  const portalMenuStyle: React.CSSProperties = {
+    ...menuRect,
+    background: 'linear-gradient(180deg, rgba(15,23,42,.98), rgba(6,9,20,.98))',
+    border: '1px solid rgba(125,211,252,.24)',
+    boxShadow: '0 18px 48px rgba(0,0,0,.52), 0 0 0 1px rgba(125,211,252,.08)',
+    backdropFilter: 'blur(18px)',
+  }
+
+  function nextEnabledIndex(start: number, direction: 1 | -1) {
+    if (options.length === 0) return -1
+    let index = start
+    for (let i = 0; i < options.length; i += 1) {
+      const option = options[index]
+      if (option && !option.disabled) return index
+      index = (index + direction + options.length) % options.length
+    }
+    return -1
+  }
+
+  function updateMenuRect() {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const gutter = 12
+    const width = Math.max(rect.width, 180)
+    const maxLeft = Math.max(gutter, window.innerWidth - width - gutter)
+    setMenuRect({
+      position: 'fixed',
+      top: Math.min(rect.bottom + 6, window.innerHeight - gutter),
+      left: Math.min(Math.max(gutter, rect.left), maxLeft),
+      width,
+      maxHeight: Math.max(180, window.innerHeight - rect.bottom - 18),
+      zIndex: 120,
+    })
+  }
+
+  function openMenu() {
+    if (disabled) return
+    const initialIndex = nextEnabledIndex(selectedIndex >= 0 ? selectedIndex : 0, 1)
+    setActiveIndex(initialIndex >= 0 ? initialIndex : 0)
+    updateMenuRect()
+    setOpen(true)
+  }
+
+  function selectValue(nextValue: string) {
+    onChange(nextValue)
+    setOpen(false)
+    requestAnimationFrame(() => buttonRef.current?.focus())
+  }
+
+  useEffect(() => {
+    if (!open) return
+    updateMenuRect()
+    const activeButton = optionRefs.current[activeIndex]
+    activeButton?.focus()
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node
+      if (buttonRef.current?.contains(target)) return
+      if (optionRefs.current.some(option => option?.contains(target))) return
+      setOpen(false)
+    }
+
+    function handleViewportChange() {
+      updateMenuRect()
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('scroll', handleViewportChange, true)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('scroll', handleViewportChange, true)
+    }
+  }, [activeIndex, open])
+
+  function handleButtonKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      openMenu()
+    }
+  }
+
+  function handleOptionKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setOpen(false)
+      buttonRef.current?.focus()
+      return
+    }
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      const direction = event.key === 'ArrowDown' ? 1 : -1
+      const next = nextEnabledIndex((activeIndex + direction + options.length) % options.length, direction)
+      if (next >= 0) setActiveIndex(next)
+      return
+    }
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault()
+      const next = event.key === 'Home' ? nextEnabledIndex(0, 1) : nextEnabledIndex(options.length - 1, -1)
+      if (next >= 0) setActiveIndex(next)
+      return
+    }
+    if (event.key === 'Tab') {
+      setOpen(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={cn('h3a-dark-select', open && 'is-open', disabled && 'is-disabled', className)}
+        style={style}
+        aria-label={ariaLabel}
+        data-required={required || undefined}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${id}-listbox`}
+        disabled={disabled}
+        onClick={() => (open ? setOpen(false) : openMenu())}
+        onKeyDown={handleButtonKeyDown}
+      >
+        <span className={cn('h3a-dark-select-value', !selectedOption && 'is-placeholder')}>
+          {selectedOption?.label ?? placeholder}
+        </span>
+        <span className="mat h3a-dark-select-icon" aria-hidden="true">expand_more</span>
+      </button>
+      {open && menuRect && typeof document !== 'undefined' && createPortal(
+        <div
+          id={`${id}-listbox`}
+          role="listbox"
+          aria-label={ariaLabel}
+          className="h3a-dark-select-menu"
+          style={portalMenuStyle}
+        >
+          {options.map((option, index) => (
+            <button
+              key={option.value}
+              ref={node => { optionRefs.current[index] = node }}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              disabled={option.disabled}
+              className={cn('h3a-dark-select-option', index === activeIndex && 'is-active', option.value === value && 'is-selected')}
+              onClick={() => !option.disabled && selectValue(option.value)}
+              onFocus={() => setActiveIndex(index)}
+              onKeyDown={handleOptionKeyDown}
+            >
+              <span>{option.label}</span>
+              {option.value === value && <span className="mat" aria-hidden="true">check</span>}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
 

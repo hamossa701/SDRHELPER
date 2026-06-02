@@ -2,11 +2,10 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Badge, Card, CardHeader, ScoreBadge, StatCard } from '@/components/ui'
+import { Badge, Card, CardHeader, DarkSelect, ScoreBadge, StatCard } from '@/components/ui'
 import { formatDateShort, getCampaignStatusBg, getCampaignStatusLabel } from '@/lib/utils'
 import { formatProspectDisplay } from '@/lib/dashboard-visibility'
 import { isQualifiedAppointment } from '@/lib/review-flags'
-import type { CSSProperties } from 'react'
 import type {
   CallAnalysis,
   Campaign,
@@ -122,20 +121,6 @@ function dateMatches(value: string, range: DateRange) {
   return Date.now() - date <= days * 86_400_000
 }
 
-function filterSelectStyle(): CSSProperties {
-  return {
-    minHeight: 34,
-    padding: '0 10px',
-    borderRadius: 8,
-    border: '1px solid var(--border)',
-    background: 'var(--input-bg)',
-    color: 'var(--text)',
-    fontSize: 12,
-    fontWeight: 600,
-    outline: 'none',
-  }
-}
-
 export function OwnerDashboardClient({
   kpis,
   campaigns,
@@ -198,6 +183,7 @@ export function OwnerDashboardClient({
   }, [campaignFilter, dateRange, historyCalls, qualityFilter, sdrFilter, sortMode, statusFilter])
 
   const visibleCalls = filteredCalls.slice(0, visibleCount)
+  const selectStyle = { minHeight: 34, fontSize: 12, width: 'auto', minWidth: 126 }
   const orderedCampaigns = useMemo(
     () => [...campaigns].sort((a, b) => statusRank(a.status) - statusRank(b.status) || b.totalCalls - a.totalCalls).slice(0, 3),
     [campaigns]
@@ -270,37 +256,67 @@ export function OwnerDashboardClient({
                   </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <select value={dateRange} onChange={(event) => updateFilter(setDateRange, event.target.value as DateRange)} style={filterSelectStyle()} aria-label="Période">
-                    <option value="all">Toutes dates</option>
-                    <option value="7d">7 derniers jours</option>
-                    <option value="30d">30 derniers jours</option>
-                    <option value="90d">90 derniers jours</option>
-                  </select>
-                  <select value={sdrFilter} onChange={(event) => updateFilter(setSdrFilter, event.target.value)} style={filterSelectStyle()} aria-label="SDR">
-                    <option value="all">Tous SDR</option>
-                    {filterOptions.sdrs.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                  <select value={campaignFilter} onChange={(event) => updateFilter(setCampaignFilter, event.target.value)} style={filterSelectStyle()} aria-label="Campagne">
-                    <option value="all">Toutes campagnes</option>
-                    {filterOptions.campaigns.map(name => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                  <select value={statusFilter} onChange={(event) => updateFilter(setStatusFilter, event.target.value as RvvStatus)} style={filterSelectStyle()} aria-label="Statut RDV">
-                    <option value="all">Tous RDV</option>
-                    <option value="booked">RDV posés</option>
-                    <option value="qualified">RDV qualifiés</option>
-                    <option value="none">Sans RDV</option>
-                  </select>
-                  <select value={qualityFilter} onChange={(event) => updateFilter(setQualityFilter, event.target.value as QualityFilter)} style={filterSelectStyle()} aria-label="Qualité">
-                    <option value="all">Toute qualité</option>
-                    <option value="high">Qualité haute</option>
-                    <option value="medium">Qualité moyenne</option>
-                    <option value="low">Qualité basse</option>
-                    <option value="missing">Sans score</option>
-                  </select>
-                  <select value={sortMode} onChange={(event) => updateFilter(setSortMode, event.target.value as SortMode)} style={filterSelectStyle()} aria-label="Tri">
-                    <option value="newest">Plus récents</option>
-                    <option value="quality">Score qualité</option>
-                  </select>
+                  <DarkSelect
+                    value={dateRange}
+                    onChange={(next) => updateFilter(setDateRange, next as DateRange)}
+                    ariaLabel="Période"
+                    style={selectStyle}
+                    options={[
+                      { value: 'all', label: 'Toutes dates' },
+                      { value: '7d', label: '7 derniers jours' },
+                      { value: '30d', label: '30 derniers jours' },
+                      { value: '90d', label: '90 derniers jours' },
+                    ]}
+                  />
+                  <DarkSelect
+                    value={sdrFilter}
+                    onChange={(next) => updateFilter(setSdrFilter, next)}
+                    ariaLabel="SDR"
+                    style={selectStyle}
+                    options={[{ value: 'all', label: 'Tous SDR' }, ...filterOptions.sdrs.map(name => ({ value: name, label: name }))]}
+                  />
+                  <DarkSelect
+                    value={campaignFilter}
+                    onChange={(next) => updateFilter(setCampaignFilter, next)}
+                    ariaLabel="Campagne"
+                    style={{ ...selectStyle, minWidth: 150 }}
+                    options={[{ value: 'all', label: 'Toutes campagnes' }, ...filterOptions.campaigns.map(name => ({ value: name, label: name }))]}
+                  />
+                  <DarkSelect
+                    value={statusFilter}
+                    onChange={(next) => updateFilter(setStatusFilter, next as RvvStatus)}
+                    ariaLabel="Statut RDV"
+                    style={selectStyle}
+                    options={[
+                      { value: 'all', label: 'Tous RDV' },
+                      { value: 'booked', label: 'RDV posés' },
+                      { value: 'qualified', label: 'RDV qualifiés' },
+                      { value: 'none', label: 'Sans RDV' },
+                    ]}
+                  />
+                  <DarkSelect
+                    value={qualityFilter}
+                    onChange={(next) => updateFilter(setQualityFilter, next as QualityFilter)}
+                    ariaLabel="Qualité"
+                    style={selectStyle}
+                    options={[
+                      { value: 'all', label: 'Toute qualité' },
+                      { value: 'high', label: 'Qualité haute' },
+                      { value: 'medium', label: 'Qualité moyenne' },
+                      { value: 'low', label: 'Qualité basse' },
+                      { value: 'missing', label: 'Sans score' },
+                    ]}
+                  />
+                  <DarkSelect
+                    value={sortMode}
+                    onChange={(next) => updateFilter(setSortMode, next as SortMode)}
+                    ariaLabel="Tri"
+                    style={selectStyle}
+                    options={[
+                      { value: 'newest', label: 'Plus récents' },
+                      { value: 'quality', label: 'Score qualité' },
+                    ]}
+                  />
                 </div>
               </div>
             </CardHeader>

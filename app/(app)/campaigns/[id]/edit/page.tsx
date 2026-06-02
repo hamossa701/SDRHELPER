@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Button, Card } from '@/components/ui'
+import { Button, Card, DarkSelect } from '@/components/ui'
 import { CampaignFormSkeleton } from '@/components/ui/skeleton-templates'
 
 const inputStyle: React.CSSProperties = {
@@ -142,14 +142,18 @@ export default function EditCampaignPage() {
               <div style={{ padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div>
                   <label style={labelStyle}>Client donneur d&apos;ordre *</label>
-                  <select required className="h3a-input" value={clientId} onChange={e => {
-                    const selected = clients.find(c => c.id === e.target.value)
-                    setClientId(e.target.value)
-                    if (selected) update('client_name', selected.name)
-                  }} style={inputStyle}>
-                    <option value="">Sélectionner un client...</option>
-                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <DarkSelect
+                    required
+                    value={clientId}
+                    onChange={value => {
+                      const selected = clients.find(c => c.id === value)
+                      setClientId(value)
+                      if (selected) update('client_name', selected.name)
+                    }}
+                    ariaLabel="Client donneur d'ordre"
+                    style={{ borderRadius: 10, minHeight: 40 }}
+                    options={[{ value: '', label: 'Sélectionner un client...' }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
+                  />
                 </div>
 
                 <div>
@@ -164,12 +168,18 @@ export default function EditCampaignPage() {
                   </div>
                   <div>
                     <label style={labelStyle}>Statut</label>
-                    <select className="h3a-input" value={form.status} onChange={e => update('status', e.target.value)} style={inputStyle}>
-                      <option value="active">Active</option>
-                      <option value="paused">En pause</option>
-                      <option value="completed">Terminée</option>
-                      <option value="archived">Archivée</option>
-                    </select>
+                    <DarkSelect
+                      value={form.status}
+                      onChange={value => update('status', value)}
+                      ariaLabel="Statut"
+                      style={{ borderRadius: 10, minHeight: 40 }}
+                      options={[
+                        { value: 'active', label: 'Active' },
+                        { value: 'paused', label: 'En pause' },
+                        { value: 'completed', label: 'Terminée' },
+                        { value: 'archived', label: 'Archivée' },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>

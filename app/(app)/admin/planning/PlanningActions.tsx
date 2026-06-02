@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button, Card, StatusBadge } from '@/components/ui'
+import { Button, Card, DarkSelect, StatusBadge } from '@/components/ui'
 import type { AssignmentType } from '@/types'
 
 interface CampaignRow {
@@ -323,17 +323,23 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
             <form onSubmit={submitAssignment} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={labelStyle}>Campagne *</label>
-                <select required value={formCampaignId} onChange={e => setFormCampaignId(e.target.value)} style={inputStyle}>
-                  <option value="">Sélectionner une campagne...</option>
-                  {campaigns.map(c => <option key={c.id} value={c.id}>{c.campaign_name} — {c.client_name}</option>)}
-                </select>
+                <DarkSelect
+                  required
+                  value={formCampaignId}
+                  onChange={setFormCampaignId}
+                  ariaLabel="Campagne"
+                  options={[{ value: '', label: 'Sélectionner une campagne...' }, ...campaigns.map(c => ({ value: c.id, label: `${c.campaign_name} — ${c.client_name}` }))]}
+                />
               </div>
               <div>
                 <label style={labelStyle}>SDR *</label>
-                <select required value={formSdrId} onChange={e => setFormSdrId(e.target.value)} style={inputStyle}>
-                  <option value="">Sélectionner un SDR...</option>
-                  {sdrs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
+                <DarkSelect
+                  required
+                  value={formSdrId}
+                  onChange={setFormSdrId}
+                  ariaLabel="SDR"
+                  options={[{ value: '', label: 'Sélectionner un SDR...' }, ...sdrs.map(s => ({ value: s.id, label: s.name }))]}
+                />
               </div>
               <div>
                 <label style={labelStyle}>Date de début</label>
