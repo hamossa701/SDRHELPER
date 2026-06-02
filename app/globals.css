@@ -409,6 +409,141 @@ input, select, textarea {
   transition: border-color .15s, box-shadow .15s;
 }
 
+.h3a-dark-select {
+  width: 100%;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 10px 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+.h3a-dark-select:hover {
+  border-color: rgba(125,211,252,.22);
+  background: rgba(2,6,23,.66);
+}
+
+.h3a-dark-select:focus-visible,
+.h3a-dark-select.is-open {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px rgba(125,211,252,.10);
+}
+
+.h3a-dark-select.is-disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.h3a-dark-select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.h3a-dark-select-value.is-placeholder {
+  color: var(--muted-2);
+}
+
+.h3a-dark-select-icon {
+  flex-shrink: 0;
+  color: var(--muted-2);
+  font-size: 19px;
+  transition: color .15s, transform .15s;
+}
+
+.h3a-dark-select:hover .h3a-dark-select-icon,
+.h3a-dark-select.is-open .h3a-dark-select-icon {
+  color: var(--cyan);
+}
+
+.h3a-dark-select.is-open .h3a-dark-select-icon {
+  transform: rotate(180deg);
+}
+
+.h3a-dark-select-menu {
+  overflow: auto;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(125,211,252,.24);
+  background: linear-gradient(180deg, rgba(15,23,42,.98), rgba(6,9,20,.98));
+  box-shadow: 0 18px 48px rgba(0,0,0,.52), 0 0 0 1px rgba(125,211,252,.08);
+  backdrop-filter: blur(18px);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.h3a-dark-select-option {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+
+.h3a-dark-select-option span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.h3a-dark-select-option:hover,
+.h3a-dark-select-option.is-active,
+.h3a-dark-select-option:focus-visible {
+  border-color: rgba(125,211,252,.20);
+  background: rgba(125,211,252,.10);
+  color: var(--text);
+}
+
+.h3a-dark-select-option.is-selected {
+  color: var(--cyan);
+  background: rgba(125,211,252,.12);
+}
+
+.h3a-dark-select-option:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+@media (max-width: 767px) {
+  .h3a-dark-select {
+    min-height: 42px;
+    font-size: 13px;
+  }
+
+  .h3a-dark-select-menu {
+    max-width: calc(100vw - 24px);
+  }
+}
+
 /* ── KPI card hover lift ── */
 .h3a-kpi-card {
   transition: transform .15s ease, box-shadow .15s ease;

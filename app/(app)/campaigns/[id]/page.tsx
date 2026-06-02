@@ -10,6 +10,7 @@ import {
   StatCard,
   StatusBadge,
 } from '@/components/ui'
+import { CampaignDetailActions } from './CampaignDetailActions'
 import { formatDateShort } from '@/lib/utils'
 import type { AnalysisJob, Call, CallAnalysis, Campaign, User } from '@/types'
 
@@ -205,30 +206,11 @@ export default async function CampaignDetailPage({
               )}
             </div>
 
-            {['owner', 'manager'].includes(profile.role) && (
-              <Link
-                className="campaign-detail-actions"
-                href="/calls/upload"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  minHeight: 38,
-                  padding: '0 14px',
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)',
-                  border: '1px solid rgba(125,211,252,.42)',
-                  color: '#fff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  textDecoration: 'none',
-                  boxShadow: '0 10px 24px rgba(37,99,235,.2)',
-                }}
-              >
-                <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 800 }}>+</span>
-                Analyser un appel
-              </Link>
-            )}
+            <CampaignDetailActions
+              campaignId={id}
+              campaignStatus={typedCampaign.status}
+              role={profile.role}
+            />
           </section>
 
           <section className="h3a-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14 }}>

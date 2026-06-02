@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Button, Card } from '@/components/ui'
+import { Button, Card, DarkSelect } from '@/components/ui'
 import { CampaignFormSkeleton } from '@/components/ui/skeleton-templates'
 
 const inputStyle: React.CSSProperties = {
@@ -36,6 +36,8 @@ export default function NewCampaignPage() {
   const [clientId, setClientId] = useState('')
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
   const [newClientName, setNewClientName] = useState('')
+  const [sdrs, setSdrs] = useState<{ id: string; name: string }[]>([])
+  const [selectedSdrIds, setSelectedSdrIds] = useState<string[]>([])
   const [form, setForm] = useState({
     campaign_name: '',
     sector: '',
@@ -46,19 +48,23 @@ export default function NewCampaignPage() {
   })
 
   useEffect(() => {
-    async function fetchClients() {
+    async function fetchData() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data: profile } = await supabase.from('users').select('organization_id').eq('id', user.id).single()
       if (!profile) return
-      const { data } = await supabase.from('client_accounts').select('id, name').eq('organization_id', profile.organization_id).order('name')
-      const list = data ?? []
+      const [{ data: clientsData }, { data: sdrsData }] = await Promise.all([
+        supabase.from('client_accounts').select('id, name').eq('organization_id', profile.organization_id).order('name'),
+        supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'sdr').order('name'),
+      ])
+      const list = clientsData ?? []
       setClients(list)
+      setSdrs(sdrsData ?? [])
       if (list.length === 0) setClientMode('new')
       setInitializing(false)
     }
-    fetchClients()
+    fetchData()
   }, [])
 
   function update(field: string, value: string) {
@@ -101,6 +107,13 @@ export default function NewCampaignPage() {
       .single()
 
     if (err) { setError(err.message); setLoading(false); return }
+
+    if (selectedSdrIds.length > 0) {
+      await supabase.from('campaign_sdrs').insert(
+        selectedSdrIds.map(sdrId => ({ campaign_id: data.id, user_id: sdrId }))
+      )
+    }
+
     router.push(`/campaigns/${data.id}`)
   }
 
@@ -168,10 +181,14 @@ export default function NewCampaignPage() {
                     ))}
                   </div>
                   {clientMode === 'existing' ? (
-                    <select required className="h3a-input" value={clientId} onChange={e => setClientId(e.target.value)} style={inputStyle}>
-                      <option value="">Sélectionner un client...</option>
-                      {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                    <DarkSelect
+                      required
+                      value={clientId}
+                      onChange={setClientId}
+                      ariaLabel="Client donneur d'ordre"
+                      style={{ borderRadius: 10, minHeight: 40 }}
+                      options={[{ value: '', label: 'Sélectionner un client...' }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
+                    />
                   ) : (
                     <input className="h3a-input" value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder="ex: Praize" style={inputStyle} />
                   )}
@@ -202,16 +219,17 @@ export default function NewCampaignPage() {
                   </div>
                   <div>
                     <label style={labelStyle}>Statut</label>
-                    <select
-                      className="h3a-input"
+                    <DarkSelect
                       value={form.status}
-                      onChange={e => update('status', e.target.value)}
-                      style={inputStyle}
-                    >
-                      <option value="active">Active</option>
-                      <option value="paused">En pause</option>
-                      <option value="completed">Terminée</option>
-                    </select>
+                      onChange={value => update('status', value)}
+                      ariaLabel="Statut"
+                      style={{ borderRadius: 10, minHeight: 40 }}
+                      options={[
+                        { value: 'active', label: 'Active' },
+                        { value: 'paused', label: 'En pause' },
+                        { value: 'completed', label: 'Terminée' },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -261,6 +279,33 @@ export default function NewCampaignPage() {
 
               </div>
             </Card>
+
+            {sdrs.length > 0 && (
+              <Card>
+                <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid var(--border)' }}>
+                  <h2 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>SDRs assignés</h2>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--muted-2)' }}>Optionnel — vous pouvez assigner des SDRs plus tard depuis la fiche campagne.</p>
+                </div>
+                <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {sdrs.map(sdr => {
+                    const checked = selectedSdrIds.includes(sdr.id)
+                    return (
+                      <label key={sdr.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={e => setSelectedSdrIds(prev =>
+                            e.target.checked ? [...prev, sdr.id] : prev.filter(id => id !== sdr.id)
+                          )}
+                          style={{ width: 15, height: 15, accentColor: 'var(--cyan)', cursor: 'pointer' }}
+                        />
+                        {sdr.name}
+                      </label>
+                    )
+                  })}
+                </div>
+              </Card>
+            )}
 
             {error && (
               <div style={{
