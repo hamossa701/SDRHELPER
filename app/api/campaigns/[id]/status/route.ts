@@ -39,6 +39,6 @@ export async function PATCH(
     .eq('id', id)
     .eq('organization_id', profile.organization_id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Erreur mise à jour statut' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

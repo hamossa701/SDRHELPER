@@ -59,6 +59,6 @@ export async function POST(request: NextRequest) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Erreur création assignation' }, { status: 500 })
   return NextResponse.json({ assignment: data }, { status: 201 })
 }

@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   if (body.case_id) query = query.eq('id', body.case_id)
 
   const { data: cases, error: casesErr } = await query
-  if (casesErr) return NextResponse.json({ error: casesErr.message }, { status: 500 })
+  if (casesErr) return NextResponse.json({ error: 'Erreur récupération des cas' }, { status: 500 })
 
   const runId = crypto.randomUUID()
   const results = []

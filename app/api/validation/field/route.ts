@@ -33,6 +33,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Parametres invalides' }, { status: 400 })
     }
 
+    const ALLOWED_FIELDS = new Set([
+      'decision_maker_detected', 'pain_point_detected', 'pain_point_details',
+      'urgency', 'current_solution', 'interest_level', 'objection_detected',
+      'objection_type', 'objection_details', 'missing_information',
+      'appointment_booked', 'appointment_date_text', 'appointment_datetime',
+      'appointment_date_confidence', 'appointment_quality_score',
+      'appointment_quality_reason', 'next_step', 'sdr_quality_score',
+      'qualification_completeness_score', 'strengths', 'weaknesses',
+      'coaching_recommendations', 'ai_confidence', 'hallucination_risk',
+      'uncertain_fields', 'call_summary', 'contact_name', 'contact_role',
+      'prospect_company',
+    ])
+    if (!ALLOWED_FIELDS.has(fieldName)) {
+      return NextResponse.json({ error: 'Champ invalide' }, { status: 400 })
+    }
+
     // Fetch through call_id so analysis-level writes are checked against the owning call.
     const { data: current, error: fetchErr } = await supabase
       .from('call_analyses').select('call_id, field_validations').eq('id', analysisId).single()
