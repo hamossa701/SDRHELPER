@@ -5,7 +5,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
-const SYSTEM_PROMPT = `Tu es un expert en analyse de calls B2B de prise de rendez-vous pour des entreprises françaises.
+export const SYSTEM_PROMPT = `Tu es un expert en analyse de calls B2B de prise de rendez-vous pour des entreprises françaises.
 Tu analyses des transcriptions de calls effectués par des SDRs (Sales Development Representatives) marocains travaillant pour des clients français.
 
 MISSION :
@@ -163,7 +163,13 @@ ${transcript}`
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5',
     max_tokens: 2000,
-    system: SYSTEM_PROMPT,
+    system: [
+      {
+        type: 'text',
+        text: SYSTEM_PROMPT,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
     messages: [{ role: 'user', content: userMessage }],
   })
 
