@@ -173,27 +173,27 @@ export default async function DashboardPage() {
 
         {sdrStats.length > 0 && (
           <div className="dashboard-highlight-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(34,197,94,.7)', borderRadius: '12px 0 0 12px' }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Meilleur SDR</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bestSdr?.sdr_name || '—'}</div>
-              <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>Score moy. <span style={{ color: '#86efac', fontWeight: 600 }}>{bestSdr?.avg_sdr_quality ?? '—'}</span></div>
-            </div>
-            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(239,68,68,.7)', borderRadius: '12px 0 0 12px' }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>SDR à coacher</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weakestSdr?.sdr_name || '—'}</div>
-              <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>Score moy. <span style={{ color: '#fca5a5', fontWeight: 600 }}>{weakestSdr?.avg_sdr_quality ?? '—'}</span></div>
-            </div>
-            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(245,158,11,.7)', borderRadius: '12px 0 0 12px' }} />
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Charge coaching</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)', lineHeight: 1, marginBottom: 4 }}>{kpis.sdrs_needing_coaching}</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>SDR nécessitant coaching</span>
-                <Link href="/coaching" style={{ fontSize: 11, color: 'var(--cyan)', fontWeight: 600 }}>Voir →</Link>
-              </div>
-            </div>
+            <StatCard
+              label="Meilleur SDR"
+              value={<span style={{ display: 'block', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 16 }}>{bestSdr?.sdr_name || '—'}</span>}
+              sub={<>Score moy. <span style={{ color: '#86efac', fontWeight: 600 }}>{bestSdr?.avg_sdr_quality ?? '—'}</span></>}
+              accent="rgba(34,197,94,.7)"
+              style={{ borderLeftWidth: 3 }}
+            />
+            <StatCard
+              label="SDR à coacher"
+              value={<span style={{ display: 'block', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 16 }}>{weakestSdr?.sdr_name || '—'}</span>}
+              sub={<>Score moy. <span style={{ color: '#fca5a5', fontWeight: 600 }}>{weakestSdr?.avg_sdr_quality ?? '—'}</span></>}
+              accent="rgba(239,68,68,.7)"
+              style={{ borderLeftWidth: 3 }}
+            />
+            <StatCard
+              label="Charge coaching"
+              value={kpis.sdrs_needing_coaching}
+              sub={<span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><span>SDR nécessitant coaching</span><Link href="/coaching" style={{ color: 'var(--cyan)', fontWeight: 600, flexShrink: 0 }}>Voir →</Link></span>}
+              accent="rgba(245,158,11,.7)"
+              style={{ borderLeftWidth: 3 }}
+            />
           </div>
         )}
 

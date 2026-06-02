@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ScoreBadge } from '@/components/ui'
+import { ScoreBadge, StatCard } from '@/components/ui'
 import Link from 'next/link'
 import type { SDRCoachingStatsRow } from '@/types'
 
@@ -104,24 +104,9 @@ export default async function CoachingPage() {
       <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         <div className="app-kpi-grid">
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(34,197,94,.7)', borderRadius: '12px 0 0 12px' }} />
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Top Performers</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: '#86efac', lineHeight: 1, marginBottom: 4 }}>{top.length}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{top.map(p => p.sdr_name).join(', ') || '—'}</div>
-          </div>
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(125,211,252,.6)', borderRadius: '12px 0 0 12px' }} />
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>En progression</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--cyan)', lineHeight: 1, marginBottom: 4 }}>{improved.length}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{improved.map(p => p.sdr_name).join(', ') || '—'}</div>
-          </div>
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '16px 18px', position: 'relative' }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: 'rgba(239,68,68,.7)', borderRadius: '12px 0 0 12px' }} />
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Coaching requis</div>
-            <div style={{ fontSize: 28, fontWeight: 700, color: '#fca5a5', lineHeight: 1, marginBottom: 4 }}>{needs.length}</div>
-            <div style={{ fontSize: 11, color: 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{needs.map(p => p.sdr_name).join(', ') || '—'}</div>
-          </div>
+          <StatCard label="Top Performers" value={top.length} sub={top.map(p => p.sdr_name).join(', ') || '—'} accent="rgba(34,197,94,.7)" valueColor="#86efac" style={{ borderLeftWidth: 3 }} />
+          <StatCard label="En progression" value={improved.length} sub={improved.map(p => p.sdr_name).join(', ') || '—'} accent="rgba(125,211,252,.6)" valueColor="var(--cyan)" style={{ borderLeftWidth: 3 }} />
+          <StatCard label="Coaching requis" value={needs.length} sub={needs.map(p => p.sdr_name).join(', ') || '—'} accent="rgba(239,68,68,.7)" valueColor="#fca5a5" style={{ borderLeftWidth: 3 }} />
         </div>
 
         {profiles.length === 0 && (

@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardHeader } from '@/components/ui'
+import { Card, CardContent, CardHeader, StatCard } from '@/components/ui'
 import { formatAppointmentDate, formatDateShort } from '@/lib/utils'
 import { PrintButton } from '@/components/client/PrintButton'
 import { createAdminClient } from '@/lib/supabase-admin'
@@ -412,7 +412,7 @@ function TrendChip({ current, previous }: { current: number; previous: number })
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
-      padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, marginTop: 4,
+      padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
       color: up ? '#86efac' : '#fca5a5',
       background: up ? 'rgba(34,197,94,.10)' : 'rgba(239,68,68,.10)',
       border: `1px solid ${up ? 'rgba(34,197,94,.25)' : 'rgba(239,68,68,.25)'}`,
@@ -422,36 +422,10 @@ function TrendChip({ current, previous }: { current: number; previous: number })
   )
 }
 
-function KpiCard({ label, value, sub, current, previous }: {
-  label: string; value: string | number; sub?: string; current?: number; previous?: number
-}) {
-  return (
-    <div style={{
-      background: 'var(--card-bg)',
-      border: '1px solid var(--border)',
-      borderRadius: 12,
-      padding: '16px 18px',
-      backdropFilter: 'blur(18px)',
-      boxShadow: 'var(--shadow)',
-      position: 'relative',
-      overflow: 'hidden',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 3,
-      minHeight: 100,
-    }}>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)', opacity: .7 }} />
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-.02em' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--muted-2)' }}>{sub}</div>}
-      {current !== undefined && previous !== undefined && previous > 0 && (
-        <TrendChip current={current} previous={previous} />
-      )}
-      {current !== undefined && previous !== undefined && previous === 0 && current > 0 && (
-        <span style={{ fontSize: 10, color: 'var(--muted-2)', marginTop: 4 }}>N/A période préc.</span>
-      )}
-    </div>
-  )
+function KpiTrend({ current, previous }: { current: number; previous: number }) {
+  if (previous > 0) return <TrendChip current={current} previous={previous} />
+  if (current > 0) return <span style={{ fontSize: 10, color: 'var(--muted-2)' }}>N/A période préc.</span>
+  return null
 }
 
 function MetricRow({ label, value, fill, color }: {
@@ -852,31 +826,28 @@ export default async function ClientPage({
         {/* ── SECTION 1: KPI Strip ───────────────────────────────────────── */}
         <SectionQ>Obtenons-nous des résultats ?</SectionQ>
         <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 22 }}>
-          <KpiCard
+          <StatCard
             label="Appels analysés"
             value={kpis.total_calls}
-            current={kpis.total_calls}
-            previous={prevKpis.total_calls}
+            trend={<KpiTrend current={kpis.total_calls} previous={prevKpis.total_calls} />}
           />
-          <KpiCard
+          <StatCard
             label="RDV posés"
             value={kpis.appointments_booked}
-            current={kpis.appointments_booked}
-            previous={prevKpis.appointments_booked}
+            trend={<KpiTrend current={kpis.appointments_booked} previous={prevKpis.appointments_booked} />}
           />
-          <KpiCard
+          <StatCard
             label="RDV qualifiés"
             value={kpis.qualified_appointments}
             sub="décideur + besoin + date"
-            current={kpis.qualified_appointments}
-            previous={prevKpis.qualified_appointments}
+            trend={<KpiTrend current={kpis.qualified_appointments} previous={prevKpis.qualified_appointments} />}
           />
-          <KpiCard
+          <StatCard
             label="Taux de qualification"
             value={kpis.qualification_rate !== null ? `${kpis.qualification_rate}%` : '—'}
             sub="RDV qualifiés / RDV posés"
           />
-          <KpiCard
+          <StatCard
             label="Temps économisé"
             value={kpis.total_calls > 0 ? `~${formatTimeSaved(kpis.total_calls)}` : '—'}
             sub={kpis.total_calls > 0 ? `${kpis.total_calls} appels × ~${AVG_CALL_MINUTES}min` : undefined}

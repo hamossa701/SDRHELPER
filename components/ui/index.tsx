@@ -94,31 +94,46 @@ export function ScoreBadge({ score }: { score: number | null }) {
   )
 }
 
-// ---- Stat Card ----
-export function StatCard({ label, value, sub, dot }: { label: string; value: string | number; sub?: string; dot?: string }) {
+// ---- KPI / Stat Card ----
+type StatCardProps = {
+  label: string
+  value: React.ReactNode
+  sub?: React.ReactNode
+  dot?: string
+  accent?: string
+  badge?: React.ReactNode
+  trend?: React.ReactNode
+  valueColor?: string
+  className?: string
+  style?: React.CSSProperties
+}
+
+export function StatCard({
+  label,
+  value,
+  sub,
+  dot,
+  accent,
+  badge,
+  trend,
+  valueColor = 'var(--text)',
+  className,
+  style: extraStyle,
+}: StatCardProps) {
   return (
-    <div style={{
-      background: 'var(--card-bg)',
-      border: '1px solid var(--border)',
-      borderRadius: 12,
-      padding: '16px',
-      backdropFilter: 'blur(18px)',
-      boxShadow: 'var(--shadow)',
-      position: 'relative',
-      overflow: 'hidden',
-      minHeight: 100,
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'space-between',
-    }}>
+    <div className={cn('h3a-kpi-card', className)} style={{ borderLeftColor: accent, ...extraStyle }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)', opacity: .7 }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>
-        {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
-        {label}
+      <div className="h3a-kpi-title-row">
+        <div className="h3a-kpi-title">
+          {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
+          <span>{label}</span>
+        </div>
+        {badge && <div className="h3a-kpi-badge">{badge}</div>}
       </div>
-      <div>
-        <div style={{ fontSize: 30, fontWeight: 600, color: 'var(--text)', lineHeight: 1, letterSpacing: '-.02em' }}>{value}</div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 2 }}>{sub}</div>}
+      <div className="h3a-kpi-value" style={{ color: valueColor }}>{value}</div>
+      <div className="h3a-kpi-footer">
+        {sub && <div className="h3a-kpi-sub">{sub}</div>}
+        {trend && <div className="h3a-kpi-trend">{trend}</div>}
       </div>
     </div>
   )
