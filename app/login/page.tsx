@@ -49,7 +49,7 @@ export default function LoginPage() {
       }}>
         <div>
           <div style={{ marginBottom: 40 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, background: 'linear-gradient(90deg,#ffffff,#c7d2fe 48%,#7dd3fc)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>SDRHelper</div>
+            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', background: 'linear-gradient(90deg,#ffffff,#c7d2fe 48%,#7dd3fc)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>SDRHelper</div>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted-2)', marginTop: 2 }}>Supervision appels B2B</div>
           </div>
           <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3, marginBottom: 12 }}>
@@ -65,8 +65,8 @@ export default function LoginPage() {
             { icon: 'search', text: 'Détection objections et signaux achat' },
             { icon: 'description', text: 'Reporting transparent clients français' },
             { icon: 'school', text: 'Recommandations coaching personnalisées' },
-          ].map(item => (
-            <div key={item.icon} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--muted)' }}>
+          ].map((item, i) => (
+            <div key={item.icon} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--muted)', animation: 'h3a-fade-up .4s ease both', animationDelay: `${i * 0.1}s` }}>
               <span className="mat" style={{ fontSize: 16, color: 'var(--cyan)', flexShrink: 0 }}>{item.icon}</span>
               {item.text}
             </div>
@@ -81,7 +81,7 @@ export default function LoginPage() {
             <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Accédez à votre espace SDRHelper</div>
           </div>
 
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 14, padding: 28, backdropFilter: 'blur(18px)', boxShadow: 'var(--shadow)' }}>
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderTop: '1px solid rgba(125,211,252,.22)', borderRadius: 14, padding: 28, backdropFilter: 'blur(18px)', boxShadow: 'var(--shadow)' }}>
             <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label htmlFor="login-email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>Adresse email</label>
@@ -108,14 +108,24 @@ export default function LoginPage() {
                 border: '1px solid rgba(125,211,252,.42)',
                 boxShadow: '0 10px 24px rgba(37,99,235,.2)',
                 fontFamily: 'var(--font-geist), sans-serif',
-              }}>
+                transition: 'box-shadow .15s, opacity .15s',
+              }}
+                onMouseOver={e => !loading && (e.currentTarget.style.boxShadow = '0 14px 32px rgba(37,99,235,.38)')}
+                onMouseOut={e => (e.currentTarget.style.boxShadow = '0 10px 24px rgba(37,99,235,.2)')}
+              >
                 {loading && <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
                 Se connecter
               </button>
             </form>
 
             <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 11, color: 'var(--muted-2)', textAlign: 'center', marginBottom: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em' }}>Comptes de démonstration</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--muted-2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                  <span className="mat" style={{ fontSize: 13 }}>info</span>
+                  Démonstration
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--muted-2)' }}>Cliquez pour remplir</div>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {demoAccounts.map(item => (
                   <div key={item.email} onClick={() => { setEmail(item.email); setPassword(demoPassword) }} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}

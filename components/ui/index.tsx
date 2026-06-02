@@ -11,9 +11,9 @@ export function Badge({ children, className }: { children: React.ReactNode; clas
 }
 
 // ---- Card ----
-export function Card({ children, className, style: extraStyle }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+export function Card({ children, className, style: extraStyle, hoverable }: { children: React.ReactNode; className?: string; style?: React.CSSProperties; hoverable?: boolean }) {
   return (
-    <div className={cn('h3a-card', className)} style={{
+    <div className={cn('h3a-card', hoverable && 'h3a-card-hoverable', className)} style={{
       background: 'var(--card-bg)',
       border: '1px solid var(--border)',
       borderRadius: '12px',
@@ -46,17 +46,18 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode
 }
 export function Button({ variant = 'primary', size = 'md', loading, children, className, disabled, ...props }: ButtonProps) {
-  const base = 'inline-flex items-center justify-center font-semibold transition-opacity focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed gap-1.5 hover:opacity-90'
+  const base = 'inline-flex items-center justify-center font-semibold focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer gap-1.5 hover:opacity-90 active:scale-[0.98]'
   const variants = {
     primary: 'text-white border',
     secondary: 'border text-sm',
     ghost: 'border text-sm',
   }
   const sizes = { sm: 'text-xs px-3 py-1.5 rounded-lg h-7', md: 'text-sm px-4 py-2 rounded-xl h-9', lg: 'text-sm px-5 py-2.5 rounded-xl h-10' }
+  const t = 'opacity .15s, transform .12s'
   const styles = {
-    primary: { background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)' },
-    secondary: { background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)' },
-    ghost: { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' },
+    primary: { background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)', transition: t },
+    secondary: { background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)', transition: t },
+    ghost: { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)', transition: t },
   }
   return (
     <button
@@ -88,7 +89,7 @@ export function ScoreBadge({ score }: { score: number | null }) {
     : score >= 40 ? 'rgba(245,158,11,.32)'
     : 'rgba(239,68,68,.32)'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700, color, background: bg, border: `1px solid ${border}` }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700, color, background: bg, border: `1px solid ${border}`, whiteSpace: 'nowrap', transition: 'opacity .12s', boxShadow: score !== null ? `inset 0 0 0 1px ${color}1a` : 'none' }}>
       {score !== null ? score : '—'}
     </span>
   )
@@ -122,7 +123,7 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div className={cn('h3a-kpi-card', className)} style={{ borderLeftColor: accent, ...extraStyle }}>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)', opacity: .7 }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)', opacity: .9 }} />
       <div className="h3a-kpi-title-row">
         <div className="h3a-kpi-title">
           {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
@@ -130,7 +131,7 @@ export function StatCard({
         </div>
         {badge && <div className="h3a-kpi-badge">{badge}</div>}
       </div>
-      <div className="h3a-kpi-value" style={{ color: valueColor }}>{value}</div>
+      <div className="h3a-kpi-value" style={{ color: valueColor, minWidth: 0 }}>{value}</div>
       <div className="h3a-kpi-footer">
         {sub && <div className="h3a-kpi-sub">{sub}</div>}
         {trend && <div className="h3a-kpi-trend">{trend}</div>}
@@ -140,12 +141,13 @@ export function StatCard({
 }
 
 // ---- Empty ----
-export function Empty({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
+export function Empty({ title, description, action, icon = 'inbox' }: { title: string; description?: string; action?: React.ReactNode; icon?: string }) {
   return (
-    <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
-      <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{title}</div>
-      {description && <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>{description}</div>}
-      {action && <div style={{ marginTop: 12 }}>{action}</div>}
+    <div style={{ padding: '40px 24px', textAlign: 'center', border: '1px dashed rgba(148,163,184,.2)', borderRadius: 12 }}>
+      <span className="mat" style={{ fontSize: 32, color: 'var(--muted-2)', display: 'block', marginBottom: 12 }}>{icon}</span>
+      <div style={{ fontWeight: 700, color: 'var(--text)', marginBottom: 6, fontSize: 14 }}>{title}</div>
+      {description && <div style={{ fontSize: 13, color: 'var(--muted-2)', lineHeight: 1.6 }}>{description}</div>}
+      {action && <div style={{ marginTop: 14 }}>{action}</div>}
     </div>
   )
 }
@@ -170,7 +172,7 @@ export function InterestBadge({ level }: { level: InterestLevel | null }) {
   }
   const s = level ? styles[level] : styles.unclear
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}`, whiteSpace: 'nowrap', transition: 'opacity .12s' }}>
       {getInterestLabel(level)}
     </span>
   )
@@ -187,7 +189,7 @@ export function RiskBadge({ risk }: { risk: HallucinationRisk | null }) {
   }
   const s = risk ? styles[risk] : { bg: 'rgba(2,6,23,.28)', color: 'var(--muted)', border: 'var(--border)' }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}`, whiteSpace: 'nowrap', transition: 'opacity .12s' }}>
       IA : {getRiskLabel(risk)}
     </span>
   )
@@ -202,7 +204,10 @@ export function StatusBadge({ status }: { status: string }) {
   }
   const s = map[status] || map.completed
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, border: `1px solid ${s.border}`, whiteSpace: 'nowrap', transition: 'opacity .12s' }}>
+      {status === 'active' && (
+        <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#86efac', flexShrink: 0, animation: 'h3a-pulse-dot 2s ease infinite' }} />
+      )}
       {s.label}
     </span>
   )

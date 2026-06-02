@@ -49,7 +49,7 @@ export function SkeletonKpiGrid({ count = 4 }: { count?: number }) {
   return (
     <div className="app-kpi-grid">
       {Array.from({ length: count }).map((_, index) => (
-        <SkeletonCard key={index} style={{ minHeight: 134, padding: '15px 16px 13px' }}>
+        <SkeletonCard key={index} style={{ minHeight: 134, padding: '15px 16px 13px', animationDelay: `${index * 0.05}s` }}>
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: 106 }}>
             <div style={{ height: 32 }}>
               <SkeletonLine width="62%" height={11} />

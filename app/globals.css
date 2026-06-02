@@ -373,6 +373,86 @@ body::before {
   }
 }
 
+/* ── input focus transitions ── */
+input, select, textarea {
+  transition: border-color .15s, box-shadow .15s;
+}
+
+/* ── KPI card hover lift ── */
+.h3a-kpi-card {
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.h3a-kpi-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(0,0,0,.44), 0 0 0 1px rgba(125,211,252,.13);
+}
+
+/* ── KPI grid breathing room ── */
+.app-kpi-grid { gap: 14px; }
+
+/* ── table row hover ── */
+.h3a-data-row { transition: background .12s ease; }
+.h3a-data-row:hover { background: rgba(125,211,252,.04) !important; }
+
+/* ── hoverable card ── */
+.h3a-card-hoverable {
+  transition: transform .15s ease, box-shadow .15s ease;
+  cursor: pointer;
+}
+.h3a-card-hoverable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(0,0,0,.42);
+}
+
+/* ── page header shimmer line ── */
+.app-page-header { position: relative; }
+.app-page-header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(125,211,252,.3), transparent);
+  pointer-events: none;
+}
+
+/* ── skeleton card entrance stagger ── */
+.h3a-skeleton-card {
+  animation: h3a-skel-enter .3s ease both;
+}
+@keyframes h3a-skel-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── login feature list entrance ── */
+@keyframes h3a-fade-up {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── status active pulse dot ── */
+@keyframes h3a-pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .35; transform: scale(.7); }
+}
+
+/* ── input error shake ── */
+@keyframes h3a-shake {
+  0%, 100% { transform: translateX(0); }
+  25%       { transform: translateX(-4px); }
+  75%       { transform: translateX(4px); }
+}
+.h3a-input-error { animation: h3a-shake .3s ease; }
+
+/* ── reduced motion overrides ── */
+@media (prefers-reduced-motion: reduce) {
+  .h3a-kpi-card,
+  .h3a-card-hoverable { transition: none; }
+  .h3a-kpi-card:hover,
+  .h3a-card-hoverable:hover { transform: none; }
+  .h3a-skeleton-card { animation: none; }
+}
+
 /* Material icons */
 .mat {
   font-family: 'Material Symbols Outlined';

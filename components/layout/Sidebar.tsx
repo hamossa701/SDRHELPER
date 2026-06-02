@@ -103,9 +103,9 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
                 fontSize: 13,
                 fontWeight: 600,
                 color: active ? 'var(--text)' : 'var(--muted)',
-                background: active ? 'linear-gradient(135deg,rgba(99,102,241,.22),rgba(125,211,252,.12))' : 'transparent',
+                background: active ? 'linear-gradient(135deg,rgba(99,102,241,.28),rgba(125,211,252,.16))' : 'transparent',
                 border: active ? '1px solid var(--border-strong)' : '1px solid transparent',
-                boxShadow: active ? 'inset 0 0 0 1px rgba(125,211,252,.06),0 10px 30px rgba(99,102,241,.12)' : 'none',
+                boxShadow: active ? 'inset 3px 0 0 var(--cyan),inset 0 0 0 1px rgba(125,211,252,.06),0 10px 30px rgba(99,102,241,.12)' : 'none',
                 transition: 'background .15s, color .15s, border-color .15s',
               }}
             >
@@ -118,19 +118,26 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
 
       <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px' }}>
-          <div style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            flexShrink: 0,
-            background: 'linear-gradient(135deg,var(--indigo),var(--cyan))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 11,
-            fontWeight: 700,
-            color: '#fff',
-          }}>{userName.charAt(0).toUpperCase()}</div>
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              flexShrink: 0,
+              background: 'linear-gradient(135deg,var(--indigo),var(--cyan))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#fff',
+              transition: 'outline-color .15s',
+              outline: '1px solid transparent',
+              outlineOffset: 2,
+            }}
+            onMouseOver={e => (e.currentTarget.style.outlineColor = 'var(--border-strong)')}
+            onMouseOut={e => (e.currentTarget.style.outlineColor = 'transparent')}
+          >{userName.charAt(0).toUpperCase()}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
             <div style={{ fontSize: 10, color: 'var(--muted-2)', textTransform: 'capitalize' }}>{userRole}</div>
@@ -151,7 +158,7 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
               padding: 4,
               borderRadius: 6,
             }}
-            onMouseOver={e => (e.currentTarget.style.color = 'var(--cyan)')}
+            onMouseOver={e => (e.currentTarget.style.color = '#fca5a5')}
             onMouseOut={e => (e.currentTarget.style.color = 'var(--muted-2)')}
           >
             <span className="mat" style={{ fontSize: 16 }}>logout</span>
