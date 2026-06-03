@@ -10,21 +10,30 @@ import Link from 'next/link'
 import type { CallAnalysis, ManagerKPIs, ReviewStatus, SDRLeaderboardRow } from '@/types'
 
 type ManagerUser = { id: string; name: string }
+type ManagerRecentAnalysis = Pick<CallAnalysis, 'appointment_booked' | 'appointment_date_text' | 'appointment_datetime' | 'appointment_date_confidence' | 'appointment_quality_score' | 'sdr_quality_score' | 'prospect_company' | 'contact_name' | 'interest_level' | 'decision_maker_detected' | 'pain_point_detected'>
+type ManagerTeamAnalysis = ManagerRecentAnalysis & Pick<CallAnalysis, 'human_validated' | 'field_validations'>
+type ManagerTeamCall = {
+  id: string
+  sdr_id: string
+  call_datetime: string
+  review_status: ReviewStatus | null
+  assigned_to: string | null
+  call_analyses: ManagerTeamAnalysis | ManagerTeamAnalysis[] | null
+}
 type ManagerReviewCall = {
   id: string
   call_datetime: string
   review_status: ReviewStatus | null
   assigned_to: string | null
   call_analyses: CallAnalysis | CallAnalysis[] | null
-  users: { name: string | null } | { name: string | null }[] | null
+  users: { name: string | null; manager_id?: string | null } | { name: string | null; manager_id?: string | null }[] | null
   campaigns: { campaign_name: string | null; client_name: string | null } | { campaign_name: string | null; client_name: string | null }[] | null
 }
-type ManagerRecentAnalysis = Pick<CallAnalysis, 'appointment_booked' | 'appointment_date_text' | 'appointment_datetime' | 'appointment_date_confidence' | 'appointment_quality_score' | 'sdr_quality_score' | 'prospect_company' | 'contact_name' | 'interest_level' | 'decision_maker_detected' | 'pain_point_detected'>
 type ManagerRecentCall = {
   id: string
   call_datetime: string
   call_analyses: ManagerRecentAnalysis | ManagerRecentAnalysis[] | null
-  users: { name: string | null } | { name: string | null }[] | null
+  users: { name: string | null; manager_id?: string | null } | { name: string | null; manager_id?: string | null }[] | null
 }
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -45,39 +54,103 @@ export default async function ManagerPage() {
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile || profile.role !== 'manager') redirect('/login')
 
+  const { data: teamSdrsData } = await supabase
+    .from('users')
+    .select('id, name')
+    .eq('organization_id', profile.organization_id)
+    .eq('role', 'sdr')
+    .eq('manager_id', user.id)
+
+  const teamSdrs = (teamSdrsData || []) as ManagerUser[]
+  const teamSdrIds = teamSdrs.map((sdr) => sdr.id)
   const [
-    { data: kpisData },
-    { data: leaderboardData },
+    { data: teamCallsData },
     { data: reviewQueue },
     { data: recentCalls },
     { data: orgManagers },
   ] = await Promise.all([
-    supabase.rpc('get_manager_kpis', { p_org_id: profile.organization_id }),
-    supabase.rpc('get_sdr_leaderboard', { p_org_id: profile.organization_id }),
+    teamSdrIds.length
+      ? supabase
+          .from('calls')
+          .select('id, sdr_id, call_datetime, review_status, assigned_to, call_analyses(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, contact_name, interest_level, decision_maker_detected, pain_point_detected, human_validated, field_validations, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step)')
+          .in('sdr_id', teamSdrIds)
+          .order('call_datetime', { ascending: false })
+      : Promise.resolve({ data: [] as ManagerTeamCall[] }),
     supabase
       .from('calls')
-      .select('id, call_datetime, review_status, assigned_to, call_analyses(id, appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, prospect_company, contact_name, decision_maker_detected, pain_point_detected, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step), users!calls_sdr_id_fkey(name), campaigns(campaign_name, client_name)')
+      .select('id, call_datetime, review_status, assigned_to, call_analyses(id, appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, prospect_company, contact_name, decision_maker_detected, pain_point_detected, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step), users!calls_sdr_id_fkey!inner(name, manager_id), campaigns(campaign_name, client_name)')
       .eq('organization_id', profile.organization_id)
+      .eq('users.manager_id', user.id)
       .neq('review_status', 'resolved')
       .order('call_datetime', { ascending: false })
       .limit(30),
     supabase
       .from('calls')
-      .select('id, call_datetime, call_analyses!inner(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, contact_name, interest_level, decision_maker_detected, pain_point_detected), analysis_jobs!inner(status), users!calls_sdr_id_fkey(name)')
+      .select('id, call_datetime, call_analyses!inner(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, contact_name, interest_level, decision_maker_detected, pain_point_detected), analysis_jobs!inner(status), users!calls_sdr_id_fkey!inner(name, manager_id)')
       .eq('organization_id', profile.organization_id)
       .eq('analysis_jobs.status', 'completed')
+      .eq('users.manager_id', user.id)
       .order('call_datetime', { ascending: false })
       .limit(10),
-    supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).in('role', ['owner', 'manager']),
+    supabase.from('users').select('id, name').eq('id', user.id),
   ])
 
-  const kpis: ManagerKPIs = kpisData?.[0] ?? {
-    today_calls: 0, calls_requiring_review: 0, appointments_booked: 0,
-    qualified_appointments: 0, qualification_rate: 0,
-    calls_reviewed: 0, calls_pending: 0, ai_trust_validated: 0, ai_trust_corrected: 0,
+  const teamCalls = (teamCallsData || []) as ManagerTeamCall[]
+  const teamAnalyses = teamCalls.map((call) => one(call.call_analyses)).filter((a): a is ManagerTeamAnalysis => Boolean(a))
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const kpis: ManagerKPIs = {
+    team_sdr_count: teamSdrs.length,
+    today_calls: teamCalls.filter((call) => new Date(call.call_datetime) >= todayStart).length,
+    calls_requiring_review: teamCalls.filter((call) => {
+      const analysis = one(call.call_analyses)
+      if (!analysis) return false
+      return call.review_status !== 'resolved' && computeReviewFlags(analysis as CallAnalysis).review_required
+    }).length,
+    appointments_booked: teamAnalyses.filter((analysis) => analysis.appointment_booked).length,
+    qualified_appointments: teamAnalyses.filter((analysis) => isQualifiedAppointment(analysis as CallAnalysis)).length,
+    qualification_rate: 0,
+    weak_appointments: teamAnalyses.filter((analysis) => analysis.appointment_booked && (analysis.appointment_quality_score ?? 0) < 60).length,
+    calls_reviewed: teamAnalyses.filter((analysis) => analysis.human_validated).length,
+    calls_pending: teamAnalyses.filter((analysis) => !analysis.human_validated).length,
+    coaching_opportunities: 0,
+    ai_trust_validated: teamAnalyses.reduce((count, analysis) => count + Object.values(analysis.field_validations || {}).filter((value) => value === 'validated').length, 0),
+    ai_trust_corrected: teamAnalyses.reduce((count, analysis) => count + Object.values(analysis.field_validations || {}).filter((value) => value === 'corrected').length, 0),
+  }
+  kpis.qualification_rate = kpis.appointments_booked > 0
+    ? Math.round((kpis.qualified_appointments / kpis.appointments_booked) * 100)
+    : 0
+
+  const sdrStats: SDRLeaderboardRow[] = teamSdrs.map((sdr) => {
+    const calls = teamCalls.filter((call) => call.sdr_id === sdr.id)
+    const analyses = calls.map((call) => one(call.call_analyses)).filter((analysis): analysis is ManagerTeamAnalysis => analysis !== null)
+    const avgSdrQuality = analyses.length
+      ? Math.round(analyses.reduce((sum, analysis) => sum + (analysis.sdr_quality_score ?? 0), 0) / analyses.length)
+      : null
+    return {
+      sdr_id: sdr.id,
+      sdr_name: sdr.name,
+      total_calls: calls.length,
+      rdv_booked: analyses.filter((analysis) => analysis.appointment_booked).length,
+      avg_sdr_quality: avgSdrQuality,
+    }
+  }).sort((a, b) => (b.avg_sdr_quality ?? -1) - (a.avg_sdr_quality ?? -1))
+
+  kpis.coaching_opportunities = sdrStats.filter((sdr) => sdr.avg_sdr_quality === null || sdr.avg_sdr_quality < 55).length
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[manager-dashboard]', {
+      user_id: user.id,
+      role: profile.role,
+      team_sdr_ids: teamSdrIds,
+      team_calls_count: teamCalls.length,
+      review_queue_count: reviewQueue?.length ?? 0,
+      recent_calls_count: recentCalls?.length ?? 0,
+      kpis,
+    })
   }
 
-  const sdrStats = (leaderboardData || []) as SDRLeaderboardRow[]
   const managerMap: Record<string, string> = Object.fromEntries(
     ((orgManagers || []) as ManagerUser[]).map((u) => [u.id, u.name])
   )
@@ -124,9 +197,9 @@ export default async function ManagerPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {/* Row 1 — operational */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
+            <StatCard label="SDR équipe"           value={kpis.team_sdr_count} />
             <StatCard label="Appels aujourd'hui"  value={kpis.today_calls} />
             <StatCard label="À réviser"            value={kpis.calls_requiring_review} sub="flags détectés" />
-            <StatCard label="RDV posés"            value={kpis.appointments_booked} />
             <StatCard label="RDV qualifiés"        value={kpis.qualified_appointments} sub="décideur + besoin + date + score ≥60" />
             <StatCard label="Taux qualification"   value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" />
           </div>
@@ -134,6 +207,8 @@ export default async function ManagerPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
             <StatCard label="Appels révisés"       value={kpis.calls_reviewed}      sub="human_validated = true" />
             <StatCard label="En attente révision"  value={kpis.calls_pending}       sub="analyses non approuvées" />
+            <StatCard label="RDV faibles"          value={kpis.weak_appointments}   sub="score RDV < 60" />
+            <StatCard label="Coaching"             value={kpis.coaching_opportunities} sub="SDR sous 55" />
             <StatCard label="Champs corrigés"      value={kpis.ai_trust_corrected}  sub="corrections enregistrées" />
             <StatCard label="Fiabilité IA"         value={trustScore !== null ? `${trustScore}%` : '—'} sub={trustLabel} />
           </div>

@@ -30,11 +30,12 @@ export async function POST(request: NextRequest) {
     if (!callId) return NextResponse.json({ error: 'callId requis' }, { status: 400 })
 
     const { data: call } = await supabase
-      .from('calls').select('id, organization_id, assigned_to, review_status')
+      .from('calls').select('id, organization_id, assigned_to, review_status, sdr:users!calls_sdr_id_fkey(manager_id)')
       .eq('id', callId).eq('organization_id', profile.organization_id).single()
     if (!call) return NextResponse.json({ error: 'Appel introuvable' }, { status: 404 })
 
-    const access = canResolveReview(profile, user.id, call)
+    const sdr = Array.isArray(call.sdr) ? call.sdr[0] : call.sdr
+    const access = canResolveReview(profile, user.id, { ...call, sdr_manager_id: sdr?.manager_id ?? null })
     if (!access.allowed) {
       return NextResponse.json({ error: access.error }, { status: access.status })
     }

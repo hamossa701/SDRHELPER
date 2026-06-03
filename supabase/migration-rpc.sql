@@ -69,7 +69,7 @@ $$;
 -- ============================================================
 -- 2. SDR LEADERBOARD  (owner dashboard right column)
 -- ============================================================
-CREATE OR REPLACE FUNCTION get_sdr_leaderboard(p_org_id uuid)
+CREATE OR REPLACE FUNCTION get_sdr_leaderboard(p_org_id uuid, p_manager_id uuid DEFAULT NULL)
 RETURNS TABLE (
   sdr_id          uuid,
   sdr_name        text,
@@ -87,7 +87,9 @@ LANGUAGE sql STABLE SECURITY INVOKER AS $$
   FROM users u
   LEFT JOIN calls c  ON c.sdr_id = u.id AND c.organization_id = p_org_id
   LEFT JOIN call_analyses ca ON ca.call_id = c.id
-  WHERE u.organization_id = p_org_id AND u.role = 'sdr'
+  WHERE u.organization_id = p_org_id
+    AND u.role = 'sdr'
+    AND (p_manager_id IS NULL OR u.manager_id = p_manager_id)
   GROUP BY u.id, u.name
   ORDER BY ROUND(AVG(ca.sdr_quality_score)) DESC NULLS LAST;
 $$;
@@ -95,21 +97,45 @@ $$;
 -- ============================================================
 -- 3. MANAGER DASHBOARD KPIs  (all-time, org-wide)
 -- ============================================================
-CREATE OR REPLACE FUNCTION get_manager_kpis(p_org_id uuid)
+CREATE OR REPLACE FUNCTION get_manager_kpis(p_org_id uuid, p_manager_id uuid DEFAULT NULL)
 RETURNS TABLE (
+  team_sdr_count         bigint,
   today_calls            bigint,
   calls_requiring_review bigint,
   appointments_booked    bigint,
   qualified_appointments bigint,
   qualification_rate     integer,
+  weak_appointments      bigint,
   calls_reviewed         bigint,
   calls_pending          bigint,
+  coaching_opportunities bigint,
   ai_trust_validated     bigint,
   ai_trust_corrected     bigint
 )
 LANGUAGE sql STABLE SECURITY INVOKER AS $$
+  WITH team_sdrs AS (
+    SELECT id
+    FROM users
+    WHERE organization_id = p_org_id
+      AND role = 'sdr'
+      AND (p_manager_id IS NULL OR manager_id = p_manager_id)
+  ),
+  scoped_calls AS (
+    SELECT c.*
+    FROM calls c
+    JOIN team_sdrs s ON s.id = c.sdr_id
+    WHERE c.organization_id = p_org_id
+  ),
+  sdr_avgs AS (
+    SELECT s.id, ROUND(AVG(ca.sdr_quality_score))::integer AS avg_q
+    FROM team_sdrs s
+    LEFT JOIN scoped_calls c ON c.sdr_id = s.id
+    LEFT JOIN call_analyses ca ON ca.call_id = c.id
+    GROUP BY s.id
+  )
   SELECT
-    (SELECT COUNT(*)::bigint FROM calls
+    (SELECT COUNT(*)::bigint FROM team_sdrs),
+    (SELECT COUNT(*)::bigint FROM scoped_calls
      WHERE organization_id = p_org_id
        AND call_datetime >= current_date::timestamptz),
     -- Flags mirror computeReviewFlags() in lib/review-flags.ts
@@ -143,17 +169,19 @@ LANGUAGE sql STABLE SECURITY INVOKER AS $$
         AND ca.appointment_quality_score >= 60
       )::numeric / COUNT(ca.id) FILTER (WHERE ca.appointment_booked = true) * 100)::integer
     ELSE 0 END,
+    COUNT(ca.id) FILTER (WHERE ca.appointment_booked = true AND COALESCE(ca.appointment_quality_score, 0) < 60)::bigint,
     COUNT(ca.id) FILTER (WHERE ca.human_validated = true)::bigint,
     COUNT(ca.id) FILTER (WHERE ca.id IS NOT NULL AND ca.human_validated = false)::bigint,
+    (SELECT COUNT(*)::bigint FROM sdr_avgs WHERE avg_q IS NULL OR avg_q < 55),
     (SELECT COUNT(*)::bigint
-     FROM calls c2 JOIN call_analyses ca2 ON ca2.call_id = c2.id
+     FROM scoped_calls c2 JOIN call_analyses ca2 ON ca2.call_id = c2.id
      CROSS JOIN LATERAL jsonb_each_text(COALESCE(ca2.field_validations,'{}')) fv(k,v)
      WHERE c2.organization_id = p_org_id AND fv.v = 'validated'),
     (SELECT COUNT(*)::bigint
-     FROM calls c2 JOIN call_analyses ca2 ON ca2.call_id = c2.id
+     FROM scoped_calls c2 JOIN call_analyses ca2 ON ca2.call_id = c2.id
      CROSS JOIN LATERAL jsonb_each_text(COALESCE(ca2.field_validations,'{}')) fv(k,v)
      WHERE c2.organization_id = p_org_id AND fv.v = 'corrected')
-  FROM calls c
+  FROM scoped_calls c
   LEFT JOIN call_analyses ca ON ca.call_id = c.id
   WHERE c.organization_id = p_org_id;
 $$;
@@ -162,7 +190,7 @@ $$;
 -- 4. PER-SDR COACHING STATS
 -- One row per SDR. p_since = NULL means all-time.
 -- ============================================================
-CREATE OR REPLACE FUNCTION get_sdr_coaching_stats(p_org_id uuid, p_since timestamptz DEFAULT NULL)
+CREATE OR REPLACE FUNCTION get_sdr_coaching_stats(p_org_id uuid, p_since timestamptz DEFAULT NULL, p_manager_id uuid DEFAULT NULL)
 RETURNS TABLE (
   sdr_id                   uuid,
   sdr_name                 text,
@@ -206,7 +234,11 @@ LANGUAGE sql STABLE SECURITY INVOKER AS $$
            ca.pain_point_details, ca.interest_level
     FROM calls c
     LEFT JOIN call_analyses ca ON ca.call_id = c.id
+    JOIN users s ON s.id = c.sdr_id
     WHERE c.organization_id = p_org_id
+      AND s.organization_id = p_org_id
+      AND s.role = 'sdr'
+      AND (p_manager_id IS NULL OR s.manager_id = p_manager_id)
       AND (p_since IS NULL OR c.call_datetime >= p_since)
   ),
   rnk AS (
@@ -325,7 +357,9 @@ LANGUAGE sql STABLE SECURITY INVOKER AS $$
   LEFT JOIN cr ON cr.sdr_id = u.id
   LEFT JOIN bc ON bc.sdr_id = u.id
   LEFT JOIN wc ON wc.sdr_id = u.id
-  WHERE u.organization_id = p_org_id AND u.role = 'sdr'
+  WHERE u.organization_id = p_org_id
+    AND u.role = 'sdr'
+    AND (p_manager_id IS NULL OR u.manager_id = p_manager_id)
   GROUP BY u.id, u.name
   ORDER BY ROUND(AVG(cr.sdr_quality_score)) DESC NULLS LAST;
 $$;

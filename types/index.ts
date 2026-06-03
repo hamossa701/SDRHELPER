@@ -43,6 +43,7 @@ export interface User {
   id: string
   organization_id: string
   client_id: string | null
+  manager_id: string | null
   name: string
   email: string
   role: UserRole
@@ -325,13 +326,16 @@ export interface SDRLeaderboardRow {
 }
 
 export interface ManagerKPIs {
+  team_sdr_count: number
   today_calls: number
   calls_requiring_review: number
   appointments_booked: number
   qualified_appointments: number
   qualification_rate: number
+  weak_appointments: number
   calls_reviewed: number
   calls_pending: number
+  coaching_opportunities: number
   ai_trust_validated: number
   ai_trust_corrected: number
 }

@@ -52,11 +52,13 @@ export default function NewCampaignPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: profile } = await supabase.from('users').select('organization_id').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('users').select('organization_id, role').eq('id', user.id).single()
       if (!profile) return
+      let sdrQuery = supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'sdr').order('name')
+      if (profile.role === 'manager') sdrQuery = sdrQuery.eq('manager_id', user.id)
       const [{ data: clientsData }, { data: sdrsData }] = await Promise.all([
         supabase.from('client_accounts').select('id, name').eq('organization_id', profile.organization_id).order('name'),
-        supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'sdr').order('name'),
+        sdrQuery,
       ])
       const list = clientsData ?? []
       setClients(list)

@@ -44,13 +44,17 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   const { data: call } = await (isClient ? createAdminClient() : supabase)
     .from('calls')
-    .select('*, call_analyses(*), users!calls_sdr_id_fkey(name), campaigns(campaign_name, client_name, offer_description)')
+    .select('*, call_analyses(*), users!calls_sdr_id_fkey(name, manager_id), campaigns(campaign_name, client_name, offer_description)')
     .eq('id', id)
     .single()
 
   if (!call) notFound()
   const a = call.call_analyses
-  const canValidate = !isClient && ['owner', 'manager'].includes(profile.role)
+  const callSdr = Array.isArray(call.users) ? call.users[0] : call.users
+  const canValidate = !isClient && (
+    profile.role === 'owner'
+    || (profile.role === 'manager' && callSdr?.manager_id === user.id)
+  )
 
   let corrections: FieldCorrection[] = []
   let auditLog: AuditEntry[] = []

@@ -25,6 +25,7 @@ create table public.users (
   name text not null,
   email text not null,
   role text not null default 'sdr' check (role in ('owner', 'manager', 'sdr', 'client')),
+  manager_id uuid references public.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -153,13 +154,59 @@ returns text language sql stable security definer as $$
   select role from public.users where id = auth.uid()
 $$;
 
+-- Helper function: check whether an SDR belongs to the current manager
+create or replace function public.is_manager_of_sdr(p_sdr_id uuid, p_manager_id uuid default auth.uid())
+returns boolean language sql stable security definer as $$
+  select exists (
+    select 1 from public.users s
+    where s.id = p_sdr_id
+      and s.role = 'sdr'
+      and s.manager_id = p_manager_id
+      and s.organization_id = get_my_org_id()
+  )
+$$;
+
+-- Helper trigger: manager_id must reference a same-org manager when present.
+create or replace function public.validate_user_manager_assignment()
+returns trigger language plpgsql security definer as $$
+declare
+  manager_org uuid;
+  manager_role text;
+begin
+  if new.role = 'sdr' and new.manager_id is not null then
+    select organization_id, role into manager_org, manager_role
+    from public.users
+    where id = new.manager_id;
+
+    if manager_role is distinct from 'manager' or manager_org is distinct from new.organization_id then
+      raise exception 'manager_id must reference a manager in the same organization';
+    end if;
+  elsif new.role <> 'sdr' and new.manager_id is not null then
+    raise exception 'Only SDR users can have manager_id set';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger users_validate_manager_assignment
+  before insert or update of organization_id, role, manager_id on public.users
+  for each row
+  execute function public.validate_user_manager_assignment();
+
 -- ORGANIZATIONS: users see only their own org
 create policy "org_select" on public.organizations
   for select using (id = get_my_org_id());
 
 -- USERS: see users in same org
 create policy "users_select" on public.users
-  for select using (organization_id = get_my_org_id());
+  for select using (
+    organization_id = get_my_org_id() and (
+      get_my_role() = 'owner' or
+      id = auth.uid() or
+      (get_my_role() = 'manager' and role = 'sdr' and manager_id = auth.uid())
+    )
+  );
 
 create policy "users_insert" on public.users
   for insert with check (organization_id = get_my_org_id());
@@ -167,14 +214,27 @@ create policy "users_insert" on public.users
 create policy "users_update" on public.users
   for update using (
     organization_id = get_my_org_id() and
-    (get_my_role() in ('owner', 'manager') or id = auth.uid())
+    get_my_role() = 'owner'
+  )
+  with check (
+    organization_id = get_my_org_id() and
+    get_my_role() = 'owner'
   );
 
 -- CAMPAIGNS: org scoped, clients see only assigned campaigns
 create policy "campaigns_select" on public.campaigns
   for select using (
     organization_id = get_my_org_id() and (
-      get_my_role() in ('owner', 'manager', 'sdr') or
+      get_my_role() = 'owner' or
+      (get_my_role() = 'manager' and exists (
+        select 1 from public.campaign_sdrs cs
+        join public.users s on s.id = cs.user_id
+        where cs.campaign_id = campaigns.id and s.manager_id = auth.uid()
+      )) or
+      (get_my_role() = 'sdr' and exists (
+        select 1 from public.campaign_sdrs
+        where campaign_id = campaigns.id and user_id = auth.uid()
+      )) or
       exists (
         select 1 from public.campaign_clients
         where campaign_id = campaigns.id and user_id = auth.uid()
@@ -226,7 +286,8 @@ create policy "campaign_sdrs_insert" on public.campaign_sdrs
 create policy "calls_select" on public.calls
   for select using (
     organization_id = get_my_org_id() and (
-      get_my_role() in ('owner', 'manager') or
+      get_my_role() = 'owner' or
+      (get_my_role() = 'manager' and is_manager_of_sdr(calls.sdr_id)) or
       (get_my_role() = 'sdr' and sdr_id = auth.uid()) or
       (get_my_role() = 'client' and exists (
         select 1 from public.campaign_clients
@@ -237,8 +298,11 @@ create policy "calls_select" on public.calls
 
 create policy "calls_insert" on public.calls
   for insert with check (
-    organization_id = get_my_org_id() and
-    get_my_role() in ('owner', 'manager', 'sdr')
+    organization_id = get_my_org_id() and (
+      get_my_role() = 'owner' or
+      (get_my_role() = 'manager' and is_manager_of_sdr(calls.sdr_id)) or
+      (get_my_role() = 'sdr' and sdr_id = auth.uid())
+    )
   );
 
 -- CALL_ANALYSES: same rules as calls via join
@@ -248,7 +312,8 @@ create policy "call_analyses_select" on public.call_analyses
       select 1 from public.calls c
       where c.id = call_id and
         c.organization_id = get_my_org_id() and (
-          get_my_role() in ('owner', 'manager') or
+          get_my_role() = 'owner' or
+          (get_my_role() = 'manager' and is_manager_of_sdr(c.sdr_id)) or
           (get_my_role() = 'sdr' and c.sdr_id = auth.uid()) or
           (get_my_role() = 'client' and exists (
             select 1 from public.campaign_clients
@@ -271,7 +336,10 @@ create policy "call_analyses_update" on public.call_analyses
     exists (
       select 1 from public.calls c
       where c.id = call_id and c.organization_id = get_my_org_id()
-      and get_my_role() in ('owner', 'manager')
+      and (
+        get_my_role() = 'owner' or
+        (get_my_role() = 'manager' and is_manager_of_sdr(c.sdr_id))
+      )
     )
   );
 
@@ -309,35 +377,67 @@ alter table public.audit_log enable row level security;
 
 create policy "field_corrections_select" on public.field_corrections
   for select using (
-    get_my_role() in ('owner', 'manager') and
     exists (
       select 1 from public.call_analyses ca
       join public.calls c on c.id = ca.call_id
       where ca.id = analysis_id and c.organization_id = get_my_org_id()
+      and (
+        get_my_role() = 'owner' or
+        (get_my_role() = 'manager' and is_manager_of_sdr(c.sdr_id))
+      )
     )
   );
 
 create policy "field_corrections_insert" on public.field_corrections
   for insert with check (
-    get_my_role() in ('owner', 'manager') and
     exists (
       select 1 from public.call_analyses ca
       join public.calls c on c.id = ca.call_id
       where ca.id = analysis_id and c.organization_id = get_my_org_id()
+      and (
+        get_my_role() = 'owner' or
+        (get_my_role() = 'manager' and is_manager_of_sdr(c.sdr_id))
+      )
     )
   );
 
 create policy "field_corrections_update" on public.field_corrections
-  for update using (get_my_role() in ('owner', 'manager'));
+  for update using (
+    exists (
+      select 1 from public.call_analyses ca
+      join public.calls c on c.id = ca.call_id
+      where ca.id = analysis_id and c.organization_id = get_my_org_id()
+      and (
+        get_my_role() = 'owner' or
+        (get_my_role() = 'manager' and is_manager_of_sdr(c.sdr_id))
+      )
+    )
+  );
 
 create policy "audit_log_select" on public.audit_log
   for select using (
     organization_id = get_my_org_id() and
-    get_my_role() in ('owner', 'manager')
+    (
+      get_my_role() = 'owner' or
+      (get_my_role() = 'manager' and exists (
+        select 1 from public.call_analyses ca
+        join public.calls c on c.id = ca.call_id
+        where ca.id = audit_log.analysis_id
+        and is_manager_of_sdr(c.sdr_id)
+      ))
+    )
   );
 
 create policy "audit_log_insert" on public.audit_log
   for insert with check (
     organization_id = get_my_org_id() and
-    get_my_role() in ('owner', 'manager')
+    (
+      get_my_role() = 'owner' or
+      (get_my_role() = 'manager' and exists (
+        select 1 from public.call_analyses ca
+        join public.calls c on c.id = ca.call_id
+        where ca.id = audit_log.analysis_id
+        and is_manager_of_sdr(c.sdr_id)
+      ))
+    )
   );

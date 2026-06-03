@@ -38,13 +38,14 @@ export async function POST(request: NextRequest) {
 
     const { data: call } = await supabase
       .from('calls')
-      .select('id, organization_id, assigned_to, review_status')
+      .select('id, organization_id, assigned_to, review_status, sdr:users!calls_sdr_id_fkey(manager_id)')
       .eq('id', analysis.call_id)
       .eq('organization_id', profile.organization_id)
       .single()
     if (!call) return NextResponse.json({ error: 'Analyse introuvable' }, { status: 404 })
 
-    const access = canValidateAnalysis(profile, user.id, call)
+    const sdr = Array.isArray(call.sdr) ? call.sdr[0] : call.sdr
+    const access = canValidateAnalysis(profile, user.id, { ...call, sdr_manager_id: sdr?.manager_id ?? null })
     if (!access.allowed) {
       return NextResponse.json({ error: access.error }, { status: access.status })
     }

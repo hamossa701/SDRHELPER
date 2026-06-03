@@ -41,8 +41,11 @@ export async function POST(request: NextRequest) {
 
   // Verify SDR belongs to this org with role = 'sdr'
   const { data: sdr } = await supabase
-    .from('users').select('id').eq('id', sdr_id).eq('organization_id', profile.organization_id).eq('role', 'sdr').single()
+    .from('users').select('id, manager_id').eq('id', sdr_id).eq('organization_id', profile.organization_id).eq('role', 'sdr').single()
   if (!sdr) return NextResponse.json({ error: 'SDR introuvable' }, { status: 404 })
+  if (profile.role === 'manager' && sdr.manager_id !== user.id) {
+    return NextResponse.json({ error: 'SDR hors de votre equipe' }, { status: 403 })
+  }
 
   const { data, error } = await supabase
     .from('campaign_assignments')

@@ -52,9 +52,12 @@ export async function POST(request: NextRequest) {
 
     // ── RBAC: sdr_id must belong to this org ─────────────────────────────────
     const { data: sdrUser } = await supabase
-      .from('users').select('id, role')
+      .from('users').select('id, role, manager_id')
       .eq('id', sdr_id).eq('organization_id', profile.organization_id).eq('role', 'sdr').single()
     if (!sdrUser) return NextResponse.json({ error: 'SDR non autorisé' }, { status: 403 })
+    if (profile.role === 'manager' && sdrUser.manager_id !== user.id) {
+      return NextResponse.json({ error: 'SDR hors de votre équipe' }, { status: 403 })
+    }
 
     const { data: assignment } = await supabase
       .from('campaign_sdrs')

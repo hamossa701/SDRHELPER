@@ -35,6 +35,18 @@ export async function GET(request: NextRequest) {
     .single()
 
   if (!job) return NextResponse.json({ error: 'Job introuvable' }, { status: 404 })
+  if (profile.role === 'manager' && job.call_id) {
+    const { data: call } = await supabase
+      .from('calls')
+      .select('id, sdr:users!calls_sdr_id_fkey(manager_id)')
+      .eq('id', job.call_id)
+      .eq('organization_id', profile.organization_id)
+      .single()
+    const sdr = Array.isArray(call?.sdr) ? call?.sdr[0] : call?.sdr
+    if (!call || sdr?.manager_id !== user.id) {
+      return NextResponse.json({ error: 'Job introuvable' }, { status: 404 })
+    }
+  }
 
   return NextResponse.json({
     status:        job.status,

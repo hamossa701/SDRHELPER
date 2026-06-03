@@ -85,6 +85,7 @@ export default async function CoachingPage() {
   const { data: statsData } = await supabase.rpc('get_sdr_coaching_stats', {
     p_org_id: profile.organization_id,
     p_since: thirtyDaysAgo,
+    p_manager_id: profile.role === 'manager' ? user.id : null,
   })
 
   const profiles = ((statsData || []) as SDRCoachingStatsRow[]).map(s => {

@@ -20,13 +20,14 @@ insert into public.organizations (id, name, plan) values
 -- Run this after creating auth accounts:
 
 /*
-insert into public.users (id, organization_id, name, email, role) values
-  ('AUTH_UUID_OWNER',   '11111111-0000-0000-0000-000000000001', 'Karim Benali',     'karim@callforce.ma',  'owner'),
-  ('AUTH_UUID_MANAGER', '11111111-0000-0000-0000-000000000001', 'Yasmine Ouazzani', 'yasmine@callforce.ma','manager'),
-  ('AUTH_UUID_SDR1',    '11111111-0000-0000-0000-000000000001', 'Amine Tazi',        'amine@callforce.ma',  'sdr'),
-  ('AUTH_UUID_SDR2',    '11111111-0000-0000-0000-000000000001', 'Sara Chaoui',       'sara@callforce.ma',   'sdr'),
-  ('AUTH_UUID_SDR3',    '11111111-0000-0000-0000-000000000001', 'Mehdi Alaoui',      'mehdi@callforce.ma',  'sdr'),
-  ('AUTH_UUID_CLIENT',  '11111111-0000-0000-0000-000000000001', 'Pierre Dupont',     'pierre@clientcorp.fr','client');
+insert into public.users (id, organization_id, name, email, role, manager_id) values
+  ('AUTH_UUID_OWNER',    '11111111-0000-0000-0000-000000000001', 'Karim Benali',       'karim@callforce.ma',  'owner',   null),
+  ('AUTH_UUID_MANAGER1', '11111111-0000-0000-0000-000000000001', 'Yasmine Ouazzani',   'yasmine@callforce.ma','manager', null),
+  ('AUTH_UUID_MANAGER2', '11111111-0000-0000-0000-000000000001', 'David El Mansouri',  'manager@gmail.com',   'manager', null),
+  ('AUTH_UUID_SDR1',     '11111111-0000-0000-0000-000000000001', 'Amine',              'amine@callforce.ma',  'sdr',     'AUTH_UUID_MANAGER2'),
+  ('AUTH_UUID_SDR2',     '11111111-0000-0000-0000-000000000001', 'Sara Chaoui',        'sara@callforce.ma',   'sdr',     'AUTH_UUID_MANAGER1'),
+  ('AUTH_UUID_SDR3',     '11111111-0000-0000-0000-000000000001', 'Mehdi Alaoui',       'mehdi@callforce.ma',  'sdr',     null),
+  ('AUTH_UUID_CLIENT',   '11111111-0000-0000-0000-000000000001', 'Pierre Dupont',      'pierre@clientcorp.fr','client',  null);
 */
 
 -- Step 3: Campaigns

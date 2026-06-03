@@ -29,8 +29,39 @@ export default async function CampaignsPage() {
   if (!user) redirect('/login')
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile) redirect('/login')
-  const { data: campaigns } = await supabase.from('campaigns').select('*').eq('organization_id', profile.organization_id).order('created_at', { ascending: false })
-  const { data: calls } = await supabase.from('calls').select('campaign_id, call_analyses(appointment_booked, appointment_quality_score)').eq('organization_id', profile.organization_id)
+  let teamSdrIds: string[] = []
+  let campaignQuery = supabase
+    .from('campaigns')
+    .select('*')
+    .eq('organization_id', profile.organization_id)
+    .order('created_at', { ascending: false })
+
+  if (profile.role === 'manager') {
+    const { data: teamSdrs } = await supabase
+      .from('users')
+      .select('id')
+      .eq('organization_id', profile.organization_id)
+      .eq('role', 'sdr')
+      .eq('manager_id', user.id)
+    teamSdrIds = (teamSdrs ?? []).map((s) => s.id)
+    const { data: assignments } = teamSdrIds.length
+      ? await supabase.from('campaign_sdrs').select('campaign_id').in('user_id', teamSdrIds)
+      : { data: [] }
+    const campaignIds = [...new Set((assignments ?? []).map((a) => a.campaign_id))]
+    campaignQuery = campaignIds.length ? campaignQuery.in('id', campaignIds) : campaignQuery.eq('id', '00000000-0000-0000-0000-000000000000')
+  }
+
+  if (profile.role === 'sdr') {
+    const { data: assignments } = await supabase.from('campaign_sdrs').select('campaign_id').eq('user_id', user.id)
+    const campaignIds = (assignments ?? []).map((a) => a.campaign_id)
+    campaignQuery = campaignIds.length ? campaignQuery.in('id', campaignIds) : campaignQuery.eq('id', '00000000-0000-0000-0000-000000000000')
+  }
+
+  const { data: campaigns } = await campaignQuery
+  let callsQuery = supabase.from('calls').select('campaign_id, call_analyses(appointment_booked, appointment_quality_score)').eq('organization_id', profile.organization_id)
+  if (profile.role === 'manager') callsQuery = teamSdrIds.length ? callsQuery.in('sdr_id', teamSdrIds) : callsQuery.eq('sdr_id', '00000000-0000-0000-0000-000000000000')
+  if (profile.role === 'sdr') callsQuery = callsQuery.eq('sdr_id', user.id)
+  const { data: calls } = await callsQuery
 
   const callRows = (calls || []) as CampaignCallMetric[]
   const stats: CampaignRow[] = ((campaigns || []) as Campaign[]).map((c) => {

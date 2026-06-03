@@ -19,7 +19,7 @@ type Joined<T> = T | T[] | null
 type CampaignCall = Pick<Call, 'id' | 'call_datetime'> & {
   call_analyses: Joined<CallAnalysis>
   analysis_jobs: Joined<Pick<AnalysisJob, 'status' | 'error_message'>>
-  users: Joined<Pick<User, 'name'>>
+  users: Joined<Pick<User, 'name' | 'manager_id'>>
 }
 
 function firstJoined<T>(value: Joined<T>): T | null {
@@ -121,11 +121,14 @@ export default async function CampaignDetailPage({
   const { data: campaign } = await supabase.from('campaigns').select('*').eq('id', id).single()
   if (!campaign) notFound()
 
-  const { data: calls } = await supabase
+  let callsQuery = supabase
     .from('calls')
-    .select('id, call_datetime, call_analyses(*), analysis_jobs(status, error_message), users!calls_sdr_id_fkey(name)')
+    .select('id, call_datetime, call_analyses(*), analysis_jobs(status, error_message), users!calls_sdr_id_fkey!inner(name, manager_id)')
     .eq('campaign_id', id)
     .order('call_datetime', { ascending: false })
+  if (profile.role === 'manager') callsQuery = callsQuery.eq('users.manager_id', user.id)
+  if (profile.role === 'sdr') callsQuery = callsQuery.eq('sdr_id', user.id)
+  const { data: calls } = await callsQuery
 
   const typedCampaign = campaign as Campaign
   const allCalls = (calls ?? []) as CampaignCall[]

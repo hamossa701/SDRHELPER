@@ -7,6 +7,7 @@ export type ReviewProfile = {
 
 export type ReviewCallAccess = {
   organization_id: string | null
+  sdr_manager_id?: string | null
   assigned_to?: string | null
   review_status?: string | null
 }
@@ -32,7 +33,11 @@ function baseReviewAccess(profile: ReviewProfile, call: ReviewCallAccess): RbacD
     return deny(404, 'Ressource introuvable')
   }
 
-  if (profile.role === 'owner' || profile.role === 'manager') {
+  if (profile.role === 'owner') {
+    return ALLOWED
+  }
+
+  if (profile.role === 'manager') {
     return ALLOWED
   }
 
@@ -48,6 +53,10 @@ export function canClaimReview(
   if (!base.allowed) return base
 
   if (profile.role === 'owner') return ALLOWED
+
+  if (call.sdr_manager_id !== undefined && call.sdr_manager_id !== userId) {
+    return deny(404, 'Ressource introuvable')
+  }
 
   if (call.assigned_to) {
     return deny(409, call.assigned_to === userId ? 'Deja pris en charge' : 'Revue deja assignee')
@@ -70,6 +79,10 @@ export function canResolveReview(
 
   if (profile.role === 'owner') return ALLOWED
 
+  if (call.sdr_manager_id !== undefined && call.sdr_manager_id !== userId) {
+    return deny(404, 'Ressource introuvable')
+  }
+
   if (call.assigned_to !== userId) {
     return deny(403, 'Revue non assignee a votre file')
   }
@@ -86,6 +99,12 @@ export function canValidateAnalysis(
   if (!base.allowed) return base
 
   if (profile.role === 'owner') return ALLOWED
+
+  if (call.sdr_manager_id !== undefined) {
+    return call.sdr_manager_id === userId
+      ? ALLOWED
+      : deny(404, 'Ressource introuvable')
+  }
 
   if (call.assigned_to !== userId) {
     return deny(403, 'Analyse non assignee a votre file de revision')

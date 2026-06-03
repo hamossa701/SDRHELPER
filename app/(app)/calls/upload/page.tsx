@@ -50,7 +50,9 @@ export default function UploadCallPage() {
         setForm(f => ({ ...f, sdr_id: user.id }))
         setSdrs([prof])
       } else {
-        const { data: sdrList } = await supabase.from('users').select('*').eq('organization_id', prof.organization_id).eq('role', 'sdr').order('name')
+        let sdrQuery = supabase.from('users').select('*').eq('organization_id', prof.organization_id).eq('role', 'sdr').order('name')
+        if (prof.role === 'manager') sdrQuery = sdrQuery.eq('manager_id', user.id)
+        const { data: sdrList } = await sdrQuery
         setSdrs(sdrList || [])
       }
       setInitializing(false)
