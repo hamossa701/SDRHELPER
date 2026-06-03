@@ -1,7 +1,10 @@
 'use client'
+import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { LoginCard } from '@/components/auth/LoginCard'
 import { createClient } from '@/lib/supabase'
+import styles from './login.module.css'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -10,15 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const demoPassword = 'Demo1234!'
-  const demoAccounts = [
-    { role: 'Propriétaire', email: 'karim@callforce.ma' },
-    { role: 'Manager', email: 'yasmine@callforce.ma' },
-    { role: 'SDR Sara', email: 'sara@callforce.ma' },
-    { role: 'Client Pierre', email: 'pierre@clientcorp.fr' },
-  ]
-
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
     const supabase = createClient()
@@ -32,116 +27,59 @@ export default function LoginPage() {
     }
   }
 
-  const inp: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', background: 'var(--input-bg)',
-    border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)',
-    fontSize: 13, fontFamily: 'var(--font-geist), sans-serif', outline: 'none',
-  }
-
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg)', alignItems: 'stretch' }}>
-      <div style={{
-        width: 400, flexShrink: 0,
-        background: 'var(--sidebar-bg)',
-        borderRight: '1px solid var(--border)',
-        padding: '40px 32px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-      }}>
-        <div>
-          <div style={{ marginBottom: 40 }}>
-            <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', background: 'linear-gradient(90deg,#ffffff,#c7d2fe 48%,#7dd3fc)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>SDRHelper</div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--muted-2)', marginTop: 2 }}>Supervision appels B2B</div>
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3, marginBottom: 12 }}>
-            Supervisez la qualité de vos RDV sans écouter chaque appel.
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6 }}>
-            Analyse IA des transcriptions, scoring SDR, coaching et reporting client en temps réel.
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {[
-            { icon: 'bar_chart', text: 'Scoring automatique RDV et SDR' },
-            { icon: 'search', text: 'Détection objections et signaux achat' },
-            { icon: 'description', text: 'Reporting transparent clients français' },
-            { icon: 'school', text: 'Recommandations coaching personnalisées' },
-          ].map((item, i) => (
-            <div key={item.icon} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--muted)', animation: 'h3a-fade-up .4s ease both', animationDelay: `${i * 0.1}s` }}>
-              <span className="mat" style={{ fontSize: 16, color: 'var(--cyan)', flexShrink: 0 }}>{item.icon}</span>
-              {item.text}
-            </div>
-          ))}
-        </div>
+    <main className={styles.page}>
+      <div className={styles.circleOne} />
+      <div className={styles.circleTwo} />
+      <div className={styles.circleThree} />
+
+      <div className={styles.secureBadge}>
+        <span className={styles.secureDot} />
+        Secure Access
       </div>
 
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-        <div style={{ width: '100%', maxWidth: 420 }}>
-          <div style={{ marginBottom: 28, textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Connexion</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>Accédez à votre espace SDRHelper</div>
-          </div>
-
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderTop: '1px solid rgba(125,211,252,.22)', borderRadius: 14, padding: 28, backdropFilter: 'blur(18px)', boxShadow: 'var(--shadow)' }}>
-            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label htmlFor="login-email" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>Adresse email</label>
-                <input id="login-email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="vous@exemple.fr" required style={inp}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(125,211,252,.06)' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
-                />
-              </div>
-              <div>
-                <label htmlFor="login-password" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>Mot de passe</label>
-                <input id="login-password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required style={inp}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(125,211,252,.06)' }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
-                />
-              </div>
-              {error && (
-                <div style={{ background: 'rgba(239,68,68,.10)', border: '1px solid rgba(239,68,68,.32)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: '#fca5a5' }}>{error}</div>
-              )}
-              <button type="submit" disabled={loading} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? .7 : 1,
-                background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)',
-                border: '1px solid rgba(125,211,252,.42)',
-                boxShadow: '0 10px 24px rgba(37,99,235,.2)',
-                fontFamily: 'var(--font-geist), sans-serif',
-                transition: 'box-shadow .15s, opacity .15s',
-              }}
-                onMouseOver={e => !loading && (e.currentTarget.style.boxShadow = '0 14px 32px rgba(37,99,235,.38)')}
-                onMouseOut={e => (e.currentTarget.style.boxShadow = '0 10px 24px rgba(37,99,235,.2)')}
-              >
-                {loading && <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
-                Se connecter
-              </button>
-            </form>
-
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, marginBottom: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--muted-2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                  <span className="mat" style={{ fontSize: 13 }}>info</span>
-                  Démonstration
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--muted-2)' }}>Cliquez pour remplir</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {demoAccounts.map(item => (
-                  <div key={item.email} onClick={() => { setEmail(item.email); setPassword(demoPassword) }} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '6px 8px', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
-                    onMouseOver={e => (e.currentTarget.style.background = 'var(--row-h)')}
-                    onMouseOut={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <span style={{ color: 'var(--muted-2)' }}>{item.role}</span>
-                    <span style={{ color: 'var(--cyan)', fontFamily: 'var(--font-jetbrains-mono), monospace', textAlign: 'right' }}>{item.email}</span>
-                  </div>
-                ))}
-                <div style={{ fontSize: 11, color: 'var(--muted-2)', textAlign: 'center', marginTop: 4 }}>Mot de passe : {demoPassword}</div>
-              </div>
-            </div>
-          </div>
+      <div className={styles.content}>
+        <div className={styles.brand} aria-label="SDRHelper">
+          <div className={styles.brandTitle}>SDR<span>Helper</span></div>
+          <div className={styles.brandKicker}>Supervision appels B2B</div>
         </div>
+
+        <LoginCard>
+          <form onSubmit={handleLogin} className={styles.form}>
+            <div className={styles.field}>
+              <label htmlFor="login-email">Adresse email</label>
+              <input
+                id="login-email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="vous@exemple.fr"
+                required
+                className={styles.input}
+              />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="login-password">Mot de passe</label>
+              <input
+                id="login-password"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className={styles.input}
+              />
+            </div>
+            {error && (
+              <div className={styles.error}>{error}</div>
+            )}
+            <button type="submit" disabled={loading} className={styles.button}>
+              {loading && <span className={styles.spinner} />}
+              Se connecter
+            </button>
+          </form>
+        </LoginCard>
       </div>
-    </div>
+    </main>
   )
 }
