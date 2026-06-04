@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Card } from '@/components/ui'
 import { ManagerAssignmentSelect } from '@/components/admin/ManagerAssignmentSelect'
+import { InviteUserModal } from '@/components/admin/InviteUserModal'
+import { createAdminClient } from '@/lib/supabase-admin'
 import { formatDate } from '@/lib/utils'
 import type { User, UserRole } from '@/types'
 
@@ -81,6 +83,21 @@ export default async function AdminUsersPage() {
     if (sdr.manager_id) sdrsByManager.get(sdr.manager_id)?.push(sdr)
   }
 
+  const { data: clientAccountsData } = await supabase
+    .from('client_accounts')
+    .select('id, name')
+    .eq('organization_id', profile.organization_id)
+    .order('name')
+  const clientAccounts = (clientAccountsData ?? []) as { id: string; name: string }[]
+
+  // Get confirmation status from auth.users (server-side only via service role)
+  const supabaseAdmin = createAdminClient()
+  const { data: authListData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+  const confirmedMap = new Map<string, boolean>()
+  for (const authUser of (authListData?.users ?? [])) {
+    confirmedMap.set(authUser.id, !!authUser.email_confirmed_at)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <div
@@ -116,31 +133,37 @@ export default async function AdminUsersPage() {
           </section>
 
           <Card>
-            <div style={{ display: 'flex', gap: 12, padding: '16px 18px', alignItems: 'flex-start' }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: 'var(--cyan)',
-                  background: 'var(--cyan-soft)',
-                  border: '1px solid rgba(125,211,252,.22)',
-                  fontSize: 18,
-                  flexShrink: 0,
-                  fontWeight: 800,
-                  fontFamily: 'var(--font-geist), system-ui, sans-serif',
-                }}
-              >
-                i
+            <div style={{ display: 'flex', gap: 12, padding: '16px 18px', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 10,
+                    display: 'grid',
+                    placeItems: 'center',
+                    color: 'var(--cyan)',
+                    background: 'var(--cyan-soft)',
+                    border: '1px solid rgba(125,211,252,.22)',
+                    fontSize: 18,
+                    flexShrink: 0,
+                    fontWeight: 800,
+                    fontFamily: 'var(--font-geist), system-ui, sans-serif',
+                  }}
+                >
+                  i
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700 }}>Gestion des accès</div>
+                  <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.6 }}>
+                    Invitez vos managers, SDR et clients par email. Ils recevront un lien sécurisé pour créer leur accès.
+                  </p>
+                </div>
               </div>
-              <div>
-                <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 700 }}>Gestion des accès</div>
-                <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 13, lineHeight: 1.6 }}>
-                  Les comptes sont préparés par l&apos;administration SDRHELPER. Cette page sert à contrôler les rôles actifs dans votre organisation.
-                </p>
-              </div>
+              <InviteUserModal
+                managers={managers.map(m => ({ id: m.id, name: m.name }))}
+                clientAccounts={clientAccounts}
+              />
             </div>
           </Card>
 
@@ -191,7 +214,7 @@ export default async function AdminUsersPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
                 <thead>
                   <tr style={{ background: 'var(--thead)' }}>
-                    {['Nom', 'Email', 'Rôle', 'Manager', 'Créé le'].map((label) => (
+                    {['Nom', 'Email', 'Rôle', 'Statut', 'Manager', 'Créé le'].map((label) => (
                       <th
                         key={label}
                         style={{
@@ -255,6 +278,18 @@ export default async function AdminUsersPage() {
                         </td>
                         <td style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
                           <RoleBadge role={member.role} />
+                        </td>
+                        <td style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+                          {confirmedMap.get(member.id) !== false ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#86efac', background: 'rgba(34,197,94,.10)', border: '1px solid rgba(34,197,94,.28)', padding: '2px 8px', borderRadius: 6 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#86efac', flexShrink: 0 }} />
+                              Actif
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: '#fcd34d', background: 'rgba(245,158,11,.10)', border: '1px solid rgba(245,158,11,.28)', padding: '2px 8px', borderRadius: 6 }}>
+                              En attente
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
                           {member.role === 'sdr' ? (
