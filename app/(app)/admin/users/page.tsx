@@ -133,8 +133,8 @@ export default async function AdminUsersPage() {
           </section>
 
           <Card>
-            <div style={{ display: 'flex', gap: 12, padding: '16px 18px', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: 12, padding: '16px 18px', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minWidth: 0, flex: '1 1 320px' }}>
                 <div
                   style={{
                     width: 32,
