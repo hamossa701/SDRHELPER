@@ -95,7 +95,7 @@ function CategoryBadge({ profile }: { profile: CoachingSupervisionProfile }) {
   const catBg = urgency === 'stable' ? 'rgba(34,197,94,.10)' : urgency === 'critical' ? 'rgba(239,68,68,.10)' : 'rgba(245,158,11,.12)'
   const catColor = urgency === 'stable' ? '#86efac' : urgency === 'critical' ? '#fca5a5' : '#fcd34d'
   const catBorder = urgency === 'stable' ? 'rgba(34,197,94,.35)' : urgency === 'critical' ? 'rgba(239,68,68,.35)' : 'rgba(245,158,11,.32)'
-  const catLabel = urgency === 'stable' ? 'Stable' : urgency === 'critical' ? 'Coaching critique' : 'Coaching leger'
+  const catLabel = urgency === 'stable' ? 'Stable' : urgency === 'critical' ? 'Coaching critique' : 'Coaching léger'
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: catBg, color: catColor, border: `1px solid ${catBorder}` }}>
       {catLabel}
@@ -108,7 +108,7 @@ function TrendSummary({ profile }: { profile: CoachingSupervisionProfile }) {
   if (unavailable) {
     return (
       <span style={{ fontSize: 11, color: 'var(--muted-2)', fontWeight: 600 }}>
-        Tendance indisponible - historique insuffisant
+        Tendance indisponible — historique insuffisant
       </span>
     )
   }
@@ -276,7 +276,7 @@ export default async function CoachingPage() {
           <StatCard label="SDR stables" value={stable.length} sub={stable.length === 0 ? 'Aucun profil stable sur la periode' : stable.map(p => p.sdr_name).join(', ')} accent="rgba(125,211,252,.6)" valueColor="var(--cyan)" style={{ borderLeftWidth: 3 }} />
           <StatCard label="SDR en progression" value={progressing.length} sub={progressing.length === 0 ? 'Aucune hausse confirmee vs periode precedente' : progressing.map(p => p.sdr_name).join(', ')} accent="rgba(34,197,94,.7)" valueColor="#86efac" style={{ borderLeftWidth: 3 }} />
           <StatCard label="Coaching critique" value={criticalCoaching.length} sub={criticalCoaching.length === 0 ? 'Aucun SDR en urgence coaching' : criticalCoaching.map(p => p.sdr_name).join(', ')} accent="rgba(239,68,68,.7)" valueColor="#fca5a5" style={{ borderLeftWidth: 3 }} />
-          <StatCard label="Coaching leger" value={lightCoaching.length} sub={lightCoaching.length === 0 ? 'Aucune priorite importante moderee' : lightCoaching.map(p => p.sdr_name).join(', ')} accent="rgba(245,158,11,.7)" valueColor="#fcd34d" style={{ borderLeftWidth: 3 }} />
+          <StatCard label="Coaching léger" value={lightCoaching.length} sub={lightCoaching.length === 0 ? 'Aucune priorité importante modérée' : lightCoaching.map(p => p.sdr_name).join(', ')} accent="rgba(245,158,11,.7)" valueColor="#fcd34d" style={{ borderLeftWidth: 3 }} />
         </div>
 
         {dataError && <EmptyPanel color="#fca5a5">Erreur chargement coaching. Consultez les logs serveur.</EmptyPanel>}
@@ -303,10 +303,10 @@ export default async function CoachingPage() {
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Performance</div>
                 {[
                   { label: 'Score SDR moy.', node: <ScoreBadge score={p.avg_sdr_quality} /> },
-                  { label: 'Qualite RDV moy.', node: <ScoreBadge score={p.avg_appointment_quality} /> },
+                  { label: 'Qualité RDV moy.', node: <ScoreBadge score={p.avg_appointment_quality} /> },
                   { label: 'RDV qualifies', node: <span style={{ fontSize: 12, fontWeight: 700, color: p.qualification_rate >= 60 ? '#86efac' : p.qualification_rate >= 40 ? '#fcd34d' : '#fca5a5' }}>{p.qualified_appointments}/{p.appointments_booked}</span> },
-                  { label: 'Analyses revisees', node: <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{p.calls_reviewed}/{p.current_analysis_count}</span> },
-                  { label: 'Derniere analyse', node: <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{formatDate(p.latest_analysis_at)}</span> },
+                  { label: 'Analyses révisées', node: <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{p.calls_reviewed}/{p.current_analysis_count}</span> },
+                  { label: 'Dernière analyse', node: <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{formatDate(p.latest_analysis_at)}</span> },
                 ].map(({ label, node }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 10 }}>
                     <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>{label}</span>
@@ -316,16 +316,16 @@ export default async function CoachingPage() {
               </div>
 
               <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)', minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Competences</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Compétences</div>
                 {SKILL_KEYS.map(key => (
                   <SkillBar key={key} label={SKILL_LABELS[key]} score={p.skills[key]} trend={p.skill_trends[key]} />
                 ))}
               </div>
 
               <div style={{ padding: '10px 14px', minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 7 }}>Priorites coaching</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 7 }}>Priorités coaching</div>
                 {p.priorities.length === 0 ? (
-                  <div style={{ fontSize: 12, color: 'var(--muted-2)', marginBottom: 10 }}>Aucune priorite identifiee</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted-2)', marginBottom: 10 }}>Aucune priorité identifiée</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 10 }}>
                     {p.priorities.map((pr) => {
@@ -347,7 +347,7 @@ export default async function CoachingPage() {
                   </div>
                 )}
 
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Appels a ecouter</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Appels à écouter</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {p.best_call ? (
                     <CallExampleRow call={p.best_call} label="Meilleur appel a partager" color="#86efac" />

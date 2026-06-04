@@ -871,7 +871,7 @@ export default async function ClientPage({
             <Card style={{ flex: 1 }}>
               <CardHeader>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Résumé IA de la campagne</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Analyse automatique de la campagne</span>
                   <span style={{ fontSize: 10, color: 'var(--muted-2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Mois en cours</span>
                 </div>
               </CardHeader>

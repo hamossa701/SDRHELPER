@@ -17,11 +17,11 @@ const ITEMS: Record<UserRole, Item[]> = {
     { id: 'team', label: 'Voir les appels de son équipe', href: '/manager' },
     { id: 'examine', label: 'Examiner une analyse', href: '/manager' },
     { id: 'validate', label: 'Valider une analyse', href: '/manager' },
-    { id: 'coaching', label: 'Consulter les recommandations coaching', href: '/coaching' },
+    { id: 'coaching', label: 'Consulter les recommandations coaching', href: '/sdr' },
   ],
   sdr: [
     { id: 'score', label: 'Voir son dernier score', href: '/sdr' },
-    { id: 'coaching', label: 'Lire ses recommandations coaching', href: '/coaching' },
+    { id: 'coaching', label: 'Lire ses recommandations coaching', href: '/sdr' },
     { id: 'rdv', label: 'Vérifier ses derniers RDV', href: '/sdr' },
     { id: 'qualification', label: 'Comprendre les critères de qualification', href: '/sdr' },
   ],

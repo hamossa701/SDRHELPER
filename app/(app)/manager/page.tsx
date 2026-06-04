@@ -93,7 +93,7 @@ export default async function ManagerPage() {
       .eq('users.manager_id', user.id)
       .order('call_datetime', { ascending: false })
       .limit(10),
-    supabase.from('users').select('id, name').eq('id', user.id),
+    supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'manager'),
   ])
 
   const teamCalls = (teamCallsData || []) as ManagerTeamCall[]
@@ -209,10 +209,10 @@ export default async function ManagerPage() {
           </div>
           {/* Row 2 — quality */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
-            <StatCard label="Appels révisés"       value={kpis.calls_reviewed}      sub="human_validated = true" />
+            <StatCard label="Appels révisés"       value={kpis.calls_reviewed}      sub="analyses approuvées par un manager" />
             <StatCard label="En attente révision"  value={kpis.calls_pending}       sub="analyses non approuvées" />
             <StatCard label="RDV faibles"          value={kpis.weak_appointments}   sub="score RDV < 60" />
-            <StatCard label="Coaching"             value={kpis.coaching_opportunities} sub="SDR sous 55" />
+            <StatCard label="Coaching"             value={kpis.coaching_opportunities} sub="SDR dont le score moyen est inférieur à 55" />
             <StatCard label="Champs corrigés"      value={kpis.ai_trust_corrected}  sub="corrections enregistrées" />
             <StatCard label="Fiabilité IA"         value={trustScore !== null ? `${trustScore}%` : '—'} sub={trustLabel} />
           </div>

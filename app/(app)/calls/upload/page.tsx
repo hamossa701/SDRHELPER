@@ -108,7 +108,7 @@ export default function UploadCallPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.transcript.trim()) { setError('Transcription obligatoire.'); return }
-    if (transcriptLen > 30_000) { setError('Transcript too long. Maximum is 30,000 characters.'); return }
+    if (transcriptLen > 30_000) { setError('Transcription trop longue. Maximum : 30 000 caractères.'); return }
     if (!form.campaign_id) { setError('Sélectionnez une campagne.'); return }
     if (!form.sdr_id) { setError('Sélectionnez un SDR.'); return }
     setLoading(true); setError('')
@@ -164,7 +164,6 @@ export default function UploadCallPage() {
         </div>
       )
     }
-    return <AnalysisProgressSkeleton title={step === 'processing' ? 'Analyse en cours' : 'En file d attente'} />
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 }}>
         <span style={{ width: 36, height: 36, border: '3px solid rgba(148,163,184,.18)', borderTopColor: 'var(--cyan)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
@@ -308,7 +307,7 @@ export default function UploadCallPage() {
           )}
           {transcriptLen > 30_000 && (
             <div style={{ background: 'rgba(239,68,68,.10)', border: '1px solid rgba(239,68,68,.32)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#fca5a5' }}>
-              Transcript too long. Maximum is 30,000 characters.
+              Transcription trop longue. Maximum : 30 000 caractères.
             </div>
           )}
 
