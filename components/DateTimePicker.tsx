@@ -83,7 +83,7 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
     const width = Math.min(360, window.innerWidth - gutter * 2)
     const left = Math.min(Math.max(gutter, rect.left), Math.max(gutter, window.innerWidth - width - gutter))
     const roomBelow = window.innerHeight - rect.bottom - gutter
-    const panelHeight = 520
+    const panelHeight = 380
     const top = window.innerWidth <= 460
       ? gutter
       : roomBelow >= panelHeight
@@ -225,26 +225,18 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
           </div>
 
           <div className="h3a-datetime-time-row">
-            <div>
+            <label className="h3a-datetime-time-label">
               <span>Heure</span>
-              <div className="h3a-datetime-time-grid h3a-datetime-hour-grid">
-                {HOURS.map(hour => (
-                  <button key={hour} type="button" className={`h3a-datetime-time-option${two(draft.getHours()) === hour ? ' is-selected' : ''}`} onClick={() => updateDraftTime('hour', hour)}>
-                    {hour}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
+              <select className="h3a-datetime-time-select" value={two(draft.getHours())} onChange={e => updateDraftTime('hour', e.target.value)}>
+                {HOURS.map(hour => <option key={hour} value={hour}>{hour}</option>)}
+              </select>
+            </label>
+            <label className="h3a-datetime-time-label">
               <span>Minute</span>
-              <div className="h3a-datetime-time-grid h3a-datetime-minute-grid">
-                {MINUTES.map(minute => (
-                  <button key={minute} type="button" className={`h3a-datetime-time-option${two(draft.getMinutes()) === minute ? ' is-selected' : ''}`} onClick={() => updateDraftTime('minute', minute)}>
-                    {minute}
-                  </button>
-                ))}
-              </div>
-            </div>
+              <select className="h3a-datetime-time-select" value={two(draft.getMinutes())} onChange={e => updateDraftTime('minute', e.target.value)}>
+                {MINUTES.map(minute => <option key={minute} value={minute}>{minute}</option>)}
+              </select>
+            </label>
           </div>
 
           <div className="h3a-datetime-actions">

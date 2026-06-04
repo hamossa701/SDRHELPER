@@ -726,69 +726,53 @@ input, select, textarea {
 }
 
 .h3a-datetime-time-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
-.h3a-datetime-time-row > div {
-  min-width: 0;
+.h3a-datetime-time-label {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
 }
 
-.h3a-datetime-time-row > div > span {
+.h3a-datetime-time-label > span {
   color: var(--muted);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .06em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.h3a-datetime-time-grid {
-  display: grid;
-  gap: 5px;
-}
-
-.h3a-datetime-hour-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.h3a-datetime-minute-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.h3a-datetime-time-option {
-  min-height: 25px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.h3a-datetime-time-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 28px;
+  padding: 0 24px 0 9px;
   border-radius: 7px;
-  border: 1px solid transparent;
-  background: rgba(2,6,23,.30);
-  color: var(--muted);
-  font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  transition: border-color .15s, background .15s, color .15s;
-}
-
-.h3a-datetime-time-option:hover {
-  border-color: rgba(125,211,252,.22);
-  background: rgba(125,211,252,.08);
+  border: 1px solid var(--border);
+  background: rgba(2,6,23,.30) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23718096' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 7px center;
   color: var(--text);
+  font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color .15s, background-color .15s;
 }
 
-.h3a-datetime-time-option.is-selected {
+.h3a-datetime-time-select:focus {
+  outline: none;
   border-color: rgba(125,211,252,.42);
-  background: rgba(125,211,252,.14);
-  color: var(--cyan);
+}
+
+.h3a-datetime-time-select option {
+  background: #0f1629;
+  color: var(--text);
 }
 
 .h3a-datetime-actions {
@@ -846,17 +830,7 @@ input, select, textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .h3a-datetime-time-row {
-    grid-template-columns: 1fr;
-  }
 
-  .h3a-datetime-hour-grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-
-  .h3a-datetime-minute-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
 /* ── KPI card hover lift ── */
