@@ -11,7 +11,7 @@ type DateTimePickerProps = {
 
 const MONTHS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-const HOURS = Array.from({ length: 24 }, (_, hour) => two(hour))
+const HOURS = Array.from({ length: 11 }, (_, i) => two(i + 8))
 const MINUTES = Array.from({ length: 12 }, (_, index) => two(index * 5))
 
 function two(value: number) {
@@ -228,7 +228,8 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
             <label className="h3a-datetime-time-label">
               <span>Heure</span>
               <select className="h3a-datetime-time-select" value={two(draft.getHours())} onChange={e => updateDraftTime('hour', e.target.value)}>
-                {HOURS.map(hour => <option key={hour} value={hour}>{hour}</option>)}
+                {!HOURS.includes(two(draft.getHours())) && <option value={two(draft.getHours())}>{two(draft.getHours())}h</option>}
+                {HOURS.map(hour => <option key={hour} value={hour}>{hour}h</option>)}
               </select>
             </label>
             <label className="h3a-datetime-time-label">
