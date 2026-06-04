@@ -39,18 +39,18 @@ interface Props {
 export function OnboardingChecklist({ role }: Props) {
   const items = ITEMS[role] ?? []
   const [completedItems, setCompletedItems] = useState<string[]>([])
-  const [visible, setVisible] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  // Start visible — fetch will hide only if user previously dismissed
+  const [visible, setVisible] = useState(true)
 
   useEffect(() => {
     fetch('/api/onboarding')
-      .then(r => r.json())
-      .then((data: { completed_items?: string[]; dismissed_at?: string | null }) => {
-        setCompletedItems(data.completed_items ?? [])
-        setVisible(!data.dismissed_at)
-        setLoaded(true)
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { completed_items?: string[]; dismissed_at?: string | null } | null) => {
+        if (!data) return
+        if (data.completed_items?.length) setCompletedItems(data.completed_items)
+        if (data.dismissed_at) setVisible(false)
       })
-      .catch(() => setLoaded(true))
+      .catch(() => {})
   }, [])
 
   const toggleItem = (itemId: string) => {
@@ -82,8 +82,6 @@ export function OnboardingChecklist({ role }: Props) {
       body: JSON.stringify({ dismissed_at: null }),
     }).catch(() => {})
   }
-
-  if (!loaded) return null
 
   const completed = items.filter(i => completedItems.includes(i.id)).length
   const total = items.length
