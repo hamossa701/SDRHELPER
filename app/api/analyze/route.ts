@@ -59,14 +59,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'SDR hors de votre équipe' }, { status: 403 })
     }
 
-    const { data: assignment } = await supabase
-      .from('campaign_sdrs')
-      .select('campaign_id')
-      .eq('campaign_id', campaign_id)
-      .eq('user_id', sdr_id)
-      .maybeSingle()
-    if (!assignment) {
-      return NextResponse.json({ error: 'SDR non assigné à cette campagne' }, { status: 403 })
+    // Owners have full campaign access; managers/SDRs must have an active assignment.
+    // is_campaign_sdr() checks campaign_assignments (the canonical table).
+    if (profile.role !== 'owner') {
+      const { data: isSdrAssigned } = await supabase.rpc('is_campaign_sdr', {
+        p_campaign_id: campaign_id,
+        p_user_id: sdr_id,
+      })
+      if (!isSdrAssigned) {
+        return NextResponse.json({ error: 'SDR non assigné à cette campagne' }, { status: 403 })
+      }
     }
 
     // ── Rate limit: 10 analyses per user per hour ─────────────────────────────
