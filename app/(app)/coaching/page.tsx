@@ -8,6 +8,33 @@ import type { SDRCoachingStatsRow } from '@/types'
 type TrendDir = 'improving' | 'stable' | 'declining'
 type Category = 'top' | 'stable' | 'needs_coaching'
 interface Priority { label: string; severity: 'high' | 'medium' }
+type ScopedSdr = { id: string; name: string | null }
+type CoachingAnalysis = {
+  id: string
+  sdr_quality_score: number | null
+  appointment_quality_score: number | null
+  appointment_booked: boolean | null
+  decision_maker_detected: boolean | null
+  pain_point_detected: boolean | null
+  appointment_datetime: string | null
+  ai_confidence: number | null
+  hallucination_risk: string | null
+  qualification_completeness_score: number | null
+  objection_detected: boolean | null
+  objection_details: string | null
+  next_step: string | null
+  human_validated: boolean | null
+  urgency: string | null
+  current_solution: string | null
+  pain_point_details: string | null
+  interest_level: string | null
+}
+type CoachingCallRow = {
+  id: string
+  sdr_id: string
+  call_datetime: string
+  call_analyses: CoachingAnalysis | CoachingAnalysis[] | null
+}
 
 const TREND_CFG: Record<TrendDir, { label: string; color: string }> = {
   improving: { label: '↑ Progression', color: '#86efac' },
@@ -49,6 +76,127 @@ function finalCategory(s: SDRCoachingStatsRow, priorities: Priority[]): Category
   return 'stable'
 }
 
+function one<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : value
+}
+
+function avg(values: Array<number | null | undefined>): number | null {
+  const nums = values.filter((v): v is number => typeof v === 'number')
+  return nums.length ? Math.round(nums.reduce((sum, v) => sum + v, 0) / nums.length) : null
+}
+
+function pct(numerator: number, denominator: number): number {
+  return denominator > 0 ? Math.round((numerator / denominator) * 100) : 0
+}
+
+function rate(numerator: number, denominator: number): number {
+  return denominator > 0 ? Number((numerator / denominator).toFixed(2)) : 0
+}
+
+function requiresReview(a: CoachingAnalysis): boolean {
+  return (
+    (a.appointment_booked === true && a.decision_maker_detected !== true)
+    || (a.appointment_booked === true && (a.appointment_quality_score ?? 0) < 60)
+    || (a.appointment_booked === true && !a.appointment_datetime)
+    || (a.appointment_booked === true && a.pain_point_detected !== true)
+    || (a.ai_confidence !== null && a.ai_confidence < 70)
+    || a.hallucination_risk === 'medium'
+    || a.hallucination_risk === 'high'
+    || (a.qualification_completeness_score !== null && a.qualification_completeness_score < 60)
+    || (a.objection_detected === true && !a.objection_details)
+    || !a.next_step
+  )
+}
+
+function skillScores(a: CoachingAnalysis) {
+  const interest = a.interest_level === 'hot' ? 90 : a.interest_level === 'warm' ? 65 : a.interest_level === 'cold' ? 30 : 15
+  return {
+    skill_opening: Math.round(interest * 0.5 + (a.sdr_quality_score ?? 50) * 0.5),
+    skill_discovery:
+      (a.decision_maker_detected ? 25 : 0)
+      + (a.pain_point_detected ? 25 : 0)
+      + (a.urgency ? 25 : 0)
+      + (a.current_solution ? 25 : 0),
+    skill_pain_point:
+      (a.pain_point_detected ? 50 : 0)
+      + (a.pain_point_details ? 30 : 0)
+      + (a.urgency ? 20 : 0),
+    skill_objection_handling: !a.objection_detected
+      ? 70
+      : a.objection_details
+        ? Math.min(90, (a.sdr_quality_score ?? 50) + 10)
+        : 25,
+    skill_qualification: a.qualification_completeness_score ?? 0,
+    skill_closing: (a.appointment_booked ? 60 : 0) + (a.next_step ? 40 : 0),
+  }
+}
+
+function buildCoachingStats(sdrs: ScopedSdr[], calls: CoachingCallRow[]): SDRCoachingStatsRow[] {
+  return sdrs.map((sdr) => {
+    const sdrCalls = calls.filter(c => c.sdr_id === sdr.id)
+    const analyses = sdrCalls.map(c => one(c.call_analyses)).filter((a): a is CoachingAnalysis => Boolean(a))
+    const booked = analyses.filter(a => a.appointment_booked === true)
+    const qualified = booked.filter(a =>
+      a.decision_maker_detected === true
+      && a.pain_point_detected === true
+      && Boolean(a.appointment_datetime)
+      && (a.appointment_quality_score ?? 0) >= 60
+    )
+    const reviewed = analyses.filter(a => a.human_validated === true)
+    const reviewRequired = analyses.filter(requiresReview)
+    const scoredCalls = sdrCalls
+      .map(c => ({ call: c, analysis: one(c.call_analyses) }))
+      .filter((row): row is { call: CoachingCallRow; analysis: CoachingAnalysis } => typeof row.analysis?.sdr_quality_score === 'number')
+    const byScore = [...scoredCalls].sort((a, b) => (b.analysis.sdr_quality_score ?? 0) - (a.analysis.sdr_quality_score ?? 0))
+    const byRecent = [...scoredCalls].sort((a, b) => Date.parse(b.call.call_datetime) - Date.parse(a.call.call_datetime))
+    const recentAvg = avg(byRecent.slice(0, 5).map(row => row.analysis.sdr_quality_score))
+    const priorAvg = avg(byRecent.slice(5, 10).map(row => row.analysis.sdr_quality_score))
+    const skills = analyses.map(skillScores)
+    const avgSdrQuality = avg(analyses.map(a => a.sdr_quality_score))
+    const trend: SDRCoachingStatsRow['trend'] = !recentAvg || !priorAvg
+      ? 'stable'
+      : recentAvg > priorAvg + 5
+        ? 'improving'
+        : recentAvg < priorAvg - 5
+          ? 'declining'
+          : 'stable'
+    const category: SDRCoachingStatsRow['category'] = avgSdrQuality !== null && avgSdrQuality >= 75
+      ? 'top'
+      : avgSdrQuality !== null && avgSdrQuality < 55
+        ? 'needs_coaching'
+        : 'stable'
+
+    return {
+      sdr_id: sdr.id,
+      sdr_name: sdr.name ?? 'SDR',
+      total_calls: sdrCalls.length,
+      avg_sdr_quality: avgSdrQuality,
+      avg_appointment_quality: avg(analyses.map(a => a.appointment_quality_score)),
+      appointments_booked: booked.length,
+      qualified_appointments: qualified.length,
+      qualification_rate: pct(qualified.length, booked.length),
+      calls_reviewed: reviewed.length,
+      calls_requiring_review: reviewRequired.length,
+      review_flag_rate: pct(reviewRequired.length, sdrCalls.length),
+      avg_ai_confidence: avg(analyses.map(a => a.ai_confidence)),
+      skill_opening: avg(skills.map(s => s.skill_opening)) ?? 0,
+      skill_discovery: avg(skills.map(s => s.skill_discovery)) ?? 0,
+      skill_pain_point: avg(skills.map(s => s.skill_pain_point)) ?? 0,
+      skill_objection_handling: avg(skills.map(s => s.skill_objection_handling)) ?? 0,
+      skill_qualification: avg(skills.map(s => s.skill_qualification)) ?? 0,
+      skill_closing: avg(skills.map(s => s.skill_closing)) ?? 0,
+      trend,
+      booked_without_dm_rate: rate(booked.filter(a => a.decision_maker_detected !== true).length, booked.length),
+      booked_without_pain_rate: rate(booked.filter(a => a.pain_point_detected !== true).length, booked.length),
+      missing_next_step_rate: rate(analyses.filter(a => !a.next_step).length, analyses.length),
+      objection_no_detail_rate: rate(analyses.filter(a => a.objection_detected === true && !a.objection_details).length, analyses.filter(a => a.objection_detected === true).length),
+      category,
+      best_call_id: byScore[0]?.call.id ?? null,
+      worst_call_id: byScore.length > 0 ? byScore[byScore.length - 1].call.id : null,
+    }
+  }).sort((a, b) => (b.avg_sdr_quality ?? -1) - (a.avg_sdr_quality ?? -1))
+}
+
 function SkillBar({ label, score }: { label: string; score: number }) {
   const barColor = score >= 70 ? '#86efac' : score >= 50 ? '#fcd34d' : '#fca5a5'
   return (
@@ -80,22 +228,103 @@ export default async function CoachingPage() {
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
   if (!profile || !['owner', 'manager'].includes(profile.role)) redirect('/login')
 
+  const managerScopeId = profile.role === 'manager' ? user.id : null
+
   // eslint-disable-next-line react-hooks/purity
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString()
-  const { data: statsData } = await supabase.rpc('get_sdr_coaching_stats', {
+  const { data: statsData, error: statsError } = await supabase.rpc('get_sdr_coaching_stats', {
     p_org_id: profile.organization_id,
     p_since: thirtyDaysAgo,
-    p_manager_id: profile.role === 'manager' ? user.id : null,
+    p_manager_id: managerScopeId,
   })
 
-  const profiles = ((statsData || []) as SDRCoachingStatsRow[]).map(s => {
+  if (statsError) {
+    console.error('[COACHING] get_sdr_coaching_stats failed', {
+      user_id: user.id,
+      role: profile.role,
+      organization_id: profile.organization_id,
+      manager_id: profile.manager_id,
+      scope_manager_id: managerScopeId,
+      error: statsError,
+    })
+  }
+
+  let scopedSdrCount: number | null = null
+  let rawStats = (statsData || []) as SDRCoachingStatsRow[]
+  let dataError = statsError
+
+  if (statsError) {
+    let sdrQuery = supabase
+      .from('users')
+      .select('id, name')
+      .eq('organization_id', profile.organization_id)
+      .eq('role', 'sdr')
+
+    if (managerScopeId) sdrQuery = sdrQuery.eq('manager_id', managerScopeId)
+
+    const { data: scopedSdrs, error: sdrError } = await sdrQuery
+    const sdrs = (scopedSdrs || []) as ScopedSdr[]
+    scopedSdrCount = sdrs.length
+
+    if (sdrError) {
+      console.error('[COACHING] scoped SDR fallback failed', {
+        user_id: user.id,
+        role: profile.role,
+        organization_id: profile.organization_id,
+        manager_id: profile.manager_id,
+        scope_manager_id: managerScopeId,
+        error: sdrError,
+      })
+      dataError = sdrError
+    } else if (sdrs.length === 0) {
+      rawStats = []
+      dataError = null
+    } else {
+      const { data: callsData, error: callsError } = await supabase
+        .from('calls')
+        .select(`id, sdr_id, call_datetime, call_analyses(id, sdr_quality_score, appointment_quality_score, appointment_booked, decision_maker_detected, pain_point_detected, appointment_datetime, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step, human_validated, urgency, current_solution, pain_point_details, interest_level)`)
+        .eq('organization_id', profile.organization_id)
+        .in('sdr_id', sdrs.map(s => s.id))
+        .gte('call_datetime', thirtyDaysAgo)
+
+      if (callsError) {
+        console.error('[COACHING] calls fallback failed', {
+          user_id: user.id,
+          role: profile.role,
+          organization_id: profile.organization_id,
+          manager_id: profile.manager_id,
+          scope_manager_id: managerScopeId,
+          error: callsError,
+        })
+        dataError = callsError
+      } else {
+        rawStats = buildCoachingStats(sdrs, (callsData || []) as CoachingCallRow[])
+        dataError = null
+      }
+    }
+  }
+
+  const profiles = rawStats.map(s => {
     const priorities = prioritiesFromStats(s)
     return { ...s, priorities, cat: finalCategory(s, priorities) }
+  })
+  const coachingRecordCount = profiles.reduce((sum, p) => sum + Number(p.total_calls || 0), 0)
+
+  console.log('[COACHING] scope result', {
+    user_id: user.id,
+    role: profile.role,
+    organization_id: profile.organization_id,
+    manager_id: profile.manager_id,
+    sdrs_returned: scopedSdrCount ?? profiles.length,
+    coaching_records_returned: coachingRecordCount,
   })
 
   const top      = profiles.filter(p => p.cat === 'top')
   const needs    = profiles.filter(p => p.cat === 'needs_coaching')
   const improved = profiles.filter(p => p.trend === 'improving' && p.total_calls >= 4)
+  const emptyMessage = profile.role === 'manager'
+    ? 'Aucun SDR assigné à votre équipe'
+    : 'Aucune donnée coaching disponible'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -115,9 +344,15 @@ export default async function CoachingPage() {
           <StatCard label="Coaching requis" value={needs.length} sub={needs.map(p => p.sdr_name).join(', ') || '—'} accent="rgba(239,68,68,.7)" valueColor="#fca5a5" style={{ borderLeftWidth: 3 }} />
         </div>
 
-        {profiles.length === 0 && (
+        {dataError && (
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '48px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: 'var(--muted-2)' }}>Aucun SDR dans cette organisation.</div>
+            <div style={{ fontSize: 13, color: '#fca5a5' }}>Erreur chargement coaching. Consultez les logs serveur.</div>
+          </div>
+        )}
+
+        {!dataError && profiles.length === 0 && (
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', padding: '48px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted-2)' }}>{emptyMessage}</div>
           </div>
         )}
 
