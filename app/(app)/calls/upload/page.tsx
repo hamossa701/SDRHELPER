@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { DateTimePicker } from '@/components/DateTimePicker'
 import { DarkSelect } from '@/components/ui'
 import { AnalysisProgressSkeleton } from '@/components/ui/skeleton-templates'
 import { SkeletonHeader, SkeletonCard, SkeletonLine } from '@/components/ui/skeleton'
@@ -278,7 +279,7 @@ export default function UploadCallPage() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 6 }}>DATE / HEURE</label>
-                <input type="datetime-local" value={form.call_datetime} onChange={e => update('call_datetime', e.target.value)} style={inp} />
+                <DateTimePicker value={form.call_datetime} onChange={value => update('call_datetime', value)} />
               </div>
             </div>
           </div>
