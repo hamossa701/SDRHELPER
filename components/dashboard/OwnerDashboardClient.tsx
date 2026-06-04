@@ -274,6 +274,9 @@ export function OwnerDashboardClient({
 
       <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+        {/* ── Onboarding checklist ── */}
+        <OnboardingChecklist role="owner" />
+
         {/* ── KPI grid — owner-oriented ── */}
         <div className="app-kpi-grid">
           <Link href="/campaigns" className="h3a-kpi-button">
@@ -306,9 +309,6 @@ export function OwnerDashboardClient({
             />
           </Link>
         </div>
-
-        {/* ── Onboarding checklist ── */}
-        <OnboardingChecklist role="owner" />
 
         {/* ── Main content grid ── */}
         <div className="owner-dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 320px', gap: 16, alignItems: 'start' }}>

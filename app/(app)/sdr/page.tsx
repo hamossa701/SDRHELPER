@@ -157,14 +157,14 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
 
       <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+        <OnboardingChecklist role="sdr" />
+
         <div className="app-kpi-grid">
           <StatCard label="Appels analysés" value={kpis.total_calls} />
           <StatCard label="RDV posés"        value={kpis.rdv_booked} />
           <StatCard label="Qualité RDV"      value={kpis.avg_rdv_quality ?? '—'} sub="/100" />
           <StatCard label="Score SDR"        value={kpis.avg_sdr_quality ?? '—'} sub="/100" />
         </div>
-
-        <OnboardingChecklist role="sdr" />
 
         <div className="sdr-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, alignItems: 'start' }}>
 
