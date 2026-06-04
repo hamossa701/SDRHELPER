@@ -78,8 +78,6 @@ export default async function DashboardPage() {
   }
 
   const sdrStats = (leaderboardData || []) as SDRLeaderboardRow[]
-  const bestSdr = sdrStats[0] ?? null
-  const weakestSdr = sdrStats[sdrStats.length - 1] ?? null
 
   const teamTrendLabel = kpis.team_trend === 'improving' ? '↑ En progression'
     : kpis.team_trend === 'declining' ? '↓ En régression' : '→ Stable'
@@ -107,8 +105,7 @@ export default async function DashboardPage() {
       historyCalls={(historyCalls || []) as OwnerDashboardCall[]}
       teamTrendLabel={teamTrendLabel}
       teamTrendColor={teamTrendColor}
-      bestSdr={bestSdr}
-      weakestSdr={weakestSdr}
+      sdrStats={sdrStats}
     />
   )
 }
