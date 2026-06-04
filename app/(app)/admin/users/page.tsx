@@ -170,41 +170,6 @@ export default async function AdminUsersPage() {
           <Card style={{ overflow: 'hidden' }}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Structure managers / SDRs</h2>
-                <span style={{ color: 'var(--muted-2)', fontSize: 12, fontWeight: 650 }}>{managers.length} managers</span>
-              </div>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
-                <thead>
-                  <tr style={{ background: 'var(--thead)' }}>
-                    {['Manager', 'SDRs assignés'].map((label) => (
-                      <th key={label} style={{ padding: '10px 18px', textAlign: 'left', color: 'var(--muted-2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', borderBottom: '1px solid var(--border)' }}>
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {managers.map((manager) => {
-                    const assigned = sdrsByManager.get(manager.id) ?? []
-                    return (
-                      <tr className="h3a-user-row" key={manager.id}>
-                        <td style={{ padding: '14px 18px', color: 'var(--text)', fontSize: 13, fontWeight: 700, borderBottom: '1px solid var(--border)' }}>{manager.name}</td>
-                        <td style={{ padding: '14px 18px', color: assigned.length ? 'var(--muted)' : 'var(--muted-2)', fontSize: 13, borderBottom: '1px solid var(--border)' }}>
-                          {assigned.map((sdr) => sdr.name).join(', ') || 'Aucun SDR assigné'}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          <Card style={{ overflow: 'hidden' }}>
-            <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Équipe</h2>
                 <span style={{ color: 'var(--muted-2)', fontSize: 12, fontWeight: 650 }}>{usersList.length} comptes</span>
               </div>
@@ -304,6 +269,41 @@ export default async function AdminUsersPage() {
                         </td>
                         <td style={{ padding: '14px 18px', color: 'var(--muted-2)', fontSize: 12, borderBottom: '1px solid var(--border)' }}>
                           {formatDate(member.created_at)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card style={{ overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Structure managers / SDRs</h2>
+                <span style={{ color: 'var(--muted-2)', fontSize: 12, fontWeight: 650 }}>{managers.length} managers</span>
+              </div>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
+                <thead>
+                  <tr style={{ background: 'var(--thead)' }}>
+                    {['Manager', 'SDRs assignés'].map((label) => (
+                      <th key={label} style={{ padding: '10px 18px', textAlign: 'left', color: 'var(--muted-2)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', borderBottom: '1px solid var(--border)' }}>
+                        {label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {managers.map((manager) => {
+                    const assigned = sdrsByManager.get(manager.id) ?? []
+                    return (
+                      <tr className="h3a-user-row" key={manager.id}>
+                        <td style={{ padding: '14px 18px', color: 'var(--text)', fontSize: 13, fontWeight: 700, borderBottom: '1px solid var(--border)' }}>{manager.name}</td>
+                        <td style={{ padding: '14px 18px', color: assigned.length ? 'var(--muted)' : 'var(--muted-2)', fontSize: 13, borderBottom: '1px solid var(--border)' }}>
+                          {assigned.map((sdr) => sdr.name).join(', ') || 'Aucun SDR assigné'}
                         </td>
                       </tr>
                     )
