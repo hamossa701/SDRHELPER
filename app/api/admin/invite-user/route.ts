@@ -129,15 +129,39 @@ export async function POST(request: NextRequest) {
     )
 
     if (inviteErr) {
-      console.error('[invite-user] inviteUserByEmail error — message:', inviteErr.message, '| status:', inviteErr.status)
+      // Log full error object safely (no secrets — keys only, no env vars)
+      console.error('[invite-user] inviteUserByEmail error — full object:', JSON.stringify({
+        message: inviteErr.message,
+        status: inviteErr.status,
+        code: (inviteErr as unknown as Record<string, unknown>).code,
+        name: inviteErr.name,
+        cause: (inviteErr as unknown as Record<string, unknown>).cause,
+      }))
+
       const msg = inviteErr.message.toLowerCase()
-      if (
+      const isDuplicate =
         msg.includes('already been registered') ||
         msg.includes('already exists') ||
         msg.includes('duplicate') ||
-        msg.includes('user already')
-      ) {
+        msg.includes('user already') ||
+        inviteErr.status === 422
+      const isSmtp =
+        msg.includes('smtp') ||
+        msg.includes('email') ||
+        msg.includes('send') ||
+        msg.includes('mail') ||
+        msg.includes('delivery') ||
+        inviteErr.status === 500
+
+      if (isDuplicate) {
         return jsonError('Cet email est déjà utilisé dans Supabase Auth', 'DUPLICATE_EMAIL', 409)
+      }
+      if (isSmtp) {
+        return jsonError(
+          `Erreur envoi email : ${inviteErr.message}`,
+          'SMTP_ERROR',
+          500
+        )
       }
       return jsonError(`Invitation échouée : ${inviteErr.message}`, 'INVITE_FAILED', 500)
     }
