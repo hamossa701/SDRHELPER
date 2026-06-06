@@ -226,6 +226,7 @@ export default async function CoachingPage() {
       .in('sdr_id', sdrs.map(s => s.id))
       .gte('call_datetime', sixtyDaysAgo)
       .order('call_datetime', { ascending: false })
+      .limit(1500)
 
     if (callsError) {
       console.error('[COACHING] calls query failed', {

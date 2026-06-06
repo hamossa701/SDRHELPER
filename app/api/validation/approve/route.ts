@@ -31,10 +31,14 @@ export async function POST(request: NextRequest) {
 
     const { data: analysis, error: analysisErr } = await supabase
       .from('call_analyses')
-      .select('id, call_id')
+      .select('id, call_id, human_validated')
       .eq('id', analysisId)
       .single()
     if (analysisErr || !analysis) return NextResponse.json({ error: 'Analyse introuvable' }, { status: 404 })
+
+    if (analysis.human_validated === true) {
+      return NextResponse.json({ ok: true, already_approved: true })
+    }
 
     const { data: call } = await supabase
       .from('calls')

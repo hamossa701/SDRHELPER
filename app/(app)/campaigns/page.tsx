@@ -61,7 +61,7 @@ export default async function CampaignsPage() {
   let callsQuery = supabase.from('calls').select('campaign_id, call_analyses(appointment_booked, appointment_quality_score)').eq('organization_id', profile.organization_id)
   if (profile.role === 'manager') callsQuery = teamSdrIds.length ? callsQuery.in('sdr_id', teamSdrIds) : callsQuery.eq('sdr_id', '00000000-0000-0000-0000-000000000000')
   if (profile.role === 'sdr') callsQuery = callsQuery.eq('sdr_id', user.id)
-  const { data: calls } = await callsQuery
+  const { data: calls } = await callsQuery.limit(2000)
 
   const callRows = (calls || []) as CampaignCallMetric[]
   const stats: CampaignRow[] = ((campaigns || []) as Campaign[]).map((c) => {

@@ -621,11 +621,19 @@ export default async function ClientPage({
       .lte('call_datetime', prevBounds.until)
       .order('call_datetime', { ascending: false })
       .returns<ClientCallRow[]>(),
-    // SDR name lookup — org-scoped, no cross-org leak possible.
+    // SDR name lookup — scoped to SDRs assigned to visible campaigns.
     adminSupabase
       .from('users')
       .select('id, name')
-      .eq('organization_id', profile.organization_id),
+      .eq('organization_id', profile.organization_id)
+      .eq('role', 'sdr')
+      .in('id',
+        await adminSupabase
+          .from('campaign_sdrs')
+          .select('user_id')
+          .in('campaign_id', campaignIds)
+          .then(r => (r.data ?? []).map(x => x.user_id))
+      ),
     // campaign_assignments (may not exist yet)
     adminSupabase
       .from('campaign_assignments')
