@@ -377,6 +377,7 @@ export interface ClientKPIsRow {
   qualification_rate: number | null
   decision_maker_rate: number | null
   appointment_conversion_rate: number | null
+  validated_count: number
 }
 
 export interface ClientValueReportRow {

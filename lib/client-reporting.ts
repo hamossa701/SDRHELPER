@@ -43,20 +43,23 @@ export interface ClientKPIs {
   appointmentsBooked: number
   qualifiedAppointments: number
   qualificationRate: number | null
+  validatedCount: number
 }
 
 export function computeClientKPIs(
   calls: Array<{ call_datetime: string; call_analyses: CallAnalysis | null }>,
 ): ClientKPIs {
-  const analyses = calls.map(c => c.call_analyses).filter(Boolean) as CallAnalysis[]
+  const analyses  = calls.map(c => c.call_analyses).filter(Boolean) as CallAnalysis[]
+  const validated = analyses.filter(a => a.human_validated)
   const booked    = analyses.filter(a => a.appointment_booked).length
-  const qualified = analyses.filter(a => isQualifiedAppointment(a)).length
+  const qualified = validated.filter(a => isQualifiedAppointment(a)).length
   return {
     totalCalls:            calls.length,
     hotWarmContacts:       analyses.filter(a => a.interest_level === 'hot' || a.interest_level === 'warm').length,
     appointmentsBooked:    booked,
     qualifiedAppointments: qualified,
     qualificationRate:     booked > 0 ? Math.round((qualified / booked) * 100) : null,
+    validatedCount:        validated.length,
   }
 }
 
@@ -74,6 +77,8 @@ export function computeValueReport(analyses: CallAnalysis[], totalCalls: number)
   let dmReached = 0
   let booked    = 0
 
+  const validated = analyses.filter(a => a.human_validated)
+
   for (const a of analyses) {
     if (a.pain_point_detected && a.pain_point_details) {
       const key = a.pain_point_details.slice(0, 80)
@@ -82,6 +87,9 @@ export function computeValueReport(analyses: CallAnalysis[], totalCalls: number)
     if (a.objection_detected && a.objection_type) {
       objCounts[a.objection_type] = (objCounts[a.objection_type] || 0) + 1
     }
+  }
+
+  for (const a of validated) {
     if (a.decision_maker_detected) dmReached++
     if (a.appointment_booked)      booked++
   }
@@ -94,9 +102,9 @@ export function computeValueReport(analyses: CallAnalysis[], totalCalls: number)
       .sort((a, b) => b[1] - a[1]).slice(0, 5)
       .map(([label, count]) => ({ label, count })),
     decisionMakerRate:
-      analyses.length > 0 ? Math.round((dmReached / analyses.length) * 100) : null,
+      validated.length > 0 ? Math.round((dmReached / validated.length) * 100) : null,
     appointmentConversionRate:
-      totalCalls > 0 ? Math.round((booked / totalCalls) * 100) : null,
+      validated.length > 0 ? Math.round((booked / validated.length) * 100) : null,
   }
 }
 

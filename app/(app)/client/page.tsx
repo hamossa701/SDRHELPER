@@ -27,6 +27,7 @@ type ClientAnalysis = {
   objection_detected: boolean | null
   objection_type: string | null
   decision_maker_detected: boolean | null
+  human_validated: boolean | null
 }
 type ClientCallRow = {
   id: string
@@ -77,6 +78,7 @@ const CLIENT_ANALYSIS_COLS = [
   'objection_detected',
   'objection_type',
   'decision_maker_detected',
+  'human_validated',
 ].join(', ')
 
 // ─── Period utilities ────────────────────────────────────────────────────────
@@ -117,8 +119,9 @@ function buildKpis(rows: ClientCallRow[]): ClientKPIsRow {
   const analyses = rows.map(row => one(row.call_analyses)).filter((a): a is ClientAnalysis => !!a)
   const total = analyses.length
   const booked = analyses.filter(a => a.appointment_booked === true).length
-  const qualified = analyses.filter(isQualifiedAnalysis).length
-  const decisionMakers = analyses.filter(a => a.decision_maker_detected === true).length
+  const validated = analyses.filter(a => a.human_validated === true)
+  const qualified = validated.filter(isQualifiedAnalysis).length
+  const decisionMakers = validated.filter(a => a.decision_maker_detected === true).length
 
   return {
     total_calls: total,
@@ -126,8 +129,9 @@ function buildKpis(rows: ClientCallRow[]): ClientKPIsRow {
     appointments_booked: booked,
     qualified_appointments: qualified,
     qualification_rate: booked > 0 ? Math.round((qualified / booked) * 100) : null,
-    decision_maker_rate: total > 0 ? Math.round((decisionMakers / total) * 100) : null,
+    decision_maker_rate: validated.length > 0 ? Math.round((decisionMakers / validated.length) * 100) : null,
     appointment_conversion_rate: total > 0 ? Math.round((booked / total) * 100) : null,
+    validated_count: validated.length,
   }
 }
 
@@ -380,6 +384,7 @@ function aggregateSdrStats(
     if (a.appointment_booked) {
       acc[id].booked++
       if (
+        a.human_validated === true &&
         a.decision_maker_detected === true &&
         a.pain_point_detected === true &&
         hasQualifiedAppointmentDate(a) &&
@@ -735,9 +740,10 @@ export default async function ClientPage({
 
   const recentCalls = dashboardRows.slice(0, 10)
 
-  const qualifiedAppointments = bookedCalls.filter((call: ClientCallRow) =>
-    isQualifiedAnalysis(one(call.call_analyses))
-  )
+  const qualifiedAppointments = bookedCalls.filter((call: ClientCallRow) => {
+    const a = one(call.call_analyses)
+    return a?.human_validated === true && isQualifiedAnalysis(a)
+  })
 
   const scoreColor = (n: number | null) =>
     n === null   ? 'var(--muted)'
@@ -834,6 +840,24 @@ export default async function ClientPage({
 
         <OnboardingChecklist role="client" />
 
+        {kpis.validated_count === 0 && kpis.total_calls > 0 && (
+          <div style={{
+            background: 'rgba(245,158,11,.08)',
+            border: '1px solid rgba(245,158,11,.28)',
+            borderRadius: 10,
+            padding: '10px 16px',
+            marginBottom: 20,
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#fcd34d', display: 'block', marginBottom: 2 }}>
+              En attente de validation manager
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+              Les appels ont été analysés par l&apos;IA mais n&apos;ont pas encore été validés par un manager.
+              Les métriques de qualification seront disponibles dès la première validation.
+            </span>
+          </div>
+        )}
+
         {/* ── SECTION 1: KPI Strip ───────────────────────────────────────── */}
         <SectionQ>Obtenons-nous des résultats ?</SectionQ>
         <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 22 }}>
@@ -852,7 +876,7 @@ export default async function ClientPage({
           <StatCard
             label="RDV qualifiés"
             value={kpis.qualified_appointments}
-            sub="décideur + besoin + date"
+            sub={kpis.validated_count === 0 ? "données IA non validées" : "décideur + besoin + date"}
             trend={<KpiTrend current={kpis.qualified_appointments} previous={prevKpis.qualified_appointments} />}
             accent="rgba(252,211,77,.7)" style={{ borderLeftWidth: 3 }}
           />
