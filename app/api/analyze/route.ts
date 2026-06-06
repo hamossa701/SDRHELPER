@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     // ── Parse body ────────────────────────────────────────────────────────────
     const body = await request.json()
-    const { campaign_id, sdr_id, transcript, call_datetime } = body
+    const { campaign_id, sdr_id, transcript, call_datetime, idempotency_key } = body
 
     if (!transcript?.trim()) return NextResponse.json({ error: 'Transcription requise' }, { status: 400 })
     if (transcript.trim().length > 30_000) return NextResponse.json({ error: 'Transcript too long. Maximum is 30,000 characters.' }, { status: 400 })
@@ -99,10 +99,30 @@ export async function POST(request: NextRequest) {
         sdr_id,
         transcript: transcript.trim(),
         call_datetime: call_datetime || new Date().toISOString(),
+        idempotency_key: idempotency_key ?? null,
       })
       .select('id').single()
-    if (callErr || !call) {
+    if (callErr) {
+      if (callErr.code === '23505' && idempotency_key) {
+        const { data: existing } = await admin
+          .from('calls').select('id')
+          .eq('organization_id', profile.organization_id)
+          .eq('sdr_id', sdr_id).eq('campaign_id', campaign_id)
+          .eq('idempotency_key', idempotency_key)
+          .single()
+        if (existing) {
+          const { data: existingJob } = await admin
+            .from('analysis_jobs').select('id')
+            .eq('call_id', existing.id)
+            .order('created_at', { ascending: false })
+            .limit(1).maybeSingle()
+          return NextResponse.json({ call_id: existing.id, job_id: existingJob?.id ?? null, deduplicated: true })
+        }
+      }
       console.error('[analyze] call insert failed:', callErr?.message)
+      return NextResponse.json({ error: 'Erreur création appel' }, { status: 500 })
+    }
+    if (!call) {
       return NextResponse.json({ error: 'Erreur création appel' }, { status: 500 })
     }
 

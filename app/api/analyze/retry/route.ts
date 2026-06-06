@@ -51,8 +51,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Seuls les jobs échoués peuvent être relancés' }, { status: 409 })
     }
 
-    // Reset to pending — clears backoff and error so the worker picks it up cleanly
-    const { error: resetErr } = await supabase
+    // Atomic reset: .eq('status', 'failed') ensures a concurrent retry cannot
+    // double-claim the same job between the read above and this write.
+    const { data: reset, error: resetErr } = await supabase
       .from('analysis_jobs')
       .update({
         status:        'pending',
@@ -64,8 +65,14 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', jobId)
       .eq('organization_id', profile.organization_id)
+      .eq('status', 'failed')
+      .select('id')
+      .maybeSingle()
 
     if (resetErr) throw resetErr
+    if (!reset) {
+      return NextResponse.json({ error: 'Seuls les jobs échoués peuvent être relancés' }, { status: 409 })
+    }
 
     // Re-process after response using Next's request-lifetime primitive.
     after(() => processJobById({ id: jobId, call_id: job.call_id ?? '', retry_count: 0 })

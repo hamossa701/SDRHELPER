@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
       .select('id')
 
     if (profile.role !== 'owner') {
-      updateQuery = updateQuery.eq('assigned_to', user.id)
+      updateQuery = updateQuery.eq('assigned_to', user.id).neq('review_status', 'resolved')
     }
 
     const { data: resolved, error } = await updateQuery.maybeSingle()
