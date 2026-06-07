@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    console.log('[invite-user] caller — email:', user.email, '| role:', profile?.role)
+    console.log('[invite-user] caller — id:', user.id, '| role:', profile?.role)
 
     if (!profile || profile.role !== 'owner') {
       return jsonError('Accès refusé', 'UNAUTHORIZED', 403)
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanEmail = email.toLowerCase().trim()
-    console.log('[invite-user] inviting — email:', cleanEmail, '| role:', role)
+    console.log('[invite-user] inviting — role:', role)
 
     // ── Duplicate check (public.users in this org) ─────────────────────────────
     const { data: existing, error: dupCheckErr } = await supabase
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       return jsonError(`Invitation échouée : ${inviteErr.message}`, 'INVITE_FAILED', 500)
     }
 
-    console.log('[invite-user] invite sent — auth user id:', inviteData.user.id, '| email_confirmed_at:', inviteData.user.email_confirmed_at)
+    console.log('[invite-user] invite sent — auth user id:', inviteData.user.id)
 
     // ── Create public.users profile ────────────────────────────────────────────
     const insertPayload = {
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[invite-user] success — user created:', cleanEmail)
+    console.log('[invite-user] success — user created:', inviteData.user.id)
     return NextResponse.json({ ok: true })
 
   } catch (err) {
