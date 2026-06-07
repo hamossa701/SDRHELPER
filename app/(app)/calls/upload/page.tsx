@@ -9,6 +9,7 @@ import { SkeletonHeader, SkeletonCard, SkeletonLine } from '@/components/ui/skel
 import type { Campaign, User } from '@/types'
 
 type UploadStep = 'form' | 'queued' | 'processing' | 'completed' | 'failed'
+type InputMode = 'paste' | 'audio'
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px', background: 'var(--input-bg)',
@@ -36,6 +37,12 @@ export default function UploadCallPage() {
   const [lastKnownStatus, setLastKnownStatus] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [inputMode, setInputMode] = useState<InputMode>('paste')
+  const [audioFile, setAudioFile] = useState<File | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [transcribeError, setTranscribeError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     async function load() {
@@ -106,8 +113,34 @@ export default function UploadCallPage() {
 
   const transcriptLen = form.transcript.trim().length
 
+  async function handleTranscribe() {
+    if (!audioFile) { setTranscribeError('Sélectionnez un fichier audio.'); return }
+    if (!form.campaign_id) { setTranscribeError('Sélectionnez une campagne.'); return }
+    if (!form.sdr_id) { setTranscribeError('Sélectionnez un SDR.'); return }
+    setTranscribing(true)
+    setTranscribeError('')
+    try {
+      const fd = new FormData()
+      fd.append('audio', audioFile)
+      fd.append('campaign_id', form.campaign_id)
+      fd.append('sdr_id', form.sdr_id)
+      const res = await fetch('/api/transcribe', { method: 'POST', body: fd })
+      const json = await res.json()
+      if (!res.ok) { setTranscribeError(json.error || 'Erreur de transcription'); return }
+      update('transcript', json.transcript)
+      setInputMode('paste')
+      setAudioFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    } catch {
+      setTranscribeError('Erreur réseau')
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (inputMode === 'audio') return
     if (!form.transcript.trim()) { setError('Transcription obligatoire.'); return }
     if (transcriptLen > 30_000) { setError('Transcription trop longue. Maximum : 30 000 caractères.'); return }
     if (!form.campaign_id) { setError('Sélectionnez une campagne.'); return }
@@ -137,6 +170,22 @@ export default function UploadCallPage() {
       const res = await fetch('/api/analyze/retry', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jobId }) })
       if (res.ok) { setStep('queued'); setJobError(null) }
     } finally { setRetrying(false) }
+  }
+
+  if (transcribing) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 }}>
+        <span style={{ width: 36, height: 36, border: '3px solid rgba(148,163,184,.18)', borderTopColor: 'var(--cyan)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
+        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Transcription en cours…</div>
+        <div style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center' }}>
+          Analyse vocale + diarisation · 1–2 min
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted-2)' }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--cyan)', animation: 'h3a-pulse-dot 2s ease infinite' }} />
+          AssemblyAI · mise à jour automatique
+        </div>
+      </div>
+    )
   }
 
   if (step === 'queued' || step === 'processing') {
@@ -285,20 +334,79 @@ export default function UploadCallPage() {
           </div>
 
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.07em', textTransform: 'uppercase' }}>Transcription</span>
-              <span style={{ fontSize: 11, color: transcriptLen > 30_000 ? '#f87171' : transcriptLen > 25_000 ? '#fcd34d' : 'var(--muted-2)' }}>
-                {transcriptLen.toLocaleString()} / 30 000 caractères
-              </span>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(['paste', 'audio'] as const).map(mode => {
+                  const labels: Record<InputMode, string> = { paste: 'Coller la transcription', audio: 'Uploader un audio' }
+                  const active = inputMode === mode
+                  return (
+                    <button key={mode} type="button"
+                      onClick={() => { setInputMode(mode); setTranscribeError('') }}
+                      style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer', border: active ? '1px solid rgba(125,211,252,.35)' : '1px solid transparent', background: active ? 'rgba(99,102,241,.15)' : 'transparent', color: active ? 'var(--text)' : 'var(--muted-2)', transition: 'all .12s', fontFamily: 'Geist, sans-serif' }}>
+                      {labels[mode]}
+                    </button>
+                  )
+                })}
+              </div>
+              {inputMode === 'paste' && (
+                <span style={{ fontSize: 11, color: transcriptLen > 30_000 ? '#f87171' : transcriptLen > 25_000 ? '#fcd34d' : 'var(--muted-2)' }}>
+                  {transcriptLen.toLocaleString()} / 30 000 caractères
+                </span>
+              )}
             </div>
-            <div style={{ padding: 16 }}>
-              <textarea rows={18} value={form.transcript} onChange={e => update('transcript', e.target.value)}
-                placeholder={"SDR: Bonjour, je suis [Prénom]...\nPROSPECT: Oui bonjour...\nSDR: ..."}
-                style={{ ...inp, resize: 'none', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, lineHeight: 1.6 }}
-                onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(125,211,252,.06)' }}
-                onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
-              />
-            </div>
+
+            {inputMode === 'paste' ? (
+              <div style={{ padding: 16 }}>
+                <textarea rows={18} value={form.transcript} onChange={e => update('transcript', e.target.value)}
+                  placeholder={"SDR: Bonjour, je suis [Prénom]...\nPROSPECT: Oui bonjour...\nSDR: ..."}
+                  style={{ ...inp, resize: 'none', fontFamily: 'JetBrains Mono, monospace', fontSize: 12, lineHeight: 1.6 }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--border-strong)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(125,211,252,.06)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'none' }}
+                />
+              </div>
+            ) : (
+              <div style={{ padding: 16 }}>
+                <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,.ogg,.webm" style={{ display: 'none' }}
+                  onChange={e => {
+                    const f = e.target.files?.[0] ?? null
+                    if (f && f.size > 50 * 1024 * 1024) { setTranscribeError('Fichier trop volumineux (max 50 Mo)'); return }
+                    setAudioFile(f); setTranscribeError('')
+                  }}
+                />
+                {audioFile ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 8, background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.28)' }}>
+                    <span className="mat" style={{ fontSize: 22, color: '#a5b4fc' }}>audio_file</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{audioFile.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 2 }}>{(audioFile.size / 1024 / 1024).toFixed(1)} Mo</div>
+                    </div>
+                    <button type="button" onClick={() => { setAudioFile(null); if (fileInputRef.current) fileInputRef.current.value = '' }}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted-2)', display: 'flex', padding: 4 }}>
+                      <span className="mat" style={{ fontSize: 18 }}>close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={e => {
+                      e.preventDefault(); setDragOver(false)
+                      const f = e.dataTransfer.files[0]
+                      if (!f) return
+                      if (f.size > 50 * 1024 * 1024) { setTranscribeError('Fichier trop volumineux (max 50 Mo)'); return }
+                      setAudioFile(f); setTranscribeError('')
+                    }}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '40px 20px', borderRadius: 10, cursor: 'pointer', userSelect: 'none', border: `2px dashed ${dragOver ? 'rgba(99,102,241,.7)' : 'var(--border)'}`, background: dragOver ? 'rgba(99,102,241,.06)' : 'transparent', transition: 'border-color .15s, background .15s' }}
+                  >
+                    <span className="mat" style={{ fontSize: 36, color: dragOver ? '#a5b4fc' : 'var(--muted-2)' }}>upload_file</span>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Glissez un fichier audio ici</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>ou cliquez pour sélectionner</div>
+                    <div style={{ fontSize: 11, color: 'var(--muted-2)', marginTop: 4 }}>MP3, WAV, M4A, OGG, WEBM · max 50 Mo</div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {transcriptLen > 25_000 && transcriptLen <= 30_000 && (
@@ -312,15 +420,27 @@ export default function UploadCallPage() {
             </div>
           )}
 
-          {error && <div style={{ background: 'rgba(239,68,68,.10)', border: '1px solid rgba(239,68,68,.32)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#fca5a5' }}>{error}</div>}
+          {(transcribeError || error) && (
+            <div style={{ background: 'rgba(239,68,68,.10)', border: '1px solid rgba(239,68,68,.32)', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#fca5a5' }}>
+              {transcribeError || error}
+            </div>
+          )}
 
           <div className="mobile-full-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
             <button type="button" onClick={() => router.back()} style={{ padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)', cursor: 'pointer', fontFamily: 'Geist, sans-serif' }}>Annuler</button>
-            <button type="submit" disabled={loading || transcriptLen > 30_000} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: (loading || transcriptLen > 30_000) ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)', fontFamily: 'Geist, sans-serif', opacity: (loading || transcriptLen > 30_000) ? .7 : 1 }}>
-              {loading && <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
-              <span className="mat" style={{ fontSize: 16 }}>mic</span>
-              Analyser l&apos;appel
-            </button>
+            {inputMode === 'audio' ? (
+              <button type="button" onClick={handleTranscribe} disabled={!audioFile || !form.campaign_id || !form.sdr_id}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: (!audioFile || !form.campaign_id || !form.sdr_id) ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)', fontFamily: 'Geist, sans-serif', opacity: (!audioFile || !form.campaign_id || !form.sdr_id) ? .7 : 1 }}>
+                <span className="mat" style={{ fontSize: 16 }}>graphic_eq</span>
+                Transcrire l&apos;audio
+              </button>
+            ) : (
+              <button type="submit" disabled={loading || transcriptLen > 30_000} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: (loading || transcriptLen > 30_000) ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', boxShadow: '0 10px 24px rgba(37,99,235,.2)', fontFamily: 'Geist, sans-serif', opacity: (loading || transcriptLen > 30_000) ? .7 : 1 }}>
+                {loading && <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />}
+                <span className="mat" style={{ fontSize: 16 }}>mic</span>
+                Analyser l&apos;appel
+              </button>
+            )}
           </div>
         </form>
       </main>
