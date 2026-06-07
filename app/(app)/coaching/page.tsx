@@ -287,8 +287,8 @@ export default async function CoachingPage() {
 
       <div className="app-scroll coaching-page-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 16, paddingBottom: 24, minWidth: 0, width: '100%', maxWidth: '100%', flex: '0 0 auto', overflowX: 'hidden', overflowY: 'visible' }}>
         <div className="app-kpi-grid coaching-kpi-grid">
-          <StatCard label="SDR stables" value={stable.length} sub={stable.length === 0 ? 'Aucun profil stable sur la periode' : stable.map(p => p.sdr_name).join(', ')} accent="rgba(125,211,252,.6)" valueColor="var(--cyan)" style={{ borderLeftWidth: 3 }} />
-          <StatCard label="SDR en progression" value={progressing.length} sub={progressing.length === 0 ? 'Aucune hausse confirmee vs periode precedente' : progressing.map(p => p.sdr_name).join(', ')} accent="rgba(34,197,94,.7)" valueColor="#86efac" style={{ borderLeftWidth: 3 }} />
+          <StatCard label="SDR stables" value={stable.length} sub={stable.length === 0 ? 'Aucun profil stable sur la période' : stable.map(p => p.sdr_name).join(', ')} accent="rgba(125,211,252,.6)" valueColor="var(--cyan)" style={{ borderLeftWidth: 3 }} />
+          <StatCard label="SDR en progression" value={progressing.length} sub={progressing.length === 0 ? 'Aucune hausse confirmée vs période précédente' : progressing.map(p => p.sdr_name).join(', ')} accent="rgba(34,197,94,.7)" valueColor="#86efac" style={{ borderLeftWidth: 3 }} />
           <StatCard label="Coaching critique" value={criticalCoaching.length} sub={criticalCoaching.length === 0 ? 'Aucun SDR en urgence coaching' : criticalCoaching.map(p => p.sdr_name).join(', ')} accent="rgba(239,68,68,.7)" valueColor="#fca5a5" style={{ borderLeftWidth: 3 }} />
           <StatCard label="Coaching léger" value={lightCoaching.length} sub={lightCoaching.length === 0 ? 'Aucune priorité importante modérée' : lightCoaching.map(p => p.sdr_name).join(', ')} accent="rgba(245,158,11,.7)" valueColor="#fcd34d" style={{ borderLeftWidth: 3 }} />
         </div>
@@ -318,7 +318,7 @@ export default async function CoachingPage() {
                 {[
                   { label: 'Score SDR moy.', node: <ScoreBadge score={p.avg_sdr_quality} /> },
                   { label: 'Qualité RDV moy.', node: <ScoreBadge score={p.avg_appointment_quality} /> },
-                  { label: 'RDV qualifies', node: <span style={{ fontSize: 12, fontWeight: 700, color: p.qualification_rate >= 60 ? '#86efac' : p.qualification_rate >= 40 ? '#fcd34d' : '#fca5a5' }}>{p.qualified_appointments}/{p.appointments_booked}</span> },
+                  { label: 'RDV qualifiés', node: <span style={{ fontSize: 12, fontWeight: 700, color: p.qualification_rate >= 60 ? '#86efac' : p.qualification_rate >= 40 ? '#fcd34d' : '#fca5a5' }}>{p.qualified_appointments}/{p.appointments_booked}</span> },
                   { label: 'Analyses révisées', node: <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{p.calls_reviewed}/{p.current_analysis_count}</span> },
                   { label: 'Dernière analyse', node: <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{formatDate(p.latest_analysis_at)}</span> },
                 ].map(({ label, node }) => (
@@ -364,13 +364,13 @@ export default async function CoachingPage() {
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>Appels à écouter</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {p.best_call ? (
-                    <CallExampleRow call={p.best_call} label="Meilleur appel a partager" color="#86efac" />
+                    <CallExampleRow call={p.best_call} label="Meilleur appel à partager" color="#86efac" />
                   ) : (
                     <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>Aucun bon exemple disponible</span>
                   )}
 
                   {p.worst_call ? (
-                    <CallExampleRow call={p.worst_call} label="Appel a analyser ensemble" color="#fca5a5" />
+                    <CallExampleRow call={p.worst_call} label="Appel à analyser ensemble" color="#fca5a5" />
                   ) : (
                     <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>Aucun appel a analyser ensemble</span>
                   )}

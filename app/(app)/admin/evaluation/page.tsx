@@ -127,27 +127,27 @@ export default async function EvaluationPage() {
         <div className="app-content">
           <section>
             <h1 style={{ margin: 0, fontSize: 28, lineHeight: 1.12, fontWeight: 700, color: 'var(--text)' }}>
-              Gold Dataset Evaluation
+              Évaluation IA — Jeu de données de référence
             </h1>
             <p style={{ margin: '8px 0 0', color: 'var(--muted)', fontSize: 14 }}>
-              Comparaison interne entre jugement humain attendu, jugement IA et score pass/fail sur appels telecom B2B.
+              Comparaison interne entre jugement humain attendu, jugement IA et score succès/échec sur appels télécom B2B.
             </p>
           </section>
 
           <div className="app-kpi-grid">
-            <StatCard label="Accuracy" value={summary.avgScore} sub={`${summary.total}/${cases.length} cas executes`} dot="var(--cyan)" valueColor={pctColor(summary.avgScore)} />
-            <StatCard label="Decision Maker" value={summary.decisionMaker} sub="Expected vs Actual" dot="#93c5fd" valueColor={pctColor(summary.decisionMaker)} />
-            <StatCard label="RDV Pose" value={summary.rdvPose} sub="Expected vs Actual" dot="#86efac" valueColor={pctColor(summary.rdvPose)} />
-            <StatCard label="RDV Qualifie" value={summary.rdvQualifie} sub="Expected vs Actual" dot="#fcd34d" valueColor={pctColor(summary.rdvQualifie)} />
-            <StatCard label="Temperature" value={summary.temperature} sub="Expected vs Actual" dot="#fca5a5" valueColor={pctColor(summary.temperature)} />
+            <StatCard label="Précision globale" value={summary.avgScore} sub={`${summary.total}/${cases.length} cas exécutés`} dot="var(--cyan)" valueColor={pctColor(summary.avgScore)} />
+            <StatCard label="Décideur" value={summary.decisionMaker} sub="Attendu vs Réel" dot="#93c5fd" valueColor={pctColor(summary.decisionMaker)} />
+            <StatCard label="RDV posé" value={summary.rdvPose} sub="Attendu vs Réel" dot="#86efac" valueColor={pctColor(summary.rdvPose)} />
+            <StatCard label="RDV qualifié" value={summary.rdvQualifie} sub="Attendu vs Réel" dot="#fcd34d" valueColor={pctColor(summary.rdvQualifie)} />
+            <StatCard label="Température" value={summary.temperature} sub="Attendu vs Réel" dot="#fca5a5" valueColor={pctColor(summary.temperature)} />
           </div>
 
           <Card style={{ overflow: 'hidden' }}>
             <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 14, fontWeight: 750, color: 'var(--text)' }}>Cas de reference</h2>
+                <h2 style={{ margin: 0, fontSize: 14, fontWeight: 750, color: 'var(--text)' }}>Cas de référence</h2>
                 <p style={{ margin: '4px 0 0', color: 'var(--muted-2)', fontSize: 12 }}>
-                  {cases.length} cas gold seedes. Les resultats affichent le dernier run par cas.
+                  {cases.length} cas gold seedés. Les résultats affichent le dernier run par cas.
                 </p>
               </div>
             </div>
@@ -156,7 +156,7 @@ export default async function EvaluationPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1180 }}>
                 <thead>
                   <tr style={{ background: 'var(--thead)' }}>
-                    {['Case', 'Expected', 'AI Result', 'Pass/Fail', 'Score', 'Erreurs / explication', 'Run'].map(label => (
+                    {['Cas', 'Attendu', 'Résultat IA', 'Succès/Échec', 'Score', 'Erreurs / explication', 'Lancer'].map(label => (
                       <th key={label} style={{ padding: '10px 14px', textAlign: 'left', color: 'var(--muted-2)', fontSize: 11, fontWeight: 750, textTransform: 'uppercase', letterSpacing: '.04em', borderBottom: '1px solid var(--border)' }}>
                         {label}
                       </th>
@@ -186,9 +186,9 @@ export default async function EvaluationPage() {
                         </td>
                         <td style={{ padding: '14px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                           <div style={{ display: 'grid', gap: 5, color: 'var(--muted)', fontSize: 12 }}>
-                            <span>DM: {boolLabel(testCase.expected_decision_maker)}</span>
-                            <span>RDV: {boolLabel(testCase.expected_rdv_pose)}</span>
-                            <span>Qualifie: {boolLabel(testCase.expected_rdv_qualifie)}</span>
+                            <span>DM : {boolLabel(testCase.expected_decision_maker)}</span>
+                            <span>RDV : {boolLabel(testCase.expected_rdv_pose)}</span>
+                            <span>Qualifié : {boolLabel(testCase.expected_rdv_qualifie)}</span>
                             <InterestBadge level={testCase.expected_temperature as InterestLevel} />
                           </div>
                         </td>
@@ -198,18 +198,18 @@ export default async function EvaluationPage() {
                               <div style={{ color: '#fca5a5', fontSize: 12, lineHeight: 1.45 }}>{result.error_message}</div>
                             ) : (
                               <div style={{ display: 'grid', gap: 5, color: 'var(--muted)', fontSize: 12 }}>
-                                <span>DM: {boolLabel(result.actual_decision_maker)}</span>
-                                <span>RDV: {boolLabel(result.actual_rdv_pose)}</span>
-                                <span>Qualifie: {boolLabel(result.actual_rdv_qualifie)}</span>
+                                <span>DM : {boolLabel(result.actual_decision_maker)}</span>
+                                <span>RDV : {boolLabel(result.actual_rdv_pose)}</span>
+                                <span>Qualifié : {boolLabel(result.actual_rdv_qualifie)}</span>
                                 <InterestBadge level={result.actual_temperature} />
                               </div>
                             )
                           ) : (
-                            <span style={{ color: 'var(--muted-2)', fontSize: 12 }}>Non execute</span>
+                            <span style={{ color: 'var(--muted-2)', fontSize: 12 }}>Non exécuté</span>
                           )}
                         </td>
                         <td style={{ padding: '14px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                          {result ? <SmallBadge tone={result.passed ? 'pass' : 'fail'}>{result.passed ? 'PASS' : 'FAIL'}</SmallBadge> : <SmallBadge>Pending</SmallBadge>}
+                          {result ? <SmallBadge tone={result.passed ? 'pass' : 'fail'}>{result.passed ? 'Succès' : 'Échec'}</SmallBadge> : <SmallBadge>En attente</SmallBadge>}
                         </td>
                         <td style={{ padding: '14px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                           <ScoreBadge score={result?.score ?? null} />
@@ -225,7 +225,7 @@ export default async function EvaluationPage() {
                           )}
                           {result?.passed === false && result.ai_summary && (
                             <p style={{ margin: '5px 0 0', color: 'var(--muted-2)', fontSize: 11, lineHeight: 1.45 }}>
-                              Resume : {result.ai_summary}
+                              Résumé : {result.ai_summary}
                             </p>
                           )}
                         </td>

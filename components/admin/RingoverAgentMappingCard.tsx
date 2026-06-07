@@ -78,18 +78,18 @@ export function RingoverAgentMappingCard({ mappings, sdrs, campaigns }: Props) {
   }
 
   const sdrOptions = [
-    { value: '', label: 'Selectionner un SDR...' },
+    { value: '', label: 'Sélectionner un SDR...' },
     ...sdrs.map(s => ({ value: s.id, label: s.name })),
   ]
   const campaignOptions = [
-    { value: '', label: 'Aucune campagne par defaut' },
+    { value: '', label: 'Aucune campagne par défaut' },
     ...campaigns.map(c => ({ value: c.id, label: c.campaign_name })),
   ]
 
   return (
     <Card style={{ overflow: 'hidden' }}>
       <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Mapping des agents</h2>
+        <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Correspondance des agents</h2>
         <span style={{ color: 'var(--muted-2)', fontSize: 12, fontWeight: 650 }}>
           {mappings.length} agent{mappings.length !== 1 ? 's' : ''}
         </span>
@@ -146,7 +146,7 @@ export function RingoverAgentMappingCard({ mappings, sdrs, campaigns }: Props) {
         <div className="ringover-mapping-intro">
           <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 750 }}>Ajouter une correspondance agent</div>
           <p style={{ margin: '4px 0 0', color: 'var(--muted-2)', fontSize: 12, lineHeight: 1.5 }}>
-            L&apos;ID agent vient de Ringover. Utilisez l&apos;identifiant numerique de l&apos;utilisateur Ringover a rattacher au SDR SDRHELPER.
+            L&apos;ID agent vient de Ringover. Utilisez l&apos;identifiant numérique de l&apos;utilisateur Ringover à rattacher au SDR SDRHELPER.
           </p>
         </div>
         <div className="ringover-mapping-field ringover-agent-id-field">
@@ -160,16 +160,16 @@ export function RingoverAgentMappingCard({ mappings, sdrs, campaigns }: Props) {
             placeholder="ex: 12345"
             style={inputStyle}
           />
-          <div className="ringover-mapping-help">Identifiant numerique Ringover, pas le nom du SDR.</div>
+          <div className="ringover-mapping-help">Identifiant numérique Ringover, pas le nom du SDR.</div>
         </div>
         <div className="ringover-mapping-field">
           <label className="ringover-mapping-label">SDR SDRHELPER *</label>
           <DarkSelect required value={sdrId} onChange={setSdrId} ariaLabel="SDR SDRHELPER" options={sdrOptions} />
-          <div className="ringover-mapping-help">Les appels de cet agent seront assignes a ce SDR.</div>
+          <div className="ringover-mapping-help">Les appels de cet agent seront assignés à ce SDR.</div>
         </div>
         <div className="ringover-mapping-field">
-          <label className="ringover-mapping-label">Campagne par defaut</label>
-          <DarkSelect value={campaignId} onChange={setCampaignId} ariaLabel="Campagne par defaut" options={campaignOptions} />
+          <label className="ringover-mapping-label">Campagne par défaut</label>
+          <DarkSelect value={campaignId} onChange={setCampaignId} ariaLabel="Campagne par défaut" options={campaignOptions} />
           <div className="ringover-mapping-help">Optionnel. Sans campagne, le webhook ignorera les appels de cet agent.</div>
         </div>
         <div className="ringover-mapping-actions">

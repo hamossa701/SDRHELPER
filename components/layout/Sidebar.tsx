@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import type { UserRole } from '@/types'
 
-interface NavItem { href: string; label: string; icon: string; roles: UserRole[] }
+interface NavItem { href: string; label: string; icon: string; roles: UserRole[]; exact?: boolean }
 
 const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Tableau de bord', icon: 'bar_chart', roles: ['owner'] },
@@ -14,11 +14,12 @@ const NAV: NavItem[] = [
   { href: '/client', label: 'Rapport client', icon: 'description', roles: ['client'] },
   { href: '/coaching', label: 'Coaching SDR', icon: 'school', roles: ['owner', 'manager'] },
   { href: '/campaigns', label: 'Campagnes', icon: 'folder', roles: ['owner', 'manager', 'sdr'] },
-  { href: '/admin/evaluation', label: 'Evaluation IA', icon: 'science', roles: ['owner'] },
+  { href: '/admin/evaluation', label: 'Évaluation IA', icon: 'science', roles: ['owner'] },
   { href: '/admin/planning', label: 'Planning', icon: 'calendar_month', roles: ['owner'] },
   { href: '/calls/upload', label: 'Analyser un appel', icon: 'mic', roles: ['owner', 'manager', 'sdr'] },
   { href: '/admin/users', label: 'Utilisateurs', icon: 'group', roles: ['owner'] },
-  { href: '/admin/integrations', label: 'Intégrations', icon: 'extension', roles: ['owner'] },
+  { href: '/admin/integrations', label: 'Intégrations', icon: 'extension', roles: ['owner'], exact: true },
+  { href: '/admin/integrations/health', label: 'Santé des intégrations', icon: 'monitor_heart', roles: ['owner'] },
 ]
 
 export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; userName: string; orgName: string }) {
@@ -87,7 +88,7 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
 
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
         {visible.filter(i => i.href !== '/calls/upload').map(item => {
-          const active = pathname.startsWith(item.href)
+          const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
           return (
             <Link
               key={item.href}
@@ -141,11 +142,11 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
           >{userName.charAt(0).toUpperCase()}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
-            <div style={{ fontSize: 10, color: 'var(--muted-2)', textTransform: 'capitalize' }}>{userRole}</div>
+            <div style={{ fontSize: 10, color: 'var(--muted-2)' }}>{{ owner: 'Propriétaire', manager: 'Manager', sdr: 'SDR', client: 'Client' }[userRole] ?? userRole}</div>
           </div>
           <button
             onClick={signOut}
-            title="Deconnexion"
+            title="Déconnexion"
             style={{
               minWidth: 36,
               minHeight: 36,

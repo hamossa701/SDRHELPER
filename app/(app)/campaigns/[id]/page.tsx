@@ -217,8 +217,8 @@ export default async function CampaignDetailPage({
           </section>
 
           <section className="h3a-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14 }}>
-            <StatCard label="Appels" value={completedCalls.length} sub="Analyses completes valides" dot="var(--cyan)" />
-            <StatCard label="RDV posés" value={rdvBooked} sub="Sur appels termines" dot="#86efac" />
+            <StatCard label="Appels" value={completedCalls.length} sub="Analyses complètes valides" dot="var(--cyan)" />
+            <StatCard label="RDV posés" value={rdvBooked} sub="Sur appels terminés" dot="#86efac" />
             <StatCard label="Qualité RDV moy." value={avgQ ?? '—'} sub={avgQ === null ? 'Pas encore de score' : 'Score moyen'} dot="#fcd34d" />
           </section>
 

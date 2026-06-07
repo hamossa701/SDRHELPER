@@ -18,10 +18,10 @@ export function RunEvaluationButton({ caseId }: { caseId?: string }) {
         body: JSON.stringify(caseId ? { case_id: caseId } : {}),
       })
       const payload = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(payload.error || 'Evaluation impossible')
+      if (!res.ok) throw new Error(payload.error || 'Évaluation impossible')
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Evaluation impossible')
+      setError(err instanceof Error ? err.message : 'Évaluation impossible')
     } finally {
       setRunning(false)
     }
@@ -52,7 +52,7 @@ export function RunEvaluationButton({ caseId }: { caseId?: string }) {
         }}
       >
         <span className="mat" style={{ fontSize: 16 }}>{running ? 'hourglass_top' : 'science'}</span>
-        {running ? 'Evaluation...' : caseId ? 'Tester ce cas' : 'Lancer les 20 cas'}
+        {running ? 'Évaluation...' : caseId ? 'Tester ce cas' : 'Lancer les 20 cas'}
       </button>
       {error && <span style={{ color: '#fca5a5', fontSize: 11, maxWidth: 260, textAlign: 'right' }}>{error}</span>}
     </div>

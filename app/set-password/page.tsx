@@ -61,7 +61,7 @@ export default function SetPasswordPage() {
 
       <div className={styles.secureBadge}>
         <span className={styles.secureDot} />
-        Secure Access
+        Accès sécurisé
       </div>
 
       <div className={styles.content}>

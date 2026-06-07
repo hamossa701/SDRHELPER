@@ -3,9 +3,9 @@ import type { InterestLevel, UserRole } from '@/types'
 
 function temperatureLabel(level: InterestLevel | null) {
   if (level === 'hot') return 'Chaud'
-  if (level === 'warm') return 'Tiede'
+  if (level === 'warm') return 'Tiède'
   if (level === 'cold') return 'Froid'
-  if (level === 'unclear') return 'Indefini'
+  if (level === 'unclear') return 'Indéfini'
   return '-'
 }
 
@@ -90,11 +90,11 @@ export function AnalysisTrustCard({
           <div>
             <h2 style={{ margin: 0, color: 'var(--text)', fontSize: 16, fontWeight: 800 }}>Pourquoi cette analyse ?</h2>
             <p style={{ margin: '5px 0 0', color: 'var(--muted)', fontSize: 12, lineHeight: 1.5 }}>
-              {isClient ? 'Voici pourquoi ce RDV est considere qualifie ou non qualifie.' : 'Lecture explicative basee uniquement sur les champs extraits, la transcription et les regles de scoring.'}
+              {isClient ? 'Voici pourquoi ce RDV est considéré qualifié ou non qualifié.' : 'Lecture explicative basée uniquement sur les champs extraits, la transcription et les règles de scoring.'}
             </p>
           </div>
           <StatusPill tone={explanation.qualification.qualified ? 'good' : 'warn'}>
-            RDV qualifie : {explanation.qualification.qualified ? 'Oui' : 'Non'}
+            RDV qualifié : {explanation.qualification.qualified ? 'Oui' : 'Non'}
           </StatusPill>
         </div>
       </div>
@@ -104,10 +104,10 @@ export function AnalysisTrustCard({
           <ReasonList items={explanation.qualification.reasons} />
         </TrustSection>
 
-        <TrustSection title="Temperature">
+        <TrustSection title="Température">
           <div style={{ marginBottom: 10 }}>
             <StatusPill tone={explanation.temperature.level === 'hot' ? 'good' : explanation.temperature.level === 'warm' ? 'warn' : 'neutral'}>
-              Temperature : {temperatureLabel(explanation.temperature.level)}
+              Température : {temperatureLabel(explanation.temperature.level)}
             </StatusPill>
           </div>
           <ReasonList items={explanation.temperature.reasons} />
@@ -116,14 +116,14 @@ export function AnalysisTrustCard({
         <TrustSection title="Score">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
             <div style={{ color: 'var(--text)', fontSize: 22, fontWeight: 800 }}>{explanation.score.value ?? '-'}/100</div>
-            {explanation.score.isApproximation && <StatusPill tone="neutral">Lecture explicative du score</StatusPill>}
+            {explanation.score.isApproximation && <StatusPill tone="neutral">Score explicatif</StatusPill>}
           </div>
           {explanation.score.reason && <p style={{ margin: '0 0 10px', color: 'var(--muted)', fontSize: 12, lineHeight: 1.5 }}>{explanation.score.reason}</p>}
           <ScoreBreakdown items={explanation.score.breakdown} />
         </TrustSection>
 
         <TrustSection title="Informations manquantes">
-          {explanation.missingInfo.length > 0 ? <ReasonList items={explanation.missingInfo} /> : <div style={{ color: 'var(--muted-2)', fontSize: 12 }}>Aucune information critique manquante detectee.</div>}
+          {explanation.missingInfo.length > 0 ? <ReasonList items={explanation.missingInfo} /> : <div style={{ color: 'var(--muted-2)', fontSize: 12 }}>Aucune information critique manquante détectée.</div>}
         </TrustSection>
 
         <TrustSection title="Recommandation">
@@ -131,7 +131,7 @@ export function AnalysisTrustCard({
         </TrustSection>
 
         {!isClient && explanation.coachingNotes.length > 0 && (
-          <TrustSection title={isSdr ? 'A ameliorer la prochaine fois' : 'Signaux coaching'}>
+          <TrustSection title={isSdr ? 'À améliorer la prochaine fois' : 'Signaux coaching'}>
             <ReasonList items={explanation.coachingNotes} />
           </TrustSection>
         )}

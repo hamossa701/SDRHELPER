@@ -336,7 +336,7 @@ export default function UploadCallPage() {
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 4 }}>
                 {(['paste', 'audio'] as const).map(mode => {
-                  const labels: Record<InputMode, string> = { paste: 'Coller la transcription', audio: 'Uploader un audio' }
+                  const labels: Record<InputMode, string> = { paste: 'Coller la transcription', audio: 'Importer un fichier audio' }
                   const active = inputMode === mode
                   return (
                     <button key={mode} type="button"

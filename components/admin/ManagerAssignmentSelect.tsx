@@ -33,11 +33,11 @@ export function ManagerAssignmentSelect({
       })
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
-        throw new Error(data.error || 'Mise a jour impossible')
+        throw new Error(data.error || 'Mise à jour impossible')
       }
     } catch (err) {
       setValue(currentManagerId ?? '')
-      setError(err instanceof Error ? err.message : 'Mise a jour impossible')
+      setError(err instanceof Error ? err.message : 'Mise à jour impossible')
     } finally {
       setSaving(false)
     }
@@ -62,9 +62,9 @@ export function ManagerAssignmentSelect({
           outline: 'none',
           opacity: saving ? 0.65 : 1,
         }}
-        aria-label="Manager assigne"
+        aria-label="Manager assigné"
       >
-        <option value="">Non assigne</option>
+        <option value="">Non assigné</option>
         {managers.map((manager) => (
           <option key={manager.id} value={manager.id}>
             {manager.name}
