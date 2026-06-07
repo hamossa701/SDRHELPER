@@ -2,19 +2,19 @@ import { SkeletonHeader, SkeletonKpiGrid, SkeletonCard, SkeletonLine } from '@/c
 
 export default function CoachingLoading() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 }}>
       <SkeletonHeader titleWidth={140} subtitleWidth={330} />
-      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
         <SkeletonKpiGrid count={3} />
         {Array.from({ length: 3 }).map((_, index) => (
-          <SkeletonCard key={index} style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', justifyContent: 'space-between' }}>
+          <SkeletonCard key={index} style={{ padding: 0, overflow: 'hidden', minWidth: 0 }}>
+            <div className="coaching-profile-header" style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', justifyContent: 'space-between', gap: 12, minWidth: 0 }}>
               <SkeletonLine width={220} height={18} />
               <SkeletonLine width={170} height={18} />
             </div>
-            <div className="coaching-profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr 1fr' }}>
+            <div className="coaching-profile-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.72fr) minmax(0, 1.18fr) minmax(0, 1fr)', minWidth: 0 }}>
               {Array.from({ length: 3 }).map((__, col) => (
-                <div key={col} style={{ padding: 18, borderRight: col < 2 ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', gap: 13 }}>
+                <div key={col} style={{ padding: 18, borderRight: col < 2 ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', gap: 13, minWidth: 0 }}>
                   <SkeletonLine width={130} height={11} />
                   {Array.from({ length: 5 }).map((___, row) => <SkeletonLine key={row} height={12} />)}
                 </div>

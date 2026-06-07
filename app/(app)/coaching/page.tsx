@@ -74,15 +74,15 @@ function OverallTrend({ status }: { status: CoachingTrendStatus }) {
 function SkillBar({ label, score, trend }: { label: string; score: number; trend: SkillTrend }) {
   const barColor = score >= 70 ? '#86efac' : score >= 50 ? '#fcd34d' : '#fca5a5'
   return (
-    <div className="coaching-skill-row" style={{ display: 'grid', gridTemplateColumns: '122px minmax(116px, 1fr) 148px', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-      <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.25, minWidth: 0 }}>{label}</span>
+    <div className="coaching-skill-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(92px, 122px) minmax(0, 1fr) minmax(80px, 112px)', alignItems: 'center', gap: 12, marginBottom: 6, minWidth: 0 }}>
+      <span style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.25, minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
       <div style={{ width: '100%', minWidth: 0, height: 6, position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(148,163,184,.14)', borderRadius: 4, overflow: 'hidden' }}>
           <div style={{ height: '100%', borderRadius: 4, background: barColor, width: `${score}%` }} />
         </div>
         <div style={{ position: 'absolute', left: '70%', top: -8, width: 1, height: 22, background: 'rgba(255,255,255,.22)', pointerEvents: 'none' }} />
       </div>
-      <span style={{ display: 'flex', justifyContent: 'flex-start', gap: 6, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 0 }}>
+      <span style={{ display: 'flex', justifyContent: 'flex-start', gap: 6, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
         <span style={{ color: barColor }}>{score}</span>
         <TrendText trend={trend} />
       </span>
@@ -125,13 +125,26 @@ function CallExampleRow({
   label,
   color,
 }: {
-  call: NonNullable<CoachingSupervisionProfile['best_call']>
+  call: CoachingSupervisionProfile['best_call']
   label: string
   color: string
 }) {
+  if (!call?.callId) {
+    return (
+      <div className="coaching-call-link is-disabled" aria-disabled="true">
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: 'block', fontSize: 10, color, fontWeight: 800, lineHeight: 1.1 }}>{label}</span>
+          <span style={{ display: 'block', fontSize: 11, color: 'var(--muted-2)', lineHeight: 1.25 }}>Appel indisponible</span>
+        </span>
+      </div>
+    )
+  }
+
   return (
     <Link
       href={`/calls/${call.callId}`}
+      className="coaching-call-link"
+      aria-label={`${label}: ouvrir le detail de l'appel ${call.prospect}`}
       style={{
         display: 'grid',
         gridTemplateColumns: '1fr auto',
@@ -264,7 +277,7 @@ export default async function CoachingPage() {
   const emptyMessage = profile.role === 'manager' ? 'Aucun SDR assigné à votre équipe' : 'Aucune donnée coaching disponible'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 }}>
       <div className="app-page-header" style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Coaching SDR</div>
@@ -272,7 +285,7 @@ export default async function CoachingPage() {
         </div>
       </div>
 
-      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 16, paddingBottom: 24 }}>
+      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 16, paddingBottom: 24, minWidth: 0 }}>
         <div className="app-kpi-grid">
           <StatCard label="SDR stables" value={stable.length} sub={stable.length === 0 ? 'Aucun profil stable sur la periode' : stable.map(p => p.sdr_name).join(', ')} accent="rgba(125,211,252,.6)" valueColor="var(--cyan)" style={{ borderLeftWidth: 3 }} />
           <StatCard label="SDR en progression" value={progressing.length} sub={progressing.length === 0 ? 'Aucune hausse confirmee vs periode precedente' : progressing.map(p => p.sdr_name).join(', ')} accent="rgba(34,197,94,.7)" valueColor="#86efac" style={{ borderLeftWidth: 3 }} />
@@ -284,12 +297,12 @@ export default async function CoachingPage() {
         {!dataError && profiles.length === 0 && <EmptyPanel>{emptyMessage}</EmptyPanel>}
 
         {profiles.map(p => (
-          <div key={p.sdr_id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
-            <div style={{ padding: '9px 14px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div key={p.sdr_id} style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', boxShadow: 'var(--shadow)', minWidth: 0 }}>
+            <div className="coaching-profile-header" style={{ padding: '9px 14px', borderBottom: '1px solid var(--border)', background: 'var(--thead)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                 <div style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,var(--indigo),var(--cyan))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }}>{p.sdr_name.charAt(0)}</div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{p.sdr_name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.sdr_name}</div>
                   <div style={{ fontSize: 11, color: 'var(--muted-2)' }}>{p.total_calls} appel{p.total_calls !== 1 ? 's' : ''} - {p.current_analysis_count} analyse{p.current_analysis_count !== 1 ? 's' : ''}</div>
                 </div>
               </div>
@@ -299,8 +312,8 @@ export default async function CoachingPage() {
               </div>
             </div>
 
-            <div className="coaching-profile-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(184px, 0.68fr) minmax(420px, 1.18fr) minmax(330px, 1fr)' }}>
-              <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
+            <div className="coaching-profile-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.72fr) minmax(0, 1.18fr) minmax(0, 1fr)', minWidth: 0 }}>
+              <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)', minWidth: 0 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Performance</div>
                 {[
                   { label: 'Score SDR moy.', node: <ScoreBadge score={p.avg_sdr_quality} /> },
@@ -309,8 +322,8 @@ export default async function CoachingPage() {
                   { label: 'Analyses révisées', node: <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{p.calls_reviewed}/{p.current_analysis_count}</span> },
                   { label: 'Dernière analyse', node: <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)' }}>{formatDate(p.latest_analysis_at)}</span> },
                 ].map(({ label, node }) => (
-                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 10 }}>
-                    <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>{label}</span>
+                  <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, gap: 10, minWidth: 0 }}>
+                    <span style={{ fontSize: 12, color: 'var(--muted-2)', minWidth: 0, overflowWrap: 'anywhere' }}>{label}</span>
                     {node}
                   </div>
                 ))}
@@ -332,13 +345,13 @@ export default async function CoachingPage() {
                     {p.priorities.map((pr) => {
                       const style = RANK_STYLE[pr.rank]
                       return (
-                        <div key={`${pr.rank}-${pr.label}`} style={{ paddingBottom: 4, borderBottom: '1px solid rgba(148,163,184,.10)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: pr.evidence.length ? 2 : 0 }}>
+                        <div key={`${pr.rank}-${pr.label}`} style={{ paddingBottom: 4, borderBottom: '1px solid rgba(148,163,184,.10)', minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: pr.evidence.length ? 2 : 0, minWidth: 0 }}>
                             <span style={{ flexShrink: 0, padding: '2px 7px', borderRadius: 6, fontSize: 10, fontWeight: 800, background: style.bg, color: style.color, border: `1px solid ${style.border}` }}>{pr.rank}</span>
-                            <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.18 }}>{pr.label}</span>
+                            <span style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.18, minWidth: 0, overflowWrap: 'anywhere' }}>{pr.label}</span>
                           </div>
                           {pr.evidence.slice(0, 1).map(item => (
-                            <div key={item.label} style={{ marginLeft: 4, fontSize: 10, color: 'var(--muted-2)', lineHeight: 1.15 }}>
+                            <div key={item.label} style={{ marginLeft: 4, fontSize: 10, color: 'var(--muted-2)', lineHeight: 1.15, overflowWrap: 'anywhere' }}>
                               - {item.label}: {item.count} appel{item.count !== 1 ? 's' : ''}
                             </div>
                           ))}

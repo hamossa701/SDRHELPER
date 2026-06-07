@@ -398,13 +398,32 @@ body::before {
   }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1360px) {
+  .coaching-profile-grid {
+    grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr) !important;
+  }
+
+  .coaching-profile-grid > div:nth-child(2) {
+    border-right: 0 !important;
+  }
+
+  .coaching-profile-grid > div:nth-child(3) {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 1040px) {
   .coaching-profile-grid {
     grid-template-columns: 1fr !important;
   }
 
-  .coaching-profile-grid > div {
+  .coaching-profile-grid > div,
+  .coaching-profile-grid > div:nth-child(2),
+  .coaching-profile-grid > div:nth-child(3) {
+    grid-column: auto;
     border-right: 0 !important;
+    border-top: 0;
     border-bottom: 1px solid var(--border);
   }
 
@@ -414,10 +433,51 @@ body::before {
 }
 
 @media (max-width: 560px) {
+  .coaching-profile-header {
+    align-items: flex-start !important;
+    flex-direction: column;
+  }
+
   .coaching-skill-row {
-    grid-template-columns: minmax(92px, 120px) minmax(72px, 1fr) minmax(118px, 150px) !important;
+    grid-template-columns: minmax(76px, 110px) minmax(0, 1fr) minmax(64px, 88px) !important;
     gap: 8px !important;
   }
+}
+
+@media (max-width: 380px) {
+  .coaching-skill-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.coaching-call-link {
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .15s, box-shadow .15s;
+}
+
+.coaching-call-link:hover,
+.coaching-call-link:focus-visible {
+  border-color: rgba(125,211,252,.32) !important;
+  background: rgba(125,211,252,.08) !important;
+  box-shadow: 0 10px 24px rgba(37,99,235,.14);
+  outline: none;
+}
+
+.coaching-call-link:focus-visible {
+  box-shadow: 0 0 0 3px rgba(125,211,252,.14), 0 10px 24px rgba(37,99,235,.14);
+}
+
+.coaching-call-link.is-disabled {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 7px;
+  border-radius: 7px;
+  border: 1px solid rgba(148,163,184,.10);
+  background: rgba(2,6,23,.16);
+  cursor: not-allowed;
+  opacity: .68;
 }
 
 @media (prefers-reduced-motion: reduce) {
