@@ -38,7 +38,12 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
       .eq('organization_id', profile.organization_id)
       .eq('client_id', profile.client_id)
     const clientCampaignIds = (clientCampaigns ?? []).map((c: { id: string }) => c.id)
-    const { data: callCheck } = await adminDb.from('calls').select('id, campaign_id').eq('id', id).single()
+    const { data: callCheck } = await adminDb
+      .from('calls')
+      .select('id, campaign_id')
+      .eq('id', id)
+      .eq('organization_id', profile.organization_id)
+      .single()
     if (!callCheck || !clientCampaignIds.includes(callCheck.campaign_id)) redirect('/client')
   }
 
