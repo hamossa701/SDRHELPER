@@ -81,8 +81,11 @@ export async function POST(request: NextRequest) {
         p_route: '/api/analyze',
         p_window_start: windowStart.toISOString(),
       })
-    if (rlErr) console.error('[analyze] rate limit rpc error:', rlErr.message)
-    if (!rlErr && rlCount > 10) {
+    if (rlErr || rlCount === null || rlCount === undefined) {
+      console.error('[analyze] rate limit rpc error:', rlErr?.message)
+      return NextResponse.json({ error: 'Service indisponible, réessayez' }, { status: 503 })
+    }
+    if (rlCount > 10) {
       return NextResponse.json(
         { error: 'Rate limit exceeded. You can analyze up to 10 calls per hour.' },
         { status: 429 }

@@ -49,8 +49,11 @@ export async function POST(request: NextRequest) {
       p_route: '/api/transcribe',
       p_window_start: rlWindow.toISOString(),
     })
-  if (rlErr) console.error('[transcribe] rate limit rpc error:', rlErr.message)
-  if (!rlErr && rlCount > 5) {
+  if (rlErr || rlCount === null || rlCount === undefined) {
+    console.error('[transcribe] rate limit rpc error:', rlErr?.message)
+    return NextResponse.json({ error: 'Service indisponible, réessayez' }, { status: 503 })
+  }
+  if (rlCount > 5) {
     return NextResponse.json(
       { error: 'Limite atteinte. Vous pouvez transcrire au maximum 5 fichiers par heure.' },
       { status: 429 }
