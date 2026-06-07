@@ -398,37 +398,81 @@ body::before {
   }
 }
 
-@media (max-width: 1360px) {
+.coaching-page,
+.coaching-page-scroll,
+.coaching-page .h3a-kpi-card,
+.coaching-profile-grid,
+.coaching-profile-grid > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.coaching-page-scroll {
+  overflow-x: hidden !important;
+}
+
+.coaching-kpi-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.coaching-profile-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.coaching-profile-grid > div {
+  border-right: 0 !important;
+  border-bottom: 1px solid var(--border);
+}
+
+.coaching-profile-grid > div:last-child {
+  border-bottom: 0;
+}
+
+@media (min-width: 900px) {
+  .coaching-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1536px) {
   .coaching-profile-grid {
-    grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr) !important;
+    grid-template-columns: minmax(0, 280px) minmax(0, 1fr) !important;
+  }
+
+  .coaching-profile-grid > div:first-child {
+    border-right: 1px solid var(--border) !important;
   }
 
   .coaching-profile-grid > div:nth-child(2) {
-    border-right: 0 !important;
+    border-bottom: 1px solid var(--border);
   }
 
   .coaching-profile-grid > div:nth-child(3) {
     grid-column: 1 / -1;
-    border-top: 1px solid var(--border);
   }
 }
 
-@media (max-width: 1040px) {
+@media (min-width: 1760px) {
+  .coaching-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1920px) {
   .coaching-profile-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 260px) minmax(0, 1fr) minmax(0, 420px) !important;
   }
 
   .coaching-profile-grid > div,
   .coaching-profile-grid > div:nth-child(2),
   .coaching-profile-grid > div:nth-child(3) {
     grid-column: auto;
-    border-right: 0 !important;
-    border-top: 0;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 0;
   }
 
-  .coaching-profile-grid > div:last-child {
-    border-bottom: 0;
+  .coaching-profile-grid > div:first-child,
+  .coaching-profile-grid > div:nth-child(2) {
+    border-right: 1px solid var(--border) !important;
   }
 }
 

@@ -277,7 +277,7 @@ export default async function CoachingPage() {
   const emptyMessage = profile.role === 'manager' ? 'Aucun SDR assigné à votre équipe' : 'Aucune donnée coaching disponible'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', minWidth: 0 }}>
+    <div className="coaching-page" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%', maxWidth: '100%', overflow: 'visible', minWidth: 0 }}>
       <div className="app-page-header" style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Coaching SDR</div>
@@ -285,8 +285,8 @@ export default async function CoachingPage() {
         </div>
       </div>
 
-      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 16, paddingBottom: 24, minWidth: 0 }}>
-        <div className="app-kpi-grid">
+      <div className="app-scroll coaching-page-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 16, paddingBottom: 24, minWidth: 0, width: '100%', maxWidth: '100%', flex: '0 0 auto', overflowX: 'hidden', overflowY: 'visible' }}>
+        <div className="app-kpi-grid coaching-kpi-grid">
           <StatCard label="SDR stables" value={stable.length} sub={stable.length === 0 ? 'Aucun profil stable sur la periode' : stable.map(p => p.sdr_name).join(', ')} accent="rgba(125,211,252,.6)" valueColor="var(--cyan)" style={{ borderLeftWidth: 3 }} />
           <StatCard label="SDR en progression" value={progressing.length} sub={progressing.length === 0 ? 'Aucune hausse confirmee vs periode precedente' : progressing.map(p => p.sdr_name).join(', ')} accent="rgba(34,197,94,.7)" valueColor="#86efac" style={{ borderLeftWidth: 3 }} />
           <StatCard label="Coaching critique" value={criticalCoaching.length} sub={criticalCoaching.length === 0 ? 'Aucun SDR en urgence coaching' : criticalCoaching.map(p => p.sdr_name).join(', ')} accent="rgba(239,68,68,.7)" valueColor="#fca5a5" style={{ borderLeftWidth: 3 }} />
@@ -312,7 +312,7 @@ export default async function CoachingPage() {
               </div>
             </div>
 
-            <div className="coaching-profile-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.72fr) minmax(0, 1.18fr) minmax(0, 1fr)', minWidth: 0 }}>
+            <div className="coaching-profile-grid" style={{ display: 'grid', minWidth: 0, width: '100%', maxWidth: '100%' }}>
               <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)', minWidth: 0 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Performance</div>
                 {[
