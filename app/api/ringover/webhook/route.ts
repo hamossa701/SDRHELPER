@@ -87,6 +87,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: 'no_default_campaign' })
   }
 
+  const duration = callData.duration ?? 0
+  if (duration < 120) {
+    console.log(`[ringover-webhook] call too short (${duration}s), skipping:`, callData.call_id)
+    return NextResponse.json({ ok: true, skipped: 'call_too_short', duration })
+  }
+
   const sdrId = agentMapping.sdr_id
   const campaignId = agentMapping.default_campaign_id
   const recordingUrl = callData.recording_url
@@ -103,6 +109,7 @@ export async function POST(request: NextRequest) {
           transcript: '[RINGOVER_PENDING_TRANSCRIPTION]',
           audio_url: recordingUrl,
           call_datetime: startTime,
+          call_duration_seconds: duration,
           source: 'ringover',
         })
         .select('id')
