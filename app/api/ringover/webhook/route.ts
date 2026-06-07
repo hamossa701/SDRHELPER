@@ -2,6 +2,9 @@ import { after, NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { processJobById } from '@/lib/job-processor'
+import { transcribeAssemblyAiAudioUrl } from '@/lib/assemblyai'
+
+export const maxDuration = 300
 
 interface RingoverPayload {
   event: string
@@ -32,6 +35,9 @@ export async function POST(request: NextRequest) {
 
   if (!integration) {
     return NextResponse.json({}, { status: 401 })
+  }
+  if (!integration.enabled) {
+    return NextResponse.json({ error: 'Integration disabled' }, { status: 403 })
   }
 
   const expected = crypto
@@ -100,24 +106,65 @@ export async function POST(request: NextRequest) {
 
   after(async () => {
     try {
-      const { data: call, error: callErr } = await admin
+      const transcription = await transcribeAssemblyAiAudioUrl(recordingUrl)
+      const resolvedDuration = transcription.duration_seconds || duration
+      if (resolvedDuration < 120) {
+        console.log(`[ringover-webhook] transcribed call too short (${resolvedDuration}s), skipping:`, callData.call_id)
+        return
+      }
+
+      const { data: existingCall } = await admin
         .from('calls')
-        .insert({
-          organization_id: orgId,
-          campaign_id: campaignId,
-          sdr_id: sdrId,
-          transcript: '[RINGOVER_PENDING_TRANSCRIPTION]',
-          audio_url: recordingUrl,
-          call_datetime: startTime,
-          call_duration_seconds: duration,
-          source: 'ringover',
-        })
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('source', 'ringover')
+        .eq('external_call_id', callData.call_id)
+        .maybeSingle()
+
+      const callPayload = {
+        organization_id: orgId,
+        campaign_id: campaignId,
+        sdr_id: sdrId,
+        transcript: transcription.transcript,
+        audio_url: recordingUrl,
+        call_datetime: startTime,
+        call_duration_seconds: resolvedDuration,
+        source: 'ringover',
+        external_call_id: callData.call_id,
+      }
+
+      const { data: call, error: callErr } = existingCall
+        ? await admin
+          .from('calls')
+          .update(callPayload)
+          .eq('id', existingCall.id)
+          .eq('organization_id', orgId)
+          .select('id')
+          .single()
+        : await admin
+        .from('calls')
+        .insert(callPayload)
         .select('id')
         .single()
       if (callErr || !call) {
         console.error('[ringover-webhook] call insert failed:', callErr?.message)
         return
       }
+
+      const { data: existingJob } = await admin
+        .from('analysis_jobs')
+        .select('id, status, retry_count')
+        .eq('organization_id', orgId)
+        .eq('call_id', call.id)
+        .in('status', ['pending', 'processing', 'completed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (existingJob) {
+        console.log('[ringover-webhook] existing job found, skipping new job:', existingJob.id, '| status:', existingJob.status)
+        return
+      }
+
       const { data: job, error: jobErr } = await admin
         .from('analysis_jobs')
         .insert({ organization_id: orgId, call_id: call.id, status: 'pending' })

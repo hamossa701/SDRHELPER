@@ -71,6 +71,8 @@ export interface Call {
   sdr_id: string
   transcript: string | null
   audio_url: string | null
+  external_call_id: string | null
+  call_duration_seconds: number | null
   call_datetime: string
   source: string | null
   created_at: string

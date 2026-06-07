@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { DateTimePicker } from '@/components/DateTimePicker'
 import { DarkSelect } from '@/components/ui'
-import { AnalysisProgressSkeleton } from '@/components/ui/skeleton-templates'
 import { SkeletonHeader, SkeletonCard, SkeletonLine } from '@/components/ui/skeleton'
 import type { Campaign, User } from '@/types'
 
