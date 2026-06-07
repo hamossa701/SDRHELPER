@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createAdminClient } from '@/lib/supabase-admin'
 
 // Vercel: allow up to 3 min for transcription polling
 export const maxDuration = 180
@@ -36,6 +37,24 @@ export async function POST(request: NextRequest) {
   if (!profile) return NextResponse.json({ error: 'Profil introuvable' }, { status: 401 })
   if (!['owner', 'manager', 'sdr'].includes(profile.role)) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
+  }
+
+  // ── Rate limit: 5 transcriptions per user per hour ────────────────────────
+  const adminForRl = createAdminClient()
+  const rlWindow = new Date()
+  rlWindow.setMinutes(0, 0, 0)
+  const { data: rlCount, error: rlErr } = await adminForRl
+    .rpc('increment_rate_limit', {
+      p_user_id: user.id,
+      p_route: '/api/transcribe',
+      p_window_start: rlWindow.toISOString(),
+    })
+  if (rlErr) console.error('[transcribe] rate limit rpc error:', rlErr.message)
+  if (!rlErr && rlCount > 5) {
+    return NextResponse.json(
+      { error: 'Limite atteinte. Vous pouvez transcrire au maximum 5 fichiers par heure.' },
+      { status: 429 }
+    )
   }
 
   // ── Parse multipart ───────────────────────────────────────────────────────
