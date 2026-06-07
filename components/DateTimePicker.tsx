@@ -7,6 +7,8 @@ type DateTimePickerProps = {
   value: string
   onChange: (value: string) => void
   ariaLabel?: string
+  mode?: 'datetime' | 'date'
+  minDate?: string
 }
 
 const MONTHS = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre']
@@ -24,13 +26,32 @@ function parseLocalValue(value: string) {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]))
 }
 
+function parseDateValue(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return startOfDay(new Date())
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+}
+
+function parsePickerValue(value: string, mode: 'datetime' | 'date') {
+  return mode === 'date' ? parseDateValue(value) : parseLocalValue(value)
+}
+
 function toLocalInputValue(date: Date) {
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}T${two(date.getHours())}:${two(date.getMinutes())}`
+}
+
+function toDateInputValue(date: Date) {
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}`
 }
 
 function displayDateTime(value: string) {
   const date = parseLocalValue(value)
   return `${two(date.getDate())}/${two(date.getMonth() + 1)}/${date.getFullYear()} ${two(date.getHours())}:${two(date.getMinutes())}`
+}
+
+function displayDate(value: string) {
+  const date = parseDateValue(value)
+  return `${two(date.getDate())}/${two(date.getMonth() + 1)}/${date.getFullYear()}`
 }
 
 function sameDay(a: Date, b: Date) {
@@ -65,16 +86,17 @@ function monthDays(viewMonth: Date) {
   return cells
 }
 
-export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de l appel' }: DateTimePickerProps) {
+export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de l appel', mode = 'datetime', minDate }: DateTimePickerProps) {
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState(() => parseLocalValue(value))
-  const [viewMonth, setViewMonth] = useState(() => startOfDay(parseLocalValue(value)))
+  const [draft, setDraft] = useState(() => parsePickerValue(value, mode))
+  const [viewMonth, setViewMonth] = useState(() => startOfDay(parsePickerValue(value, mode)))
   const [panelStyle, setPanelStyle] = useState<React.CSSProperties | null>(null)
 
   const cells = useMemo(() => monthDays(viewMonth), [viewMonth])
   const today = useMemo(() => startOfDay(new Date()), [])
+  const minimumDate = useMemo(() => minDate ? parseDateValue(minDate) : null, [minDate])
 
   function updatePanelPosition() {
     const rect = buttonRef.current?.getBoundingClientRect()
@@ -100,7 +122,7 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
   }
 
   function openPicker() {
-    const parsed = parseLocalValue(value)
+    const parsed = parsePickerValue(value, mode)
     setDraft(parsed)
     setViewMonth(new Date(parsed.getFullYear(), parsed.getMonth(), 1))
     updatePanelPosition()
@@ -113,6 +135,7 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
   }
 
   function updateDraftDate(nextDate: Date) {
+    if (minimumDate && startOfDay(nextDate) < minimumDate) return
     setDraft(prev => new Date(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate(), prev.getHours(), prev.getMinutes()))
     setViewMonth(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1))
   }
@@ -127,7 +150,7 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
   }
 
   function confirm() {
-    onChange(toLocalInputValue(draft))
+    onChange(mode === 'date' ? toDateInputValue(draft) : toLocalInputValue(draft))
     closePicker()
   }
 
@@ -175,7 +198,7 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
         onClick={() => (open ? setOpen(false) : openPicker())}
       >
         <span className="mat h3a-datetime-trigger-icon" aria-hidden="true">calendar_month</span>
-        <span>{displayDateTime(value)}</span>
+        <span>{mode === 'date' ? displayDate(value) : displayDateTime(value)}</span>
       </button>
 
       {open && panelStyle && typeof document !== 'undefined' && createPortal(
@@ -197,7 +220,13 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
               { label: 'Dans 2j', date: addDays(today, 2) },
               { label: 'Vendredi', date: nextFriday() },
             ].map(item => (
-              <button key={item.label} type="button" className="h3a-datetime-quick" onClick={() => updateDraftDate(item.date)}>
+              <button
+                key={item.label}
+                type="button"
+                className="h3a-datetime-quick"
+                disabled={!!minimumDate && item.date < minimumDate}
+                onClick={() => updateDraftDate(item.date)}
+              >
                 {item.label}
               </button>
             ))}
@@ -210,12 +239,14 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
             {cells.map((date, index) => {
               if (!date) return <span key={`empty-${index}`} className="h3a-datetime-empty-day" />
               const selected = sameDay(date, draft)
+              const disabled = !!minimumDate && date < minimumDate
               return (
                 <button
                   key={date.toISOString()}
                   type="button"
                   className={`h3a-datetime-day${selected ? ' is-selected' : ''}${sameDay(date, today) ? ' is-today' : ''}`}
                   aria-pressed={selected}
+                  disabled={disabled}
                   onClick={() => updateDraftDate(date)}
                 >
                   {date.getDate()}
@@ -224,21 +255,23 @@ export function DateTimePicker({ value, onChange, ariaLabel = 'Date et heure de 
             })}
           </div>
 
-          <div className="h3a-datetime-time-row">
-            <label className="h3a-datetime-time-label">
-              <span>Heure</span>
-              <select className="h3a-datetime-time-select" value={two(draft.getHours())} onChange={e => updateDraftTime('hour', e.target.value)}>
-                {!HOURS.includes(two(draft.getHours())) && <option value={two(draft.getHours())}>{two(draft.getHours())}h</option>}
-                {HOURS.map(hour => <option key={hour} value={hour}>{hour}h</option>)}
-              </select>
-            </label>
-            <label className="h3a-datetime-time-label">
-              <span>Minute</span>
-              <select className="h3a-datetime-time-select" value={two(draft.getMinutes())} onChange={e => updateDraftTime('minute', e.target.value)}>
-                {MINUTES.map(minute => <option key={minute} value={minute}>{minute}</option>)}
-              </select>
-            </label>
-          </div>
+          {mode === 'datetime' && (
+            <div className="h3a-datetime-time-row">
+              <label className="h3a-datetime-time-label">
+                <span>Heure</span>
+                <select className="h3a-datetime-time-select" value={two(draft.getHours())} onChange={e => updateDraftTime('hour', e.target.value)}>
+                  {!HOURS.includes(two(draft.getHours())) && <option value={two(draft.getHours())}>{two(draft.getHours())}h</option>}
+                  {HOURS.map(hour => <option key={hour} value={hour}>{hour}h</option>)}
+                </select>
+              </label>
+              <label className="h3a-datetime-time-label">
+                <span>Minute</span>
+                <select className="h3a-datetime-time-select" value={two(draft.getMinutes())} onChange={e => updateDraftTime('minute', e.target.value)}>
+                  {MINUTES.map(minute => <option key={minute} value={minute}>{minute}</option>)}
+                </select>
+              </label>
+            </div>
+          )}
 
           <div className="h3a-datetime-actions">
             <button type="button" className="h3a-datetime-cancel" onClick={closePicker}>Annuler</button>

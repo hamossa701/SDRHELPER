@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Card, DarkSelect, StatusBadge } from '@/components/ui'
+import { DateTimePicker } from '@/components/DateTimePicker'
 import type { AssignmentType } from '@/types'
 
 interface CampaignRow {
@@ -137,12 +138,6 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
       body: JSON.stringify({ status: 'archived' }),
     })
     router.refresh()
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '9px 12px', borderRadius: 8,
-    background: 'var(--input-bg)', border: '1px solid var(--border)',
-    color: 'var(--text)', fontSize: 13, outline: 'none',
   }
 
   const labelStyle: React.CSSProperties = {
@@ -343,7 +338,7 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
               </div>
               <div>
                 <label style={labelStyle}>Date de début</label>
-                <input type="date" value={formStart} onChange={e => handleStartChange(e.target.value)} style={inputStyle} />
+                <DateTimePicker mode="date" value={formStart} onChange={handleStartChange} ariaLabel="Date de debut" />
               </div>
               <div>
                 <label style={labelStyle}>Durée</label>
@@ -363,7 +358,7 @@ export function PlanningActions({ campaigns, sdrs, assignments, today }: Props) 
               {formDuration === 'custom' ? (
                 <div>
                   <label style={labelStyle}>Date de fin</label>
-                  <input type="date" value={formEnd} min={formStart} onChange={e => setFormEnd(e.target.value)} style={inputStyle} />
+                  <DateTimePicker mode="date" value={formEnd} onChange={setFormEnd} minDate={formStart} ariaLabel="Date de fin" />
                 </div>
               ) : (
                 <div style={{ fontSize: 12, color: 'var(--muted-2)' }}>

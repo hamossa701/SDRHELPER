@@ -555,6 +555,54 @@ input, select, textarea {
   opacity: .48;
 }
 
+.ringover-mapping-form {
+  padding: 18px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(150px, .7fr) minmax(190px, 1fr) minmax(210px, 1fr) minmax(112px, auto);
+  gap: 14px;
+  align-items: start;
+  background: rgba(2,6,23,.16);
+}
+
+.ringover-mapping-intro {
+  grid-column: 1 / -1;
+  padding: 12px 14px;
+  border: 1px solid rgba(125,211,252,.14);
+  border-radius: 8px;
+  background: rgba(125,211,252,.05);
+}
+
+.ringover-mapping-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ringover-agent-id-field {
+  min-width: 140px;
+}
+
+.ringover-mapping-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.ringover-mapping-help {
+  color: var(--muted-2);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ringover-mapping-actions {
+  min-width: 112px;
+  padding-top: 24px;
+}
+
 .h3a-datetime-trigger {
   width: 100%;
   min-height: 38px;
@@ -668,6 +716,11 @@ input, select, textarea {
   background: rgba(125,211,252,.11);
 }
 
+.h3a-datetime-quick:disabled {
+  cursor: not-allowed;
+  opacity: .42;
+}
+
 .h3a-datetime-weekdays,
 .h3a-datetime-grid {
   display: grid;
@@ -711,6 +764,17 @@ input, select, textarea {
   border-color: rgba(125,211,252,.22);
   background: rgba(125,211,252,.08);
   color: var(--text);
+}
+
+.h3a-datetime-day:disabled {
+  cursor: not-allowed;
+  opacity: .32;
+}
+
+.h3a-datetime-day:disabled:hover {
+  border-color: transparent;
+  background: rgba(2,6,23,.30);
+  color: var(--muted);
 }
 
 .h3a-datetime-day.is-today {
@@ -818,6 +882,16 @@ input, select, textarea {
 
   .h3a-datetime-trigger {
     min-height: 42px;
+  }
+
+  .ringover-mapping-form {
+    grid-template-columns: 1fr;
+    gap: 13px;
+    padding: 16px;
+  }
+
+  .ringover-mapping-actions {
+    padding-top: 0;
   }
 }
 

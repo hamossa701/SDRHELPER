@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui'
+import { Card, DarkSelect } from '@/components/ui'
 
 interface AgentMapping {
   id: string
@@ -77,14 +77,14 @@ export function RingoverAgentMappingCard({ mappings, sdrs, campaigns }: Props) {
     width: '100%',
   }
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 650,
-    color: 'var(--muted-2)',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '.04em',
-    marginBottom: 4,
-  }
+  const sdrOptions = [
+    { value: '', label: 'Selectionner un SDR...' },
+    ...sdrs.map(s => ({ value: s.id, label: s.name })),
+  ]
+  const campaignOptions = [
+    { value: '', label: 'Aucune campagne par defaut' },
+    ...campaigns.map(c => ({ value: c.id, label: c.campaign_name })),
+  ]
 
   return (
     <Card style={{ overflow: 'hidden' }}>
@@ -142,9 +142,15 @@ export function RingoverAgentMappingCard({ mappings, sdrs, campaigns }: Props) {
         </div>
       )}
 
-      <form onSubmit={handleAdd} style={{ padding: '16px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 110, flex: '0 0 110px' }}>
-          <div style={labelStyle}>Agent ID</div>
+      <form onSubmit={handleAdd} className="ringover-mapping-form">
+        <div className="ringover-mapping-intro">
+          <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 750 }}>Ajouter une correspondance agent</div>
+          <p style={{ margin: '4px 0 0', color: 'var(--muted-2)', fontSize: 12, lineHeight: 1.5 }}>
+            L&apos;ID agent vient de Ringover. Utilisez l&apos;identifiant numerique de l&apos;utilisateur Ringover a rattacher au SDR SDRHELPER.
+          </p>
+        </div>
+        <div className="ringover-mapping-field ringover-agent-id-field">
+          <label className="ringover-mapping-label">ID agent Ringover *</label>
           <input
             type="number"
             min={1}
@@ -154,27 +160,23 @@ export function RingoverAgentMappingCard({ mappings, sdrs, campaigns }: Props) {
             placeholder="ex: 12345"
             style={inputStyle}
           />
+          <div className="ringover-mapping-help">Identifiant numerique Ringover, pas le nom du SDR.</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 160px', minWidth: 140 }}>
-          <div style={labelStyle}>SDR</div>
-          <select value={sdrId} onChange={e => setSdrId(e.target.value)} required style={{ ...inputStyle, cursor: 'pointer' }}>
-            <option value="">Sélectionner...</option>
-            {sdrs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+        <div className="ringover-mapping-field">
+          <label className="ringover-mapping-label">SDR SDRHELPER *</label>
+          <DarkSelect required value={sdrId} onChange={setSdrId} ariaLabel="SDR SDRHELPER" options={sdrOptions} />
+          <div className="ringover-mapping-help">Les appels de cet agent seront assignes a ce SDR.</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 160px', minWidth: 140 }}>
-          <div style={labelStyle}>Campagne par défaut</div>
-          <select value={campaignId} onChange={e => setCampaignId(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-            <option value="">Aucune</option>
-            {campaigns.map(c => <option key={c.id} value={c.id}>{c.campaign_name}</option>)}
-          </select>
+        <div className="ringover-mapping-field">
+          <label className="ringover-mapping-label">Campagne par defaut</label>
+          <DarkSelect value={campaignId} onChange={setCampaignId} ariaLabel="Campagne par defaut" options={campaignOptions} />
+          <div className="ringover-mapping-help">Optionnel. Sans campagne, le webhook ignorera les appels de cet agent.</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', flex: '0 0 auto' }}>
-          <div style={{ ...labelStyle, color: 'transparent' }}>_</div>
+        <div className="ringover-mapping-actions">
           <button
             type="submit"
             disabled={submitting || !agentId || !sdrId}
-            style={{ height: 36, padding: '0 16px', borderRadius: 8, background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: submitting || !agentId || !sdrId ? 'not-allowed' : 'pointer', opacity: submitting || !agentId || !sdrId ? .5 : 1, transition: 'opacity .12s', whiteSpace: 'nowrap' }}
+            style={{ height: 38, width: '100%', padding: '0 16px', borderRadius: 8, background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: submitting || !agentId || !sdrId ? 'not-allowed' : 'pointer', opacity: submitting || !agentId || !sdrId ? .5 : 1, transition: 'opacity .12s', whiteSpace: 'nowrap' }}
           >
             {submitting ? 'Ajout...' : 'Ajouter'}
           </button>
