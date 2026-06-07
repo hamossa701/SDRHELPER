@@ -22,6 +22,11 @@ export async function POST(request: NextRequest) {
   const orgId = request.nextUrl.searchParams.get('org_id')
   if (!orgId) return NextResponse.json({ error: 'Missing org_id' }, { status: 400 })
 
+  const contentLength = parseInt(request.headers.get('content-length') ?? '0', 10)
+  if (contentLength > 1_000_000) {
+    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  }
+
   const rawBody = await request.text()
   const signature = request.headers.get('x-ringover-signature') ?? ''
 
