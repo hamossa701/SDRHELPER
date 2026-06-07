@@ -1,3 +1,4 @@
+import { withSentryConfig } from '@sentry/nextjs';
 import type { NextConfig } from "next";
 
 const securityHeaders = [
@@ -36,4 +37,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "h3a",
+  project: "javascript-nextjs",
+  // Suppress source map upload logs locally; show them in CI for traceability
+  silent: !process.env.CI,
+  // Upload broader source maps so stack traces in Sentry are readable (not minified)
+  widenClientFileUpload: true,
+  webpack: {
+    // Strip Sentry's own internal debug log statements from the client bundle
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+});
