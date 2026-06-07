@@ -35,6 +35,7 @@ export default async function CampaignsPage() {
     .select('*')
     .eq('organization_id', profile.organization_id)
     .order('created_at', { ascending: false })
+    .limit(500)
 
   if (profile.role === 'manager') {
     const { data: teamSdrs } = await supabase

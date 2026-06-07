@@ -48,6 +48,7 @@ export default async function DashboardPage() {
     .from('campaigns').select('*')
     .eq('organization_id', profile.organization_id)
     .order('created_at', { ascending: false })
+    .limit(500)
 
   const campaignIds = (campaigns || []).map((c: Campaign) => c.id)
 

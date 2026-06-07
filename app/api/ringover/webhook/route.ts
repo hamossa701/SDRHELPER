@@ -22,12 +22,22 @@ export async function POST(request: NextRequest) {
   const orgId = request.nextUrl.searchParams.get('org_id')
   if (!orgId) return NextResponse.json({ error: 'Missing org_id' }, { status: 400 })
 
-  const contentLength = parseInt(request.headers.get('content-length') ?? '0', 10)
-  if (contentLength > 1_000_000) {
-    return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+  const MAX_BODY_BYTES = 1_000_000
+  const chunks: Buffer[] = []
+  let bodyBytes = 0
+  const reader = request.body?.getReader()
+  if (!reader) return NextResponse.json({ error: 'Empty body' }, { status: 400 })
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    bodyBytes += value.byteLength
+    if (bodyBytes > MAX_BODY_BYTES) {
+      await reader.cancel()
+      return NextResponse.json({ error: 'Payload too large' }, { status: 413 })
+    }
+    chunks.push(Buffer.from(value))
   }
-
-  const rawBody = await request.text()
+  const rawBody = Buffer.concat(chunks).toString('utf8')
   const signature = request.headers.get('x-ringover-signature') ?? ''
 
   const admin = createAdminClient()
