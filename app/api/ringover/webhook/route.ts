@@ -106,13 +106,6 @@ export async function POST(request: NextRequest) {
 
   after(async () => {
     try {
-      const transcription = await transcribeAssemblyAiAudioUrl(recordingUrl)
-      const resolvedDuration = transcription.duration_seconds || duration
-      if (resolvedDuration < 120) {
-        console.log(`[ringover-webhook] transcribed call too short (${resolvedDuration}s), skipping:`, callData.call_id)
-        return
-      }
-
       const { data: existingCall } = await admin
         .from('calls')
         .select('id')
@@ -120,6 +113,29 @@ export async function POST(request: NextRequest) {
         .eq('source', 'ringover')
         .eq('external_call_id', callData.call_id)
         .maybeSingle()
+
+      if (existingCall) {
+        const { data: existingJob } = await admin
+          .from('analysis_jobs')
+          .select('id, status')
+          .eq('organization_id', orgId)
+          .eq('call_id', existingCall.id)
+          .in('status', ['pending', 'processing', 'completed'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (existingJob) {
+          console.log('[ringover-webhook] duplicate event, skipping transcription:', callData.call_id)
+          return
+        }
+      }
+
+      const transcription = await transcribeAssemblyAiAudioUrl(recordingUrl)
+      const resolvedDuration = transcription.duration_seconds || duration
+      if (resolvedDuration < 120) {
+        console.log(`[ringover-webhook] transcribed call too short (${resolvedDuration}s), skipping:`, callData.call_id)
+        return
+      }
 
       const callPayload = {
         organization_id: orgId,
