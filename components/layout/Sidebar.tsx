@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
   { href: '/admin/planning', label: 'Planning', icon: 'calendar_month', roles: ['owner'] },
   { href: '/calls/upload', label: 'Analyser un appel', icon: 'mic', roles: ['owner', 'manager', 'sdr'] },
   { href: '/admin/users', label: 'Utilisateurs', icon: 'group', roles: ['owner'] },
+  { href: '/admin/integrations', label: 'Intégrations', icon: 'extension', roles: ['owner'] },
 ]
 
 export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; userName: string; orgName: string }) {

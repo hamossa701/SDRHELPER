@@ -72,6 +72,7 @@ export interface Call {
   transcript: string | null
   audio_url: string | null
   call_datetime: string
+  source: string | null
   created_at: string
   review_status: ReviewStatus
   assigned_to: string | null
