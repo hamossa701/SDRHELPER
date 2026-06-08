@@ -203,16 +203,16 @@ export default async function ManagerPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
             <StatCard label="SDR équipe"           value={kpis.team_sdr_count} />
             <StatCard label="Appels aujourd'hui"  value={kpis.today_calls} />
-            <StatCard label="À réviser"            value={kpis.calls_requiring_review} sub="flags détectés" />
+            <StatCard label="À réviser"            value={kpis.calls_requiring_review} sub="flags détectés" variant={kpis.calls_requiring_review > 0 ? 'warning' : 'default'} />
             <StatCard label="RDV qualifiés"        value={kpis.qualified_appointments} sub="décideur + besoin + date + score ≥60" />
-            <StatCard label="Taux qualification"   value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" />
+            <StatCard label="Taux qualification"   value={`${kpis.qualification_rate}%`} sub="RDV qualifiés / RDV posés" variant={kpis.qualification_rate < 50 ? 'warning' : kpis.qualification_rate >= 70 ? 'success' : 'default'} />
           </div>
           {/* Row 2 — quality */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
             <StatCard label="Appels révisés"       value={kpis.calls_reviewed}      sub="analyses approuvées par un manager" />
             <StatCard label="En attente révision"  value={kpis.calls_pending}       sub="analyses non approuvées" />
-            <StatCard label="RDV faibles"          value={kpis.weak_appointments}   sub="score RDV < 60" />
-            <StatCard label="Coaching"             value={kpis.coaching_opportunities} sub="SDR dont le score moyen est inférieur à 55" />
+            <StatCard label="RDV faibles"          value={kpis.weak_appointments}   sub="score RDV < 60" variant={kpis.weak_appointments > 0 ? 'danger' : 'default'} />
+            <StatCard label="Coaching"             value={kpis.coaching_opportunities} sub="SDR dont le score moyen est inférieur à 55" variant={kpis.coaching_opportunities > 0 ? 'danger' : 'default'} />
             <StatCard label="Champs corrigés"      value={kpis.ai_trust_corrected}  sub="corrections enregistrées" />
             <StatCard label="Fiabilité IA"         value={trustScore !== null ? `${trustScore}%` : '—'} sub={trustLabel} />
           </div>

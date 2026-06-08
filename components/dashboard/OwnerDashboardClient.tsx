@@ -287,10 +287,11 @@ export function OwnerDashboardClient({
               label="Campagnes à risque"
               value={atRiskCampaigns}
               valueColor={atRiskCampaigns > 0 ? '#fca5a5' : undefined}
+              variant={atRiskCampaigns > 0 ? 'danger' : 'default'}
             />
           </Link>
           <button className="h3a-kpi-button" type="button" onClick={() => applyKpiFilter('qualified')} aria-pressed={selectedKpi === 'qualified'}>
-            <StatCard label="RDV qualifiés" value={kpis.qualified_appointments} sub="Décideur + besoin + date" className={selectedKpi === 'qualified' ? 'is-active' : undefined} />
+            <StatCard label="RDV qualifiés" value={kpis.qualified_appointments} sub="Décideur + besoin + date" className={selectedKpi === 'qualified' ? 'is-active' : undefined} variant="success" />
           </button>
           <button className="h3a-kpi-button" type="button" onClick={() => applyKpiFilter('pending_review')} aria-pressed={selectedKpi === 'pending_review'}>
             <StatCard
@@ -298,6 +299,7 @@ export function OwnerDashboardClient({
               value={pendingReviewCount}
               valueColor={pendingReviewCount > 0 ? '#fcd34d' : undefined}
               className={selectedKpi === 'pending_review' ? 'is-active' : undefined}
+              variant={pendingReviewCount > 0 ? 'warning' : 'default'}
             />
           </button>
           <StatCard label="Clients actifs" value={activeClientsCount} />
@@ -317,18 +319,45 @@ export function OwnerDashboardClient({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
             {/* Analyses nécessitant validation */}
-            <Card style={{ overflow: 'hidden' }}>
-              <CardHeader>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Analyses nécessitant validation</h2>
-                  <span style={{ fontSize: 11, color: 'var(--muted-2)' }}>{validationNeeded.length} élément{validationNeeded.length !== 1 ? 's' : ''}</span>
+            {validationNeeded.length > 0 && (
+              <div style={{
+                border: '1px solid rgba(245,158,11,.35)',
+                borderLeft: '3px solid rgba(245,158,11,.8)',
+                background: 'rgba(245,158,11,.06)',
+                borderRadius: 10,
+                overflow: 'hidden',
+                marginBottom: 16,
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 16px',
+                  borderBottom: '1px solid rgba(245,158,11,.18)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="mat" style={{ fontSize: 16, color: '#fcd34d' }}>warning</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#fcd34d' }}>
+                      Action requise
+                    </span>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      padding: '1px 7px',
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: 'rgba(245,158,11,.18)',
+                      color: '#fcd34d',
+                      border: '1px solid rgba(245,158,11,.35)',
+                    }}>
+                      {validationNeeded.length} analyse{validationNeeded.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'rgba(253,211,77,.6)', fontWeight: 600 }}>
+                    Analyses nécessitant validation
+                  </span>
                 </div>
-              </CardHeader>
-              {validationNeeded.length === 0 ? (
-                <div style={{ margin: 16, padding: '20px 18px', textAlign: 'center', fontSize: 13, color: 'var(--muted-2)', background: 'rgba(34,197,94,.03)', border: '1px dashed rgba(34,197,94,.18)', borderRadius: 10 }}>
-                  Aucune analyse en attente de validation ✓
-                </div>
-              ) : (
                 <div>
                   {validationNeeded.map(({ call, flags }, index) => {
                     const analysis = one(call.call_analyses)
@@ -357,8 +386,8 @@ export function OwnerDashboardClient({
                     )
                   })}
                 </div>
-              )}
-            </Card>
+              </div>
+            )}
 
             {/* Analysis history table */}
             <Card className="owner-history-card" style={{ overflow: 'hidden', minWidth: 0 }}>

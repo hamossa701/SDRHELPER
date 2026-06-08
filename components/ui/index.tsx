@@ -303,12 +303,22 @@ export function ScoreBadge({ score }: { score: number | null }) {
 }
 
 // ---- KPI / Stat Card ----
+type StatCardVariant = 'default' | 'danger' | 'warning' | 'success'
+
+const variantBorder: Record<StatCardVariant, string> = {
+  default: 'transparent',
+  danger:  'rgba(239,68,68,.7)',
+  warning: 'rgba(245,158,11,.7)',
+  success: 'rgba(34,197,94,.7)',
+}
+
 type StatCardProps = {
   label: string
   value: React.ReactNode
   sub?: React.ReactNode
   dot?: string
   accent?: string
+  variant?: StatCardVariant
   badge?: React.ReactNode
   trend?: React.ReactNode
   valueColor?: string
@@ -322,14 +332,22 @@ export function StatCard({
   sub,
   dot,
   accent,
+  variant,
   badge,
   trend,
   valueColor = 'var(--text)',
   className,
   style: extraStyle,
 }: StatCardProps) {
+  const v = variant ?? 'default'
+  const variantStyle: React.CSSProperties = v !== 'default' ? {
+    borderLeft: `3px solid ${variantBorder[v]}`,
+    background: v === 'danger'  ? 'rgba(239,68,68,.05)'  :
+                v === 'warning' ? 'rgba(245,158,11,.04)' :
+                                  'rgba(34,197,94,.04)',
+  } : {}
   return (
-    <div className={cn('h3a-kpi-card', className)} style={{ borderLeftColor: accent, ...extraStyle }}>
+    <div className={cn('h3a-kpi-card', className)} style={{ borderLeftColor: accent, ...variantStyle, ...extraStyle }}>
       <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(125,211,252,.55),transparent)', opacity: .9 }} />
       <div className="h3a-kpi-title-row">
         <div className="h3a-kpi-title">

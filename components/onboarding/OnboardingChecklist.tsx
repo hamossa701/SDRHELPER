@@ -38,49 +38,53 @@ interface Props {
 
 export function OnboardingChecklist({ role }: Props) {
   const items = ITEMS[role] ?? []
-  const [completedItems, setCompletedItems] = useState<string[]>([])
-  // Start visible — fetch will hide only if user previously dismissed
-  const [visible, setVisible] = useState(true)
+  const STORAGE_KEY = `sdrhelper_onboarding_${role}`
+
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    try { return localStorage.getItem(`${STORAGE_KEY}_dismissed`) === 'true' } catch { return false }
+  })
+
+  const [completedItems, setCompletedItems] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEY}_completed`)
+      return raw ? (JSON.parse(raw) as string[]) : []
+    } catch { return [] }
+  })
 
   useEffect(() => {
-    fetch('/api/onboarding')
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { completed_items?: string[]; dismissed_at?: string | null } | null) => {
-        if (!data) return
-        if (data.completed_items?.length) setCompletedItems(data.completed_items)
-        if (data.dismissed_at) setVisible(false)
-      })
-      .catch(() => {})
-  }, [])
+    if (dismissed) return
+    const allDone = items.length > 0 && items.every(i => completedItems.includes(i.id))
+    if (!allDone) return
+    try {
+      const ts = localStorage.getItem(`${STORAGE_KEY}_completed_at`)
+      if (ts && Date.now() - Number(ts) > 86_400_000) {
+        setDismissed(true)
+        localStorage.setItem(`${STORAGE_KEY}_dismissed`, 'true')
+      }
+    } catch {}
+  }, [completedItems, dismissed, items, STORAGE_KEY])
 
   const toggleItem = (itemId: string) => {
     const next = completedItems.includes(itemId)
       ? completedItems.filter(id => id !== itemId)
       : [...completedItems, itemId]
     setCompletedItems(next)
-    fetch('/api/onboarding', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ completed_items: next }),
-    }).catch(() => {})
+    try { localStorage.setItem(`${STORAGE_KEY}_completed`, JSON.stringify(next)) } catch {}
+    if (items.every(i => next.includes(i.id))) {
+      try { localStorage.setItem(`${STORAGE_KEY}_completed_at`, Date.now().toString()) } catch {}
+    }
   }
 
   const dismiss = () => {
-    setVisible(false)
-    fetch('/api/onboarding', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dismissed_at: new Date().toISOString() }),
-    }).catch(() => {})
+    setDismissed(true)
+    try { localStorage.setItem(`${STORAGE_KEY}_dismissed`, 'true') } catch {}
   }
 
   const reopen = () => {
-    setVisible(true)
-    fetch('/api/onboarding', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dismissed_at: null }),
-    }).catch(() => {})
+    setDismissed(false)
+    try { localStorage.removeItem(`${STORAGE_KEY}_dismissed`) } catch {}
   }
 
   const completed = items.filter(i => completedItems.includes(i.id)).length
@@ -88,7 +92,7 @@ export function OnboardingChecklist({ role }: Props) {
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0
   const allDone = completed === total
 
-  if (!visible) {
+  if (dismissed) {
     return (
       <button
         type="button"

@@ -980,6 +980,17 @@ export default async function ClientPage({
                     {health.label}
                   </div>
 
+                  {health.label === 'Campagne en risque' && health.mainCause && (
+                    <div style={{
+                      fontSize: 12,
+                      color: 'rgba(252,165,165,.85)',
+                      marginTop: 4,
+                      lineHeight: 1.4,
+                    }}>
+                      {health.mainCause}
+                    </div>
+                  )}
+
                   {health.qualRate !== null && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <MetricRow label="Qualification" value={`${health.qualRate}%`} fill={health.qualRate} color={scoreColor(health.qualRate)} />
