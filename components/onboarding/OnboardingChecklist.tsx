@@ -40,18 +40,18 @@ export function OnboardingChecklist({ role }: Props) {
   const items = ITEMS[role] ?? []
   const STORAGE_KEY = `sdrhelper_onboarding_${role}`
 
-  const [dismissed, setDismissed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
-    try { return localStorage.getItem(`${STORAGE_KEY}_dismissed`) === 'true' } catch { return false }
-  })
+  const [dismissed, setDismissed] = useState(false)
+  const [completedItems, setCompletedItems] = useState<string[]>([])
 
-  const [completedItems, setCompletedItems] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return []
+  // Read localStorage after hydration — initializers would cause server/client mismatch
+  useEffect(() => {
     try {
+      const isDismissed = localStorage.getItem(`${STORAGE_KEY}_dismissed`) === 'true'
       const raw = localStorage.getItem(`${STORAGE_KEY}_completed`)
-      return raw ? (JSON.parse(raw) as string[]) : []
-    } catch { return [] }
-  })
+      setDismissed(isDismissed)
+      setCompletedItems(raw ? (JSON.parse(raw) as string[]) : [])
+    } catch {}
+  }, [STORAGE_KEY])
 
   useEffect(() => {
     if (dismissed) return
