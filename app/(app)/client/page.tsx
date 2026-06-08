@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist'
 import { Card, CardContent, CardHeader, StatCard } from '@/components/ui'
 import { formatAppointmentDate, formatDateShort } from '@/lib/utils'
 import { PrintButton } from '@/components/client/PrintButton'
@@ -837,8 +836,6 @@ export default async function ClientPage({
             })()}
           </div>
         </div>
-
-        <OnboardingChecklist role="client" />
 
         {kpis.validated_count === 0 && kpis.total_calls > 0 && (
           <div style={{

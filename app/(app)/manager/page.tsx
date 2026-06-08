@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
@@ -193,9 +192,6 @@ export default async function ManagerPage() {
           <p style={{ marginTop: 4, fontSize: 13, color: 'var(--muted)' }}>Vue opérationnelle du jour</p>
         </div>
         <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(125,211,252,.2), transparent)', marginBottom: -4 }} />
-
-        {/* ── Onboarding checklist ── */}
-        <OnboardingChecklist role="manager" />
 
         {/* ── KPI block — two rows, unified visual group ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

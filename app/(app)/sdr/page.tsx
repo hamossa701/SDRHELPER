@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist'
 import { StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
 import { formatProspectDisplay } from '@/lib/dashboard-visibility'
@@ -156,8 +155,6 @@ export default async function SDRPage({ searchParams }: { searchParams?: Promise
       </div>
 
       <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-        <OnboardingChecklist role="sdr" />
 
         <div className="app-kpi-grid">
           <StatCard label="Appels analysés" value={kpis.total_calls} />

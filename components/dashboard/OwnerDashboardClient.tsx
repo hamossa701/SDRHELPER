@@ -6,7 +6,6 @@ import { Badge, Card, CardHeader, DarkSelect, ScoreBadge, StatCard } from '@/com
 import { formatDateShort, getCampaignStatusBg, getCampaignStatusLabel, getScoreColor } from '@/lib/utils'
 import { formatProspectDisplay } from '@/lib/dashboard-visibility'
 import { isQualifiedAppointment } from '@/lib/review-flags'
-import { OnboardingChecklist } from '@/components/onboarding/OnboardingChecklist'
 import type {
   CallAnalysis,
   Campaign,
@@ -273,9 +272,6 @@ export function OwnerDashboardClient({
       </div>
 
       <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-        {/* ── Onboarding checklist ── */}
-        <OnboardingChecklist role="owner" />
 
         {/* ── KPI grid — owner-oriented ── */}
         <div className="app-kpi-grid">
