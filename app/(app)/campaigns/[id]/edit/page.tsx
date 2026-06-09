@@ -52,8 +52,9 @@ export default function EditCampaignPage() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data: profile } = await supabase.from('users').select('organization_id').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('users').select('organization_id, role').eq('id', user.id).single()
       if (!profile) { router.push('/login'); return }
+      if (profile.role !== 'owner') { router.push(`/campaigns/${id}`); return }
 
       const [{ data: campaign }, { data: clientsData }] = await Promise.all([
         supabase.from('campaigns').select('*').eq('id', id).eq('organization_id', profile.organization_id).single(),

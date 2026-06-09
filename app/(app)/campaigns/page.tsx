@@ -38,6 +38,7 @@ export default async function CampaignsPage() {
     .limit(500)
 
   if (profile.role === 'manager') {
+    campaignQuery = campaignQuery.eq('manager_id', user.id)
     const { data: teamSdrs } = await supabase
       .from('users')
       .select('id')
@@ -45,11 +46,6 @@ export default async function CampaignsPage() {
       .eq('role', 'sdr')
       .eq('manager_id', user.id)
     teamSdrIds = (teamSdrs ?? []).map((s) => s.id)
-    const { data: assignments } = teamSdrIds.length
-      ? await supabase.from('campaign_sdrs').select('campaign_id').in('user_id', teamSdrIds)
-      : { data: [] }
-    const campaignIds = [...new Set((assignments ?? []).map((a) => a.campaign_id))]
-    campaignQuery = campaignIds.length ? campaignQuery.in('id', campaignIds) : campaignQuery.eq('id', '00000000-0000-0000-0000-000000000000')
   }
 
   if (profile.role === 'sdr') {
@@ -73,7 +69,7 @@ export default async function CampaignsPage() {
     return { ...c, totalCalls: cc.length, rdvBooked: rdv, avgQuality: avg }
   })
 
-  const canCreate = ['owner', 'manager'].includes(profile.role)
+  const canCreate = profile.role === 'owner'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -105,7 +101,7 @@ export default async function CampaignsPage() {
             <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: 'var(--shadow)' }}>
               <Empty
                 title="Aucune campagne créée"
-                description={canCreate ? 'Créez une campagne pour assigner les SDRs et suivre les appels analysés.' : 'Vos campagnes assignées apparaîtront ici dès leur activation.'}
+                description={canCreate ? 'Créez une campagne pour assigner les SDRs et suivre les appels analysés.' : profile.role === 'manager' ? 'Aucune campagne assignée à votre équipe.' : 'Vos campagnes assignées apparaîtront ici dès leur activation.'}
                 action={canCreate ? (
                   <Link href="/campaigns/new" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#4f46e5,#2563eb 52%,#0891b2)', border: '1px solid rgba(125,211,252,.42)' }}>
                     <span className="mat" style={{ fontSize: 15 }}>add</span>

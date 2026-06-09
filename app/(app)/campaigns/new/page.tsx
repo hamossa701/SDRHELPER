@@ -36,6 +36,8 @@ export default function NewCampaignPage() {
   const [clientId, setClientId] = useState('')
   const [clientMode, setClientMode] = useState<'existing' | 'new'>('existing')
   const [newClientName, setNewClientName] = useState('')
+  const [managers, setManagers] = useState<{ id: string; name: string }[]>([])
+  const [managerId, setManagerId] = useState('')
   const [sdrs, setSdrs] = useState<{ id: string; name: string }[]>([])
   const [selectedSdrIds, setSelectedSdrIds] = useState<string[]>([])
   const [form, setForm] = useState({
@@ -54,15 +56,17 @@ export default function NewCampaignPage() {
       if (!user) return
       const { data: profile } = await supabase.from('users').select('organization_id, role').eq('id', user.id).single()
       if (!profile) return
-      let sdrQuery = supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'sdr').order('name')
-      if (profile.role === 'manager') sdrQuery = sdrQuery.eq('manager_id', user.id)
-      const [{ data: clientsData }, { data: sdrsData }] = await Promise.all([
+      if (profile.role !== 'owner') { router.replace('/campaigns'); return }
+      const sdrQuery = supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'sdr').order('name')
+      const [{ data: clientsData }, { data: sdrsData }, { data: managersData }] = await Promise.all([
         supabase.from('client_accounts').select('id, name').eq('organization_id', profile.organization_id).order('name'),
         sdrQuery,
+        supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'manager').order('name'),
       ])
       const list = clientsData ?? []
       setClients(list)
       setSdrs(sdrsData ?? [])
+      setManagers(managersData ?? [])
       if (list.length === 0) setClientMode('new')
       setInitializing(false)
     }
@@ -101,10 +105,11 @@ export default function NewCampaignPage() {
     }
 
     if (!resolvedClientId) { setError('Veuillez sélectionner ou créer un client'); setLoading(false); return }
+    if (!managerId) { setError('Veuillez sélectionner un manager'); setLoading(false); return }
 
     const { data, error: err } = await supabase
       .from('campaigns')
-      .insert({ ...form, client_id: resolvedClientId, client_name: resolvedClientName, organization_id: profile.organization_id })
+      .insert({ ...form, client_id: resolvedClientId, client_name: resolvedClientName, organization_id: profile.organization_id, manager_id: managerId })
       .select()
       .single()
 
@@ -194,6 +199,18 @@ export default function NewCampaignPage() {
                   ) : (
                     <input className="h3a-input" value={newClientName} onChange={e => setNewClientName(e.target.value)} placeholder="ex: Praize" style={inputStyle} />
                   )}
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Manager responsable *</label>
+                  <DarkSelect
+                    required
+                    value={managerId}
+                    onChange={setManagerId}
+                    ariaLabel="Manager responsable"
+                    style={{ borderRadius: 10, minHeight: 40 }}
+                    options={[{ value: '', label: 'Sélectionner un manager...' }, ...managers.map(m => ({ value: m.id, label: m.name }))]}
+                  />
                 </div>
 
                 <div>
