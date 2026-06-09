@@ -37,6 +37,8 @@ export default function EditCampaignPage() {
   const [error, setError] = useState('')
   const [clients, setClients] = useState<{ id: string; name: string }[]>([])
   const [clientId, setClientId] = useState('')
+  const [managers, setManagers] = useState<{ id: string; name: string }[]>([])
+  const [managerId, setManagerId] = useState('')
   const [form, setForm] = useState({
     campaign_name: '',
     client_name: '',
@@ -56,15 +58,18 @@ export default function EditCampaignPage() {
       if (!profile) { router.push('/login'); return }
       if (profile.role !== 'owner') { router.push(`/campaigns/${id}`); return }
 
-      const [{ data: campaign }, { data: clientsData }] = await Promise.all([
+      const [{ data: campaign }, { data: clientsData }, { data: managersData }] = await Promise.all([
         supabase.from('campaigns').select('*').eq('id', id).eq('organization_id', profile.organization_id).single(),
         supabase.from('client_accounts').select('id, name').eq('organization_id', profile.organization_id).order('name'),
+        supabase.from('users').select('id, name').eq('organization_id', profile.organization_id).eq('role', 'manager').order('name'),
       ])
 
       if (!campaign) { setError('Campagne introuvable'); setFetching(false); return }
 
       setClients(clientsData ?? [])
+      setManagers(managersData ?? [])
       setClientId(campaign.client_id ?? '')
+      setManagerId(campaign.manager_id ?? '')
       setForm({
         campaign_name: campaign.campaign_name ?? '',
         client_name: campaign.client_name ?? '',
@@ -86,6 +91,7 @@ export default function EditCampaignPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!clientId) { setError('Veuillez sélectionner un client'); return }
+    if (!managerId) { setError('Veuillez sélectionner un manager'); return }
     setLoading(true)
     setError('')
 
@@ -99,7 +105,7 @@ export default function EditCampaignPage() {
 
     const { error: err } = await supabase
       .from('campaigns')
-      .update({ ...form, client_id: clientId, client_name: resolvedClientName })
+      .update({ ...form, client_id: clientId, client_name: resolvedClientName, manager_id: managerId })
       .eq('id', id)
       .eq('organization_id', profile.organization_id)
 
@@ -154,6 +160,18 @@ export default function EditCampaignPage() {
                     ariaLabel="Client donneur d'ordre"
                     style={{ borderRadius: 10, minHeight: 40 }}
                     options={[{ value: '', label: 'Sélectionner un client...' }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Manager responsable *</label>
+                  <DarkSelect
+                    required
+                    value={managerId}
+                    onChange={setManagerId}
+                    ariaLabel="Manager responsable"
+                    style={{ borderRadius: 10, minHeight: 40 }}
+                    options={[{ value: '', label: 'Sélectionner un manager...' }, ...managers.map(m => ({ value: m.id, label: m.name }))]}
                   />
                 </div>
 
