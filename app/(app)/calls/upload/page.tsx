@@ -31,7 +31,14 @@ export default function UploadCallPage() {
   const [jobError, setJobError] = useState<string | null>(null)
   const [retryCount, setRetryCount] = useState(0)
   const [retrying, setRetrying] = useState(false)
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID())
+  const [idempotencyKey, setIdempotencyKey] = useState(() => {
+    if (typeof window === 'undefined') return crypto.randomUUID()
+    const existing = sessionStorage.getItem('upload_idempotency_key')
+    if (existing) return existing
+    const newKey = crypto.randomUUID()
+    sessionStorage.setItem('upload_idempotency_key', newKey)
+    return newKey
+  })
   const [timedOut, setTimedOut] = useState(false)
   const [lastKnownStatus, setLastKnownStatus] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -84,6 +91,7 @@ export default function UploadCallPage() {
         if (data.status === 'completed') {
           clearInterval(pollRef.current!)
           clearTimeout(timeoutRef.current!)
+          sessionStorage.removeItem('upload_idempotency_key')
           setStep('completed')
           setTimeout(() => router.push(`/calls/${data.call_id || callId}`), 1200)
         }
@@ -204,7 +212,7 @@ export default function UploadCallPage() {
                 style={{ padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: 'rgba(2,6,23,.28)', border: '1px solid var(--border)', color: 'var(--muted)', fontFamily: 'Geist, sans-serif' }}>
                 Continuer d&apos;attendre
               </button>
-              <button onClick={() => { setStep('form'); setJobId(null); setCallId(null); setTimedOut(false); setIdempotencyKey(crypto.randomUUID()) }}
+              <button onClick={() => { setStep('form'); setJobId(null); setCallId(null); setTimedOut(false); const k = crypto.randomUUID(); sessionStorage.setItem('upload_idempotency_key', k); setIdempotencyKey(k) }}
                 style={{ padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', color: '#fff', background: 'linear-gradient(135deg,#4f46e5,#2563eb)', border: '1px solid rgba(125,211,252,.42)', fontFamily: 'Geist, sans-serif' }}>
                 Nouvel appel
               </button>
@@ -252,7 +260,7 @@ export default function UploadCallPage() {
           <button onClick={handleRetry} disabled={retrying} style={{ padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: retrying ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#dc2626,#b91c1c)', border: '1px solid rgba(239,68,68,.42)', opacity: retrying ? .6 : 1, fontFamily: 'Geist, sans-serif' }}>
             {retrying ? 'Relance en cours…' : 'Réessayer l\'analyse'}
           </button>
-          <button onClick={() => { setStep('form'); setJobId(null); setCallId(null); setJobError(null); setIdempotencyKey(crypto.randomUUID()) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--muted-2)', fontFamily: 'Geist, sans-serif' }}>
+          <button onClick={() => { setStep('form'); setJobId(null); setCallId(null); setJobError(null); const k = crypto.randomUUID(); sessionStorage.setItem('upload_idempotency_key', k); setIdempotencyKey(k) }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 11, color: 'var(--muted-2)', fontFamily: 'Geist, sans-serif' }}>
             Soumettre un nouvel appel
           </button>
         </div>

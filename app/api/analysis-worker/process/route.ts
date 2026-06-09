@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { processJobById } from '@/lib/job-processor'
+
+export const maxDuration = 300
 
 type ClaimedAnalysisJob = {
   id: string
@@ -10,7 +13,13 @@ type ClaimedAnalysisJob = {
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-worker-secret')
-  if (!process.env.WORKER_SECRET || secret !== process.env.WORKER_SECRET) {
+  const workerSecret = process.env.WORKER_SECRET
+  if (!workerSecret || !secret) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  }
+  const secretBuf = Buffer.from(workerSecret)
+  const receivedBuf = Buffer.from(secret)
+  if (secretBuf.length !== receivedBuf.length || !crypto.timingSafeEqual(secretBuf, receivedBuf)) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
 

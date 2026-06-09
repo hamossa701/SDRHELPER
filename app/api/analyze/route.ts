@@ -4,6 +4,8 @@ import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { processJobById } from '@/lib/job-processor'
 
+export const maxDuration = 300
+
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies()
   const supabase = createServerClient(
