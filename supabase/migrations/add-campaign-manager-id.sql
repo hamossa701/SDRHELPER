@@ -53,6 +53,10 @@ RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.campaign_sdrs
     WHERE campaign_id = p_campaign_id AND user_id = p_user_id
+  )
+  OR EXISTS (
+    SELECT 1 FROM public.campaign_assignments
+    WHERE campaign_id = p_campaign_id AND sdr_id = p_user_id
   );
 $$;
 

@@ -49,8 +49,14 @@ export default async function CampaignsPage() {
   }
 
   if (profile.role === 'sdr') {
-    const { data: assignments } = await supabase.from('campaign_sdrs').select('campaign_id').eq('user_id', user.id)
-    const campaignIds = (assignments ?? []).map((a) => a.campaign_id)
+    const [{ data: fromSdrs }, { data: fromPlanning }] = await Promise.all([
+      supabase.from('campaign_sdrs').select('campaign_id').eq('user_id', user.id),
+      supabase.from('campaign_assignments').select('campaign_id').eq('sdr_id', user.id),
+    ])
+    const campaignIds = [...new Set([
+      ...(fromSdrs ?? []).map((a) => a.campaign_id),
+      ...(fromPlanning ?? []).map((a) => a.campaign_id),
+    ])]
     campaignQuery = campaignIds.length ? campaignQuery.in('id', campaignIds) : campaignQuery.eq('id', '00000000-0000-0000-0000-000000000000')
   }
 
