@@ -45,24 +45,38 @@ CREATE TRIGGER campaigns_validate_manager
   FOR EACH ROW
   EXECUTE FUNCTION public.validate_campaign_manager();
 
--- 3. Replace RLS policies
+-- 3. SECURITY DEFINER helpers to break RLS circular references
+--    campaign_sdrs_select and campaign_clients_select both reference campaigns,
+--    which would cause infinite recursion if campaigns_select queries those tables directly.
+CREATE OR REPLACE FUNCTION public.sdr_can_access_campaign(p_campaign_id uuid, p_user_id uuid)
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.campaign_sdrs
+    WHERE campaign_id = p_campaign_id AND user_id = p_user_id
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.client_can_access_campaign(p_campaign_id uuid, p_user_id uuid)
+RETURNS boolean LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.campaign_clients
+    WHERE campaign_id = p_campaign_id AND user_id = p_user_id
+  );
+$$;
+
+-- 4. Replace RLS policies
 DROP POLICY IF EXISTS "campaigns_select" ON public.campaigns;
 CREATE POLICY "campaigns_select" ON public.campaigns
   FOR SELECT USING (
     organization_id = get_my_org_id() AND (
       get_my_role() = 'owner'
       OR (get_my_role() = 'manager' AND manager_id = auth.uid())
-      OR (get_my_role() = 'sdr' AND EXISTS (
-        SELECT 1 FROM public.campaign_sdrs
-        WHERE campaign_id = campaigns.id AND user_id = auth.uid()
-      ))
-      OR (get_my_role() = 'client' AND EXISTS (
-        SELECT 1 FROM public.campaign_clients
-        WHERE campaign_id = campaigns.id AND user_id = auth.uid()
-      ))
+      OR (get_my_role() = 'sdr' AND sdr_can_access_campaign(campaigns.id, auth.uid()))
+      OR (get_my_role() = 'client' AND client_can_access_campaign(campaigns.id, auth.uid()))
     )
   );
 
+-- 5. Insert / update policies
 DROP POLICY IF EXISTS "campaigns_insert" ON public.campaigns;
 CREATE POLICY "campaigns_insert" ON public.campaigns
   FOR INSERT WITH CHECK (
@@ -84,5 +98,5 @@ CREATE POLICY "campaigns_update" ON public.campaigns
     AND manager_id IS NOT NULL
   );
 
--- 4. Drop the now-unused function
+-- 6. Drop the now-unused function
 DROP FUNCTION IF EXISTS public.manager_can_access_campaign(uuid, uuid);
