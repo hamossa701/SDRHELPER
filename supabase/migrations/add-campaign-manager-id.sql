@@ -73,9 +73,15 @@ CREATE POLICY "campaigns_insert" ON public.campaigns
 
 DROP POLICY IF EXISTS "campaigns_update" ON public.campaigns;
 CREATE POLICY "campaigns_update" ON public.campaigns
-  FOR UPDATE USING (
+  FOR UPDATE
+  USING (
     organization_id = get_my_org_id()
     AND get_my_role() = 'owner'
+  )
+  WITH CHECK (
+    organization_id = get_my_org_id()
+    AND get_my_role() = 'owner'
+    AND manager_id IS NOT NULL
   );
 
 -- 4. Drop the now-unused function
