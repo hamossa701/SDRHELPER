@@ -59,7 +59,6 @@ const PERIOD_LABELS: Record<ReportPeriod, string> = {
   'month': 'Mois en cours',
 }
 
-const AVG_CALL_MINUTES = 8
 const CAMPAIGN_SAFE_COLS = 'id, client_id, campaign_name, client_name, sector, status, created_at'
 const CLIENT_ANALYSIS_COLS = [
   'id',
@@ -96,6 +95,15 @@ function previousPeriodBounds(period: ReportPeriod): { since: string; until: str
   const prevEnd = new Date(now.getTime() - days * 86_400_000)
   const prevStart = new Date(prevEnd.getTime() - days * 86_400_000)
   return { since: prevStart.toISOString(), until: prevEnd.toISOString() }
+}
+
+function currentPeriodSince(period: ReportPeriod): string {
+  const now = new Date()
+  if (period === 'month') {
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  }
+  const days = period === '7d' ? 7 : 30
+  return new Date(now.getTime() - days * 86_400_000).toISOString()
 }
 
 function one<T>(value: T | T[] | null | undefined): T | null {
@@ -197,14 +205,6 @@ function logClientDashboardStep(step: string, payload: Record<string, unknown>) 
 }
 
 // ─── Pure computations ───────────────────────────────────────────────────────
-
-function formatTimeSaved(totalCalls: number): string {
-  const total = totalCalls * AVG_CALL_MINUTES
-  const h = Math.floor(total / 60)
-  const m = Math.round(total % 60)
-  if (h === 0) return `${m}min`
-  return `${h}h${m.toString().padStart(2, '0')}`
-}
 
 function trendDelta(current: number, previous: number): { pct: number; dir: 'up' | 'down' | 'flat' } | null {
   if (previous === 0) return null
@@ -590,6 +590,7 @@ export default async function ClientPage({
   }
 
   const prevBounds = previousPeriodBounds(period)
+  const currentSince = currentPeriodSince(period)
 
   const [
     { count: orgCompletedCount },
@@ -598,6 +599,8 @@ export default async function ClientPage({
     { data: sdrUsers },
     { data: assignmentsRaw },
     { data: legacySdrAssignments },
+    { count: coverageAnalyzedCount },
+    { count: coverageTotalCount },
   ] = await Promise.all([
     adminSupabase
       .from('calls')
@@ -625,19 +628,13 @@ export default async function ClientPage({
       .lte('call_datetime', prevBounds.until)
       .order('call_datetime', { ascending: false })
       .returns<ClientCallRow[]>(),
-    // SDR name lookup — scoped to SDRs assigned to visible campaigns.
+    // SDR name lookup — all org SDRs, so names resolve regardless of which
+    // assignment table (campaign_sdrs or campaign_assignments) holds them.
     adminSupabase
       .from('users')
       .select('id, name')
       .eq('organization_id', profile.organization_id)
-      .eq('role', 'sdr')
-      .in('id',
-        await adminSupabase
-          .from('campaign_sdrs')
-          .select('user_id')
-          .in('campaign_id', campaignIds)
-          .then(r => (r.data ?? []).map(x => x.user_id))
-      ),
+      .eq('role', 'sdr'),
     // campaign_assignments (may not exist yet)
     adminSupabase
       .from('campaign_assignments')
@@ -649,12 +646,31 @@ export default async function ClientPage({
       .from('campaign_sdrs')
       .select('user_id, campaign_id')
       .in('campaign_id', campaignIds),
+    // Quality coverage (current period) — analyzed calls / all campaign calls
+    adminSupabase
+      .from('calls')
+      .select('id, call_analyses!inner(id), analysis_jobs!inner(status)', { count: 'exact', head: true })
+      .in('campaign_id', campaignIds)
+      .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
+      .not('call_analyses.prospect_company', 'is', null)
+      .gte('call_datetime', currentSince),
+    adminSupabase
+      .from('calls')
+      .select('id', { count: 'exact', head: true })
+      .in('campaign_id', campaignIds)
+      .eq('organization_id', profile.organization_id)
+      .gte('call_datetime', currentSince),
   ])
 
   const allVisibleCompletedRows = visibleCompletedRows || []
   const dashboardRows = allVisibleCompletedRows
   const kpis = buildKpis(dashboardRows)
   const prevKpis = buildKpis(previousRows || [])
+
+  const coverageAnalyzed = coverageAnalyzedCount ?? 0
+  const coverageTotal = coverageTotalCount ?? 0
+  const coverageComplete = coverageTotal > 0 && coverageAnalyzed >= coverageTotal
 
   const valueRows = buildValueRows(dashboardRows)
   const statsRows = buildCampaignStats(dashboardRows, campaignIds)
@@ -716,25 +732,23 @@ export default async function ClientPage({
   type AssignedSdrEntry = { sdr_id: string; name: string; starts_at?: string; ends_at?: string; assignmentStatus: 'active' | 'scheduled' }
   const assignedSdrEntries: AssignedSdrEntry[] = []
   const seenSdrIds = new Set<string>()
-  if (assignmentsRaw && assignmentsRaw.length > 0) {
-    for (const a of assignmentsRaw as { sdr_id: string; campaign_id: string; starts_at: string; ends_at: string; status: string }[]) {
-      if (seenSdrIds.has(a.sdr_id)) continue
-      seenSdrIds.add(a.sdr_id)
-      const todayStr = new Date().toISOString().split('T')[0]
-      assignedSdrEntries.push({
-        sdr_id: a.sdr_id,
-        name: nameMap[a.sdr_id] ?? '—',
-        starts_at: a.starts_at,
-        ends_at: a.ends_at,
-        assignmentStatus: a.starts_at > todayStr ? 'scheduled' : 'active',
-      })
-    }
-  } else if (legacySdrAssignments && legacySdrAssignments.length > 0) {
-    for (const a of legacySdrAssignments as { user_id: string; campaign_id: string }[]) {
-      if (seenSdrIds.has(a.user_id)) continue
-      seenSdrIds.add(a.user_id)
-      assignedSdrEntries.push({ sdr_id: a.user_id, name: nameMap[a.user_id] ?? '—', assignmentStatus: 'active' })
-    }
+  const todayStr = new Date().toISOString().split('T')[0]
+  // Merge both assignment sources (union), so SDRs assigned via either table show up.
+  for (const a of (assignmentsRaw ?? []) as { sdr_id: string; campaign_id: string; starts_at: string; ends_at: string; status: string }[]) {
+    if (seenSdrIds.has(a.sdr_id)) continue
+    seenSdrIds.add(a.sdr_id)
+    assignedSdrEntries.push({
+      sdr_id: a.sdr_id,
+      name: nameMap[a.sdr_id] ?? '—',
+      starts_at: a.starts_at,
+      ends_at: a.ends_at,
+      assignmentStatus: a.starts_at > todayStr ? 'scheduled' : 'active',
+    })
+  }
+  for (const a of (legacySdrAssignments ?? []) as { user_id: string; campaign_id: string }[]) {
+    if (seenSdrIds.has(a.user_id)) continue
+    seenSdrIds.add(a.user_id)
+    assignedSdrEntries.push({ sdr_id: a.user_id, name: nameMap[a.user_id] ?? '—', assignmentStatus: 'active' })
   }
 
   const recentCalls = dashboardRows.slice(0, 10)
@@ -884,10 +898,17 @@ export default async function ClientPage({
             accent="rgba(196,181,253,.7)" style={{ borderLeftWidth: 3 }}
           />
           <StatCard
-            label="Temps économisé"
-            value={kpis.total_calls > 0 ? `~${formatTimeSaved(kpis.total_calls)}` : '—'}
-            sub={kpis.total_calls > 0 ? `${kpis.total_calls} appels × ~${AVG_CALL_MINUTES}min` : undefined}
-            accent="var(--muted)" style={{ borderLeftWidth: 3 }}
+            label="Couverture qualité"
+            value={coverageTotal > 0 ? `${coverageAnalyzed}/${coverageTotal}` : '—'}
+            sub={
+              coverageTotal === 0 ? undefined
+              : coverageComplete ? 'aucun RDV ne vous parvient sans contrôle'
+              : 'appels vérifiés par analyse qualité'
+            }
+            badge={coverageComplete
+              ? <span title="Couverture complète" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', background: 'rgba(34,197,94,.12)', border: '1px solid rgba(34,197,94,.35)', color: '#86efac', fontSize: 11, fontWeight: 700 }}>✓</span>
+              : undefined}
+            accent={coverageComplete ? 'rgba(134,239,172,.7)' : 'var(--cyan)'} style={{ borderLeftWidth: 3 }}
           />
         </div>
 

@@ -29,6 +29,7 @@ export interface Organization {
   id: string
   name: string
   plan: Plan
+  supervisor_hourly_rate_mad: number
   created_at: string
 }
 

@@ -13,6 +13,16 @@ import type {
   DashboardKPIs,
   SDRLeaderboardRow,
 } from '@/types'
+import { isWeakAppointment } from '@/lib/review-flags'
+
+const FALLBACK_CALL_SECONDS = 8 * 60
+
+type RoiAnalysis = { appointment_booked: boolean | null; appointment_quality_score: number | null }
+type RoiCall = { call_duration_seconds: number | null; call_analyses: RoiAnalysis | RoiAnalysis[] | null }
+
+function firstOf<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null
+}
 
 function campaignHealthFromStats(s: DashboardCampaignStatsRow): CampaignHealthResult {
   if (s.total_calls === 0) {
@@ -58,6 +68,8 @@ export default async function DashboardPage() {
     { data: campaignStatsData },
     { data: historyCalls },
     { data: reviewedAnalyses },
+    { data: orgRow },
+    { data: roiCallsData },
   ] = await Promise.all([
     supabase.rpc('get_dashboard_kpis', { p_org_id: profile.organization_id }),
     supabase.rpc('get_sdr_leaderboard', { p_org_id: profile.organization_id }),
@@ -77,6 +89,18 @@ export default async function DashboardPage() {
       .not('field_validations', 'is', null)
       .eq('calls.organization_id', profile.organization_id)
       .limit(500),
+    supabase
+      .from('organizations')
+      .select('supervisor_hourly_rate_mad')
+      .eq('id', profile.organization_id)
+      .single(),
+    // ROI source — all completed analyses for the org (duration + appointment risk fields)
+    supabase
+      .from('calls')
+      .select('call_duration_seconds, call_analyses!inner(appointment_booked, appointment_quality_score), analysis_jobs!inner(status)')
+      .eq('organization_id', profile.organization_id)
+      .eq('analysis_jobs.status', 'completed')
+      .limit(2000),
   ])
 
   const kpis: DashboardKPIs = kpisData?.[0] ?? {
@@ -107,6 +131,27 @@ export default async function DashboardPage() {
   const totalAgreed  = allFieldValidations.filter(v => v === 'validated').length
   const aiAccuracy   = totalReviewed > 0 ? Math.round((totalAgreed / totalReviewed) * 100) : null
 
+  // ── ROI block (all-time, org-wide) ──
+  const roiRows = (roiCallsData || []) as RoiCall[]
+  const roiAnalyzedCount = roiRows.length
+  const roiDurations = roiRows
+    .map((r) => r.call_duration_seconds)
+    .filter((d): d is number => typeof d === 'number' && d > 0)
+  const roiAvgSeconds = roiDurations.length > 0
+    ? roiDurations.reduce((sum, d) => sum + d, 0) / roiDurations.length
+    : FALLBACK_CALL_SECONDS
+  const roiHours = (roiAnalyzedCount * roiAvgSeconds) / 3600
+  const roiHourlyRate = orgRow?.supervisor_hourly_rate_mad ?? 60
+  const roi = {
+    analyzedCount: roiAnalyzedCount,
+    hours: roiHours,
+    valueMad: roiHours * roiHourlyRate,
+    weakIntercepted: roiRows.filter((r) => {
+      const a = firstOf(r.call_analyses)
+      return a !== null && isWeakAppointment(a)
+    }).length,
+  }
+
   const campaignStats = (campaigns || []).map((c: Campaign) => ({
     ...c,
     totalCalls: statsMap[c.id]?.total_calls ?? 0,
@@ -124,6 +169,7 @@ export default async function DashboardPage() {
       sdrStats={sdrStats}
       aiAccuracy={aiAccuracy}
       aiAccuracyN={totalReviewed}
+      roi={roi}
     />
   )
 }

@@ -54,6 +54,13 @@ export type OwnerDashboardCampaign = Campaign & {
   health: CampaignHealthResult
 }
 
+export type OwnerRoi = {
+  analyzedCount: number
+  hours: number
+  valueMad: number
+  weakIntercepted: number
+}
+
 type Props = {
   kpis: DashboardKPIs
   campaigns: OwnerDashboardCampaign[]
@@ -63,6 +70,18 @@ type Props = {
   sdrStats: SDRLeaderboardRow[]
   aiAccuracy: number | null
   aiAccuracyN: number
+  roi: OwnerRoi
+}
+
+function formatRoiHours(hours: number): string {
+  if (hours <= 0) return '—'
+  if (hours < 1) return `~${Math.round(hours * 60)}min`
+  return `~${hours < 10 ? hours.toFixed(1) : Math.round(hours)}h`
+}
+
+function formatRoiMad(value: number): string {
+  if (value <= 0) return '—'
+  return `≈ ${Math.round(value).toLocaleString('fr-FR')} MAD`
 }
 
 function one<T>(value: Joined<T>): T | null {
@@ -141,6 +160,7 @@ export function OwnerDashboardClient({
   sdrStats,
   aiAccuracy,
   aiAccuracyN,
+  roi,
 }: Props) {
   const [selectedKpi, setSelectedKpi] = useState<KpiFilter>(null)
   const [dateRange, setDateRange] = useState<DateRange>('30d')
@@ -310,6 +330,33 @@ export function OwnerDashboardClient({
               valueColor={kpis.sdrs_needing_coaching > 0 ? '#fcd34d' : undefined}
             />
           </Link>
+        </div>
+
+        {/* ── ROI block — supervision time/money saved (all-time, org-wide) ── */}
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 8 }}>
+            Retour sur investissement
+          </div>
+          <div className="app-kpi-grid">
+            <StatCard
+              label="Temps de supervision économisé"
+              value={roi.analyzedCount > 0 ? formatRoiHours(roi.hours) : '—'}
+              sub={roi.analyzedCount > 0 ? `${roi.analyzedCount} appels × durée moyenne` : 'aucun appel analysé'}
+              accent="var(--cyan)"
+            />
+            <StatCard
+              label="Valeur économisée"
+              value={roi.analyzedCount > 0 ? formatRoiMad(roi.valueMad) : '—'}
+              sub="vs écoute manuelle"
+              accent="rgba(134,239,172,.7)"
+            />
+            <StatCard
+              label="RDV à risque interceptés"
+              value={roi.weakIntercepted}
+              sub="RDV détectés avant transmission client"
+              variant={roi.weakIntercepted > 0 ? 'warning' : 'default'}
+            />
+          </div>
         </div>
 
         {/* ── AI accuracy stat block ── */}

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, StatCard, Badge, ScoreBadge } from '@/components/ui'
 import { getScoreColor, getInterestBg, getInterestLabel, formatDateShort } from '@/lib/utils'
-import { computeReviewFlags, isQualifiedAppointment, reviewCriticalityRank } from '@/lib/review-flags'
+import { computeReviewFlags, isQualifiedAppointment, isWeakAppointment, reviewCriticalityRank } from '@/lib/review-flags'
 import { ReviewQueueControls } from '@/components/manager/ReviewQueueControls'
 import { formatProspectDisplay } from '@/lib/dashboard-visibility'
 import Link from 'next/link'
@@ -16,6 +16,7 @@ type ManagerTeamCall = {
   id: string
   sdr_id: string
   call_datetime: string
+  call_duration_seconds: number | null
   review_status: ReviewStatus | null
   assigned_to: string | null
   call_analyses: ManagerTeamAnalysis | ManagerTeamAnalysis[] | null
@@ -72,7 +73,7 @@ export default async function ManagerPage() {
     teamSdrIds.length
       ? supabase
           .from('calls')
-          .select('id, sdr_id, call_datetime, review_status, assigned_to, call_analyses(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, contact_name, interest_level, decision_maker_detected, pain_point_detected, human_validated, field_validations, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step)')
+          .select('id, sdr_id, call_datetime, call_duration_seconds, review_status, assigned_to, call_analyses(appointment_booked, appointment_date_text, appointment_datetime, appointment_date_confidence, appointment_quality_score, sdr_quality_score, prospect_company, contact_name, interest_level, decision_maker_detected, pain_point_detected, human_validated, field_validations, ai_confidence, hallucination_risk, qualification_completeness_score, objection_detected, objection_details, next_step)')
           .in('sdr_id', teamSdrIds)
           .order('call_datetime', { ascending: false })
       : Promise.resolve({ data: [] as ManagerTeamCall[] }),
@@ -111,7 +112,7 @@ export default async function ManagerPage() {
     appointments_booked: teamAnalyses.filter((analysis) => analysis.appointment_booked).length,
     qualified_appointments: teamAnalyses.filter((analysis) => isQualifiedAppointment(analysis as CallAnalysis)).length,
     qualification_rate: 0,
-    weak_appointments: teamAnalyses.filter((analysis) => analysis.appointment_booked && (analysis.appointment_quality_score ?? 0) < 60).length,
+    weak_appointments: teamAnalyses.filter((analysis) => isWeakAppointment(analysis)).length,
     calls_reviewed: teamAnalyses.filter((analysis) => analysis.human_validated).length,
     calls_pending: teamAnalyses.filter((analysis) => !analysis.human_validated).length,
     coaching_opportunities: 0,
@@ -121,6 +122,22 @@ export default async function ManagerPage() {
   kpis.qualification_rate = kpis.appointments_booked > 0
     ? Math.round((kpis.qualified_appointments / kpis.appointments_booked) * 100)
     : 0
+
+  // Listening time saved — analyzed calls × average real duration (fallback 8 min), no monetary value
+  const FALLBACK_CALL_SECONDS = 8 * 60
+  const analyzedDurations = teamCalls
+    .filter((call) => one(call.call_analyses))
+    .map((call) => call.call_duration_seconds)
+    .filter((d): d is number => typeof d === 'number' && d > 0)
+  const avgCallSeconds = analyzedDurations.length > 0
+    ? analyzedDurations.reduce((sum, d) => sum + d, 0) / analyzedDurations.length
+    : FALLBACK_CALL_SECONDS
+  const listeningHours = (teamAnalyses.length * avgCallSeconds) / 3600
+  const listeningHoursLabel = teamAnalyses.length === 0
+    ? '—'
+    : listeningHours < 1
+    ? `~${Math.round(listeningHours * 60)}min`
+    : `~${listeningHours < 10 ? listeningHours.toFixed(1) : Math.round(listeningHours)}h`
 
   const sdrStats: SDRLeaderboardRow[] = teamSdrs.map((sdr) => {
     const calls = teamCalls.filter((call) => call.sdr_id === sdr.id)
@@ -205,6 +222,7 @@ export default async function ManagerPage() {
           </div>
           {/* Row 2 — quality */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, minWidth: 0 }}>
+            <StatCard label="Temps d'écoute économisé" value={listeningHoursLabel} sub={teamAnalyses.length > 0 ? `${teamAnalyses.length} appels filtrés pour vous` : 'aucun appel analysé'} />
             <StatCard label="Appels révisés"       value={kpis.calls_reviewed}      sub="analyses approuvées par un manager" />
             <StatCard label="En attente révision"  value={kpis.calls_pending}       sub="analyses non approuvées" />
             <StatCard label="RDV faibles"          value={kpis.weak_appointments}   sub="score RDV < 60" variant={kpis.weak_appointments > 0 ? 'danger' : 'default'} />

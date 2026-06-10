@@ -41,6 +41,13 @@ export function computeReviewFlags(a: CallAnalysis): ReviewFlagsResult {
   return { flags, review_required: flags.length > 0 }
 }
 
+// Part 1b — weak ("at-risk") appointment: booked with a low/absent quality score.
+// Shared by the Manager "RDV faibles" card and the Owner "RDV à risque interceptés" ROI card
+// so both views report a coherent count. A null score is treated as < 60 (i.e. at risk).
+export function isWeakAppointment(a: { appointment_booked: boolean | null; appointment_quality_score: number | null }): boolean {
+  return a.appointment_booked === true && (a.appointment_quality_score ?? 0) < 60
+}
+
 // Part 2 — qualified appointment: all conditions must be met
 export function isQualifiedAppointment(a: CallAnalysis): boolean {
   return (
