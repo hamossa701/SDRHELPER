@@ -82,7 +82,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginTop: 24, paddingBottom: 16 }}>
           <a
             href="/confidentialite"
-            style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none' }}
+            style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'none', opacity: 0.8 }}
           >
             Politique de confidentialité
           </a>

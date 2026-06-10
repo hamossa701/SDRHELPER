@@ -1,6 +1,6 @@
 export default function ConfidentialitePage() {
   return (
-    <div style={{
+    <div className="public-page" style={{
       '--card-bg': '#0f1623',
       '--border': 'rgba(255,255,255,0.08)',
       '--text': '#f1f5f9',
@@ -9,9 +9,9 @@ export default function ConfidentialitePage() {
       background: '#060914',
       minHeight: '100vh',
       padding: '40px 20px',
-      fontFamily: 'Geist, sans-serif'
+      fontFamily: 'Geist, sans-serif',
     } as React.CSSProperties}>
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflow: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'visible' }}>
       <div className="app-page-header" style={{ background: 'var(--header-bg)', borderBottom: '1px solid var(--border)', height: 56, padding: '0 24px', display: 'flex', alignItems: 'center', flexShrink: 0, backdropFilter: 'blur(18px)' }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Politique de confidentialité</div>

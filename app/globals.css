@@ -1103,6 +1103,14 @@ input, select, textarea {
   .h3a-skeleton-card { animation: none; }
 }
 
+/* Public pages — allow natural scroll */
+.public-page {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  background: #060914;
+}
+
 /* Material icons */
 .mat {
   font-family: 'Material Symbols Outlined';
