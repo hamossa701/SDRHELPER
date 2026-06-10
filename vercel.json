@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/analysis-worker/process",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/retention",
