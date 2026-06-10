@@ -59,14 +59,18 @@ export default function ConfidentialitePage() {
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 24 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>4. Droits des personnes concernées</h2>
             <p style={{ fontSize: 13, color: '#fcd34d', lineHeight: 1.7, background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 8, padding: '10px 14px' }}>
-              [PLACEHOLDER — droits d&apos;accès, rectification, suppression, portabilité, opposition. À compléter par le responsable juridique.]
+              Conformément au RGPD, vous disposez des droits suivants : droit d&apos;accès,
+              de rectification, d&apos;effacement, de limitation, de portabilité et d&apos;opposition.
+              Pour exercer ces droits, contactez-nous à l&apos;adresse indiquée en section 5.
+              Délai de réponse : 30 jours.
             </p>
           </div>
 
           <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: 24 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>5. Contact</h2>
             <p style={{ fontSize: 13, color: '#fcd34d', lineHeight: 1.7, background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.25)', borderRadius: 8, padding: '10px 14px' }}>
-              [PLACEHOLDER — adresse e-mail du responsable du traitement / DPO. À compléter avant mise en production.]
+              Responsable du traitement : SDRHelper — contact@sdr-help.com<br />
+              Pour toute réclamation, vous pouvez contacter la CNIL : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" style={{color:'var(--cyan)'}}>www.cnil.fr</a>
             </p>
           </div>
 
