@@ -25,6 +25,28 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient()
 
+  // Reset jobs stuck in 'processing' for >10 min back to 'pending' so they get retried.
+  const stuckCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const { data: stuckJobs } = await admin
+    .from('analysis_jobs')
+    .update({ status: 'pending', started_at: null })
+    .eq('status', 'processing')
+    .lt('started_at', stuckCutoff)
+    .select('id, started_at')
+  if (stuckJobs?.length) {
+    console.warn(`[worker] reset ${stuckJobs.length} stuck job(s) to pending:`, stuckJobs.map((j: { id: string }) => j.id))
+    try {
+      const Sentry = await import('@sentry/nextjs')
+      for (const j of stuckJobs as Array<{ id: string; started_at: string | null }>) {
+        const ageSec = j.started_at ? Math.round((Date.now() - new Date(j.started_at).getTime()) / 1000) : null
+        Sentry.captureMessage('Stuck analysis job reclaimed', {
+          level: 'warning',
+          extra: { job_id: j.id, age_seconds: ageSec },
+        })
+      }
+    } catch {}
+  }
+
   // Claim a batch of pending jobs atomically (FOR UPDATE SKIP LOCKED).
   // This is only used for batch/cron retries — normal flow goes through
   // processJobById directly from the analyze route.

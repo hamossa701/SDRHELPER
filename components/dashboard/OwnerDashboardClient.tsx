@@ -61,6 +61,8 @@ type Props = {
   teamTrendLabel: string
   teamTrendColor: string
   sdrStats: SDRLeaderboardRow[]
+  aiAccuracy: number | null
+  aiAccuracyN: number
 }
 
 function one<T>(value: Joined<T>): T | null {
@@ -137,6 +139,8 @@ export function OwnerDashboardClient({
   teamTrendLabel,
   teamTrendColor,
   sdrStats,
+  aiAccuracy,
+  aiAccuracyN,
 }: Props) {
   const [selectedKpi, setSelectedKpi] = useState<KpiFilter>(null)
   const [dateRange, setDateRange] = useState<DateRange>('30d')
@@ -306,6 +310,26 @@ export function OwnerDashboardClient({
               valueColor={kpis.sdrs_needing_coaching > 0 ? '#fcd34d' : undefined}
             />
           </Link>
+        </div>
+
+        {/* ── AI accuracy stat block ── */}
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="mat" style={{ fontSize: 18, color: 'var(--cyan)' }}>verified</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Fiabilité IA validée par revue humaine</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {aiAccuracy !== null ? (
+              <>
+                <span style={{ fontSize: 22, fontWeight: 700, color: aiAccuracy >= 80 ? '#86efac' : aiAccuracy >= 60 ? '#fcd34d' : '#fca5a5' }}>
+                  {aiAccuracy}%
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--muted-2)' }}>sur {aiAccuracyN} champ{aiAccuracyN !== 1 ? 's' : ''} évalué{aiAccuracyN !== 1 ? 's' : ''}</span>
+              </>
+            ) : (
+              <span style={{ fontSize: 13, color: 'var(--muted-2)' }}>Aucune revue humaine enregistrée</span>
+            )}
+          </div>
         </div>
 
         {/* ── Main content grid ── */}

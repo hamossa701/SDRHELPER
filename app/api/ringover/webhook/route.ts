@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const transcription = await transcribeAssemblyAiAudioUrl(recordingUrl)
+      const transcription = await transcribeAssemblyAiAudioUrl(recordingUrl, callData.direction)
       const resolvedDuration = transcription.duration_seconds || duration
       if (resolvedDuration < 120) {
         console.log(`[ringover-webhook] transcribed call too short (${resolvedDuration}s), skipping:`, callData.call_id)

@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { createAdminClient } from '@/lib/supabase-admin'
 import { AIAnalysisValidationError, analyzeCallTranscript, validateAIAnalysisShape } from '@/lib/ai-analysis'
 import { cleanMissingInformationForAppointmentDate, resolveAppointmentDate } from '@/lib/appointment-date'
@@ -85,7 +86,7 @@ export async function processJobById(job: JobInput): Promise<string> {
     console.log(`[TRANSCRIPTION STARTED] ${tag}`)
     const { data: call, error: callErr } = await admin
       .from('calls')
-      .select('id, transcript, organization_id, call_datetime, campaigns(client_name, sector, offer_description, target_persona)')
+      .select('id, transcript, organization_id, call_datetime, call_duration_seconds, campaigns(client_name, sector, offer_description, target_persona)')
       .eq('id', job.call_id)
       .single()
 
@@ -198,13 +199,14 @@ export async function processJobById(job: JobInput): Promise<string> {
     // ── Log AI cost ──────────────────────────────────────────────────────────
     const estimatedCost = inputTokens * COST_PER_INPUT_TOKEN + outputTokens * COST_PER_OUTPUT_TOKEN
     const { data: usageLog, error: usageErr } = await admin.from('ai_usage_log').insert({
-      organization_id:    call.organization_id,
-      call_id:            call.id,
-      job_id:             job.id,
-      model:              'claude-sonnet-4-5',
-      input_tokens:       inputTokens,
-      output_tokens:      outputTokens,
-      estimated_cost_usd: estimatedCost,
+      organization_id:          call.organization_id,
+      call_id:                  call.id,
+      job_id:                   job.id,
+      model:                    'claude-sonnet-4-5',
+      input_tokens:             inputTokens,
+      output_tokens:            outputTokens,
+      estimated_cost_usd:       estimatedCost,
+      assemblyai_duration_secs: call.call_duration_seconds ?? null,
     })
       .select('id, call_id, job_id, estimated_cost_usd')
       .single()
@@ -247,6 +249,9 @@ export async function processJobById(job: JobInput): Promise<string> {
     } else {
       console.error(`[JOB FAILED] job_id:${job.id} call_id:${job.call_id} attempt:${newCount}/${MAX_RETRIES} permanent:${permanent} total:${Date.now() - t0}ms`)
     }
+    Sentry.captureException(err instanceof Error ? err : new Error(message), {
+      extra: { job_id: job.id, call_id: job.call_id, attempt: newCount, permanent },
+    })
 
     const backoffIdx = Math.min(newCount - 1, BACKOFF_SECONDS.length - 1)
     const retryAfter = permanent ? null : new Date(Date.now() + BACKOFF_SECONDS[backoffIdx] * 1000).toISOString()

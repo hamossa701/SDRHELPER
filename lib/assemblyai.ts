@@ -6,9 +6,14 @@ function sleep(ms: number) {
   return new Promise<void>(resolve => setTimeout(resolve, ms))
 }
 
-function formatUtterances(utterances: Array<{ speaker: string; text: string }> | undefined, text?: string) {
+function formatUtterances(
+  utterances: Array<{ speaker: string; text: string }> | undefined,
+  text?: string,
+  direction?: 'inbound' | 'outbound',
+) {
   const speakerMap = new Map<string, string>()
-  const roles = ['SDR', 'PROSPECT']
+  // For inbound calls the prospect (the caller) speaks first in the recording.
+  const roles = direction === 'inbound' ? ['PROSPECT', 'SDR'] : ['SDR', 'PROSPECT']
 
   for (const utterance of utterances ?? []) {
     if (!speakerMap.has(utterance.speaker) && speakerMap.size < roles.length) {
@@ -22,7 +27,7 @@ function formatUtterances(utterances: Array<{ speaker: string; text: string }> |
   return diarized || text || ''
 }
 
-export async function transcribeAssemblyAiAudioUrl(audioUrl: string) {
+export async function transcribeAssemblyAiAudioUrl(audioUrl: string, direction?: 'inbound' | 'outbound') {
   const apiKey = process.env.ASSEMBLYAI_API_KEY
   if (!apiKey) throw new Error('AssemblyAI non configure')
 
@@ -68,7 +73,7 @@ export async function transcribeAssemblyAiAudioUrl(audioUrl: string) {
     if (data.status !== 'completed') continue
 
     return {
-      transcript: formatUtterances(data.utterances, data.text),
+      transcript: formatUtterances(data.utterances, data.text, direction),
       duration_seconds: data.audio_duration ?? 0,
     }
   }

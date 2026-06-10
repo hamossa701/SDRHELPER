@@ -57,6 +57,7 @@ export default async function DashboardPage() {
     { data: leaderboardData },
     { data: campaignStatsData },
     { data: historyCalls },
+    { data: reviewedAnalyses },
   ] = await Promise.all([
     supabase.rpc('get_dashboard_kpis', { p_org_id: profile.organization_id }),
     supabase.rpc('get_sdr_leaderboard', { p_org_id: profile.organization_id }),
@@ -70,6 +71,12 @@ export default async function DashboardPage() {
       .eq('analysis_jobs.status', 'completed')
       .order('call_datetime', { ascending: false })
       .limit(100),
+    supabase
+      .from('call_analyses')
+      .select('field_validations, calls!inner(organization_id)')
+      .not('field_validations', 'is', null)
+      .eq('calls.organization_id', profile.organization_id)
+      .limit(500),
   ])
 
   const kpis: DashboardKPIs = kpisData?.[0] ?? {
@@ -92,6 +99,14 @@ export default async function DashboardPage() {
     campaign_id: id, total_calls: 0, appointments_booked: 0, qualified_appointments: 0,
     avg_appointment_quality: null, avg_sdr_quality: null, avg_ai_confidence: null,
   })
+  // Compute AI accuracy: agreement = field validated (not corrected) / total reviewed fields
+  type ReviewedAnalysis = { field_validations: Record<string, string> | null }
+  const allFieldValidations = ((reviewedAnalyses || []) as ReviewedAnalysis[])
+    .flatMap(a => Object.values(a.field_validations ?? {}))
+  const totalReviewed = allFieldValidations.length
+  const totalAgreed  = allFieldValidations.filter(v => v === 'validated').length
+  const aiAccuracy   = totalReviewed > 0 ? Math.round((totalAgreed / totalReviewed) * 100) : null
+
   const campaignStats = (campaigns || []).map((c: Campaign) => ({
     ...c,
     totalCalls: statsMap[c.id]?.total_calls ?? 0,
@@ -107,6 +122,8 @@ export default async function DashboardPage() {
       teamTrendLabel={teamTrendLabel}
       teamTrendColor={teamTrendColor}
       sdrStats={sdrStats}
+      aiAccuracy={aiAccuracy}
+      aiAccuracyN={totalReviewed}
     />
   )
 }
