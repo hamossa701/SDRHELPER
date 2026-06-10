@@ -62,8 +62,9 @@ async function createAuthUser(email: string, password: string) {
 
 let orgAId: string, orgBId: string
 let ownerAId: string, managerAId: string, sdrAId: string, clientAId: string
-let ownerBId: string, sdrBId: string
-let campaignAId: string
+let ownerBId: string, managerBId: string, sdrBId: string
+let clientAccountAId: string, clientAccountBId: string
+let campaignAId: string, campaignBId: string
 let callAId: string, callBId: string
 let analysisAId: string
 
@@ -86,38 +87,70 @@ beforeAll(async () => {
   sdrAId     = await createAuthUser(`${TAG}-sdrA@test.invalid`,     TEST_PASSWORD)
   clientAId  = await createAuthUser(`${TAG}-clientA@test.invalid`,  TEST_PASSWORD)
   ownerBId   = await createAuthUser(`${TAG}-ownerB@test.invalid`,   TEST_PASSWORD)
+  managerBId = await createAuthUser(`${TAG}-managerB@test.invalid`, TEST_PASSWORD)
   sdrBId     = await createAuthUser(`${TAG}-sdrB@test.invalid`,     TEST_PASSWORD)
 
-  await admin.from('users').insert([
+  const { data: clientAccount, error: caErr } = await admin.from('client_accounts').insert({
+    organization_id: orgAId, name: 'TestClient',
+  }).select('id').single()
+  if (caErr) throw new Error(`client_accounts orgA insert: ${caErr.message}`)
+  clientAccountAId = clientAccount!.id
+
+  const { data: clientAccountB, error: caBErr } = await admin.from('client_accounts').insert({
+    organization_id: orgBId, name: 'TestClientB',
+  }).select('id').single()
+  if (caBErr) throw new Error(`client_accounts orgB insert: ${caBErr.message}`)
+  clientAccountBId = clientAccountB!.id
+
+  const { error: usersErr } = await admin.from('users').insert([
     { id: ownerAId,   organization_id: orgAId, role: 'owner',   name: 'OwnerA',   email: `${TAG}-ownerA@test.invalid` },
     { id: managerAId, organization_id: orgAId, role: 'manager', name: 'ManagerA', email: `${TAG}-managerA@test.invalid` },
     { id: sdrAId,     organization_id: orgAId, role: 'sdr',     name: 'SdrA',     email: `${TAG}-sdrA@test.invalid`, manager_id: managerAId },
-    { id: clientAId,  organization_id: orgAId, role: 'client',  name: 'ClientA',  email: `${TAG}-clientA@test.invalid` },
+    { id: clientAId,  organization_id: orgAId, role: 'client',  name: 'ClientA',  email: `${TAG}-clientA@test.invalid`, client_id: clientAccountAId },
     { id: ownerBId,   organization_id: orgBId, role: 'owner',   name: 'OwnerB',   email: `${TAG}-ownerB@test.invalid` },
+    { id: managerBId, organization_id: orgBId, role: 'manager', name: 'ManagerB', email: `${TAG}-managerB@test.invalid` },
     { id: sdrBId,     organization_id: orgBId, role: 'sdr',     name: 'SdrB',     email: `${TAG}-sdrB@test.invalid` },
   ])
+  if (usersErr) throw new Error(`users insert: ${usersErr.message}`)
 
-  const { data: campaign } = await admin.from('campaigns').insert({
-    organization_id: orgAId, campaign_name: `${TAG}-campaign`, client_name: 'TestClient', status: 'active',
+  const { data: campaign, error: campErr } = await admin.from('campaigns').insert({
+    organization_id: orgAId, campaign_name: `${TAG}-campaign`, client_name: 'TestClient', status: 'active', manager_id: managerAId, client_id: clientAccountAId,
   }).select('id').single()
+  if (campErr) throw new Error(`campaignA insert: ${campErr.message}`)
   campaignAId = campaign!.id
 
-  const { data: callA } = await admin.from('calls').insert({
+  const today = new Date().toISOString().slice(0, 10)
+  const { error: assignErr } = await admin.from('campaign_assignments').insert({
+    organization_id: orgAId, campaign_id: campaignAId, sdr_id: sdrAId,
+    assigned_by: managerAId, starts_at: today, ends_at: '2099-12-31', status: 'active',
+  })
+  if (assignErr) throw new Error(`campaign_assignments insert: ${assignErr.message}`)
+
+  const { data: campaignB, error: campBErr } = await admin.from('campaigns').insert({
+    organization_id: orgBId, campaign_name: `${TAG}-campaignB`, client_name: 'TestClientB', status: 'active', manager_id: managerBId, client_id: clientAccountBId,
+  }).select('id').single()
+  if (campBErr) throw new Error(`campaignB insert: ${campBErr.message}`)
+  campaignBId = campaignB!.id
+
+  const { data: callA, error: callAErr } = await admin.from('calls').insert({
     organization_id: orgAId, campaign_id: campaignAId, sdr_id: sdrAId,
     transcript: 'test transcript', call_datetime: new Date().toISOString(),
   }).select('id').single()
+  if (callAErr) throw new Error(`callA insert: ${callAErr.message}`)
   callAId = callA!.id
 
-  const { data: callB } = await admin.from('calls').insert({
-    organization_id: orgBId, sdr_id: sdrBId,
+  const { data: callB, error: callBErr } = await admin.from('calls').insert({
+    organization_id: orgBId, campaign_id: campaignBId, sdr_id: sdrBId,
     transcript: 'test transcript B', call_datetime: new Date().toISOString(),
   }).select('id').single()
+  if (callBErr) throw new Error(`callB insert: ${callBErr.message}`)
   callBId = callB!.id
 
-  const { data: analysis } = await admin.from('call_analyses').insert({
+  const { data: analysis, error: analysisErr } = await admin.from('call_analyses').insert({
     call_id: callAId, appointment_booked: false, decision_maker_detected: false,
     interest_level: 'cold', objection_detected: false,
   }).select('id').single()
+  if (analysisErr) throw new Error(`analysis insert: ${analysisErr.message}`)
   analysisAId = analysis!.id
 
   ownerAJwt   = await signIn(`${TAG}-ownerA@test.invalid`,   TEST_PASSWORD)
@@ -132,11 +165,15 @@ afterAll(async () => {
   await admin.from('call_analyses').delete().eq('call_id', callAId)
   await admin.from('calls').delete().eq('organization_id', orgAId)
   await admin.from('calls').delete().eq('organization_id', orgBId)
+  await admin.from('campaign_assignments').delete().eq('campaign_id', campaignAId)
   await admin.from('campaigns').delete().eq('organization_id', orgAId)
+  await admin.from('campaigns').delete().eq('organization_id', orgBId)
+  await admin.from('client_accounts').delete().eq('organization_id', orgAId)
+  await admin.from('client_accounts').delete().eq('organization_id', orgBId)
   await admin.from('users').delete().eq('organization_id', orgAId)
   await admin.from('users').delete().eq('organization_id', orgBId)
   await admin.from('organizations').delete().in('id', [orgAId, orgBId])
-  for (const uid of [ownerAId, managerAId, sdrAId, clientAId, ownerBId, sdrBId]) {
+  for (const uid of [ownerAId, managerAId, sdrAId, clientAId, ownerBId, managerBId, sdrBId]) {
     await admin.auth.admin.deleteUser(uid)
   }
 }, 30_000)
