@@ -79,6 +79,14 @@ export default function LoginPage() {
             </button>
           </form>
         </LoginCard>
+        <div style={{ textAlign: 'center', marginTop: 24, paddingBottom: 16 }}>
+          <a
+            href="/confidentialite"
+            style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none' }}
+          >
+            Politique de confidentialité
+          </a>
+        </div>
       </div>
     </main>
   )
