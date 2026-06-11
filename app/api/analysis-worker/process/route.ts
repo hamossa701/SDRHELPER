@@ -11,6 +11,34 @@ type ClaimedAnalysisJob = {
   retry_count: number | null
 }
 
+// Alert if jobs linger in 'pending' past 1h (queue not draining) or failed
+// permanently in the last 24h. Individual failures already hit Sentry via
+// captureException; this is the safety net for jobs nothing ever picks up.
+async function checkQueueHealth(admin: ReturnType<typeof createAdminClient>) {
+  const pendingCutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const failedCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const [pendingRes, failedRes] = await Promise.all([
+    admin.from('analysis_jobs').select('id', { count: 'exact', head: true })
+      .eq('status', 'pending').lt('created_at', pendingCutoff),
+    admin.from('analysis_jobs').select('id', { count: 'exact', head: true })
+      .eq('status', 'failed').gte('completed_at', failedCutoff),
+  ])
+  if (pendingRes.error || failedRes.error) {
+    console.error('[worker] queue health check failed:', pendingRes.error?.message ?? failedRes.error?.message)
+  }
+  const stalePending = pendingRes.count ?? 0
+  const recentFailed = failedRes.count ?? 0
+  if (stalePending === 0 && recentFailed === 0) return
+  console.warn(`[worker] queue alert: ${stalePending} pending >1h, ${recentFailed} failed in last 24h`)
+  try {
+    const Sentry = await import('@sentry/nextjs')
+    Sentry.captureMessage('Analysis queue needs attention', {
+      level: 'warning',
+      extra: { pending_over_1h: stalePending, failed_last_24h: recentFailed },
+    })
+  } catch {}
+}
+
 async function handleWorkerRun(request: NextRequest) {
   if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
@@ -55,6 +83,7 @@ async function handleWorkerRun(request: NextRequest) {
 
   if (!claimedJobs.length) {
     console.log('[worker] no pending jobs')
+    await checkQueueHealth(admin)
     return NextResponse.json({ processed: 0, results: [] })
   }
   console.log(`[worker] claimed ${claimedJobs.length} job(s):`, claimedJobs.map((job) => job.id))
@@ -64,6 +93,8 @@ async function handleWorkerRun(request: NextRequest) {
     const outcome = await processJobById({ id: job.id, call_id: job.call_id, retry_count: job.retry_count ?? 0 })
     results.push({ job_id: job.id, outcome })
   }
+
+  await checkQueueHealth(admin)
 
   return NextResponse.json({ processed: results.length, results })
 }
