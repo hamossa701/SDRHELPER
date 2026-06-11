@@ -86,7 +86,7 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
         </Link>
       )}
 
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 auto', minHeight: 0, overflowY: 'auto', paddingRight: 2 }}>
         {visible.filter(i => i.href !== '/calls/upload').map(item => {
           const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
           return (
@@ -118,7 +118,7 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
         })}
       </nav>
 
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 8 }}>
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 'auto', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px' }}>
           <div
             style={{
@@ -176,10 +176,16 @@ export function Sidebar({ userRole, userName, orgName }: { userRole: UserRole; u
     width: 260,
     minWidth: 260,
     flexShrink: 0,
+    position: 'fixed',
+    left: 0,
+    top: 0,
+    bottom: 0,
     display: 'flex',
     flexDirection: 'column',
     padding: '20px 12px',
     height: '100vh',
+    maxHeight: '100vh',
+    overflow: 'hidden',
     boxShadow: '18px 0 44px rgba(0,0,0,.22)',
   }
 

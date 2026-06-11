@@ -43,8 +43,9 @@ body {
     linear-gradient(135deg, rgba(10,16,32,.95), rgba(6,9,20,.98));
   color: var(--text);
   font-family: var(--font-geist), system-ui, -apple-system, sans-serif;
-  overflow: hidden;
-  height: 100vh;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 button,
@@ -89,6 +90,13 @@ body::before {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+@media (min-width: 768px) {
+  .app-main {
+    margin-left: 260px;
+    width: calc(100% - 260px) !important;
+  }
 }
 
 .app-kpi-grid {

@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const orgName = (profile.organizations as { name: string } | null)?.name || ''
 
   return (
-    <div className="app-shell" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div className="app-shell" style={{ display: 'flex', width: '100%', minHeight: '100vh', overflow: 'visible' }}>
       <Sidebar userRole={profile.role} userName={profile.name} orgName={orgName} />
       <main className="app-main" style={{
         flex: 1,
@@ -26,9 +26,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         minWidth: 0,
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
+        minHeight: '100vh',
+        height: 'auto',
         overflowX: 'hidden',
-        overflowY: 'auto',
+        overflowY: 'visible',
       }}>
         {children}
       </main>

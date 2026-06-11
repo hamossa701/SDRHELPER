@@ -2,9 +2,9 @@ import { SkeletonHeader, SkeletonKpiGrid, SkeletonCard, SkeletonTable, SkeletonL
 
 export default function SdrLoading() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
       <SkeletonHeader titleWidth={190} subtitleWidth={310} />
-      <div className="app-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="app-scroll sdr-page-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 20, overflow: 'visible', flex: '0 0 auto' }}>
         <SkeletonKpiGrid count={4} />
         <div className="sdr-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }}>
           <SkeletonTable columns={6} rows={7} minWidth={760} />
