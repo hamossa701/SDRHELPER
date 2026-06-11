@@ -1,26 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import crypto from 'crypto'
 import * as Sentry from '@sentry/nextjs'
 import { createAdminClient } from '@/lib/supabase-admin'
+import { isCronAuthorized } from '@/lib/cron-auth'
 
 export const maxDuration = 300
 
-export async function POST(request: NextRequest) {
-  // Timing-safe cron secret check — same pattern as analysis-worker
-  const secret = request.headers.get('x-worker-secret')
-  const cronSecret = process.env.WORKER_SECRET
-  if (!cronSecret || !secret) {
+async function handleRetentionRun(request: NextRequest) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   }
-  let authorized = false
-  try {
-    const a = Buffer.from(cronSecret)
-    const b = Buffer.from(secret)
-    authorized = a.length === b.length && crypto.timingSafeEqual(a, b)
-  } catch {
-    authorized = false
-  }
-  if (!authorized) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
   const admin = createAdminClient()
   let deletedAudio = 0
@@ -74,4 +62,13 @@ export async function POST(request: NextRequest) {
     console.error('[retention] unexpected error:', err)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
+}
+
+// Vercel Cron invokes via GET; manual triggers use POST.
+export async function GET(request: NextRequest) {
+  return handleRetentionRun(request)
+}
+
+export async function POST(request: NextRequest) {
+  return handleRetentionRun(request)
 }
