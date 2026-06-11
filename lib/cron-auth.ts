@@ -24,5 +24,12 @@ export function isCronAuthorized(request: NextRequest): boolean {
     return true
   }
 
+  // Booleans only — never log secret values or lengths.
+  console.warn('[cron-auth] rejected', {
+    cron_secret_configured: Boolean(cronSecret),
+    auth_header_present: Boolean(authHeader),
+    worker_secret_configured: Boolean(workerSecret),
+    worker_header_present: Boolean(workerHeader),
+  })
   return false
 }
