@@ -13,9 +13,10 @@ type CampaignRow = Campaign & {
 
 type CampaignCallMetric = {
   campaign_id: string
-  call_analyses: Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score'> | Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score'>[] | null
+  call_analyses: Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score' | 'prospect_company'> | Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score' | 'prospect_company'>[] | null
+  analysis_jobs: { status: string } | { status: string }[] | null
 }
-type AnalysisMetric = Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score'>
+type AnalysisMetric = Pick<CallAnalysis, 'appointment_booked' | 'appointment_quality_score' | 'prospect_company'>
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value ?? null
@@ -61,7 +62,7 @@ export default async function CampaignsPage() {
   }
 
   const { data: campaigns } = await campaignQuery
-  let callsQuery = supabase.from('calls').select('campaign_id, call_analyses(appointment_booked, appointment_quality_score)').eq('organization_id', profile.organization_id)
+  let callsQuery = supabase.from('calls').select('campaign_id, call_analyses(appointment_booked, appointment_quality_score, prospect_company), analysis_jobs(status)').eq('organization_id', profile.organization_id)
   if (profile.role === 'manager') callsQuery = teamSdrIds.length ? callsQuery.in('sdr_id', teamSdrIds) : callsQuery.eq('sdr_id', '00000000-0000-0000-0000-000000000000')
   if (profile.role === 'sdr') callsQuery = callsQuery.eq('sdr_id', user.id)
   const { data: calls } = await callsQuery.limit(2000)
@@ -72,7 +73,13 @@ export default async function CampaignsPage() {
     const an = cc.map((x) => one(x.call_analyses)).filter((a): a is AnalysisMetric => Boolean(a))
     const rdv = an.filter((a) => a.appointment_booked).length
     const avg = an.length > 0 ? Math.round(an.reduce((s, a) => s + (a.appointment_quality_score || 0), 0) / an.length) : null
-    return { ...c, totalCalls: cc.length, rdvBooked: rdv, avgQuality: avg }
+    const validCount = cc.filter(x => {
+    const job = one(x.analysis_jobs)
+    const analysis = one(x.call_analyses)
+    const company = analysis?.prospect_company?.trim()
+    return job?.status === 'completed' && Boolean(analysis) && Boolean(company) && company !== 'En attente...' && company !== 'En attente…'
+  }).length
+  return { ...c, totalCalls: validCount, rdvBooked: rdv, avgQuality: avg }
   })
 
   const canCreate = profile.role === 'owner'

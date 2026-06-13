@@ -94,13 +94,24 @@ export default function NewCampaignPage() {
 
     if (clientMode === 'new') {
       if (!newClientName.trim()) { setError('Nom du client requis'); setLoading(false); return }
-      const { data: newClient, error: clientErr } = await supabase
+      const { data: existingClient } = await supabase
         .from('client_accounts')
-        .insert({ name: newClientName.trim(), organization_id: profile.organization_id })
-        .select()
+        .select('id')
+        .eq('organization_id', profile.organization_id)
+        .ilike('name', newClientName.trim())
         .single()
-      if (clientErr || !newClient) { setError(clientErr?.message ?? 'Erreur création client'); setLoading(false); return }
-      resolvedClientId = newClient.id
+
+      if (existingClient) {
+        resolvedClientId = existingClient.id
+      } else {
+        const { data: newClient, error: clientError } = await supabase
+          .from('client_accounts')
+          .insert({ name: newClientName.trim(), organization_id: profile.organization_id })
+          .select('id')
+          .single()
+        if (clientError || !newClient) { setError(clientError?.message ?? 'Erreur création client'); setLoading(false); return }
+        resolvedClientId = newClient.id
+      }
       resolvedClientName = newClientName.trim()
     }
 
@@ -116,8 +127,23 @@ export default function NewCampaignPage() {
     if (err) { setError(err.message); setLoading(false); return }
 
     if (selectedSdrIds.length > 0) {
-      await supabase.from('campaign_sdrs').insert(
-        selectedSdrIds.map(sdrId => ({ campaign_id: data.id, user_id: sdrId }))
+      const today = new Date().toISOString().slice(0, 10)
+await Promise.all(
+        selectedSdrIds.map(sdrId =>
+          fetch('/api/assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              sdr_id: sdrId,
+              campaign_id: data.id,
+              starts_at: today,
+              ends_at: '2099-12-31',
+              assignment_type: 'custom',
+            }),
+          }).then(res => {
+            if (!res.ok) res.json().then(e => console.error('Assignment failed for SDR', sdrId, e))
+          }).catch(err => console.error('Assignment error for SDR', sdrId, err))
+        )
       )
     }
 
